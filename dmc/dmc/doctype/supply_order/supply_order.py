@@ -440,15 +440,15 @@ def set_expired_status():
 		WHERE
 			so_item.docstatus = 1 and so.docstatus = 1
 			and so_item.parent = so.name
-			and so_item.prevdoc_docname = `tabQuotation`.name"""
+			and so_item.prevdoc_docname = `tabSupply order`.name"""
 
 	# if not exists any SO, set status as Expired
 	frappe.db.multisql(
 		{
-			"mariadb": """UPDATE `tabQuotation`  SET `tabQuotation`.status = 'Expired' WHERE {cond} and not exists({so_against_quo})""".format(
+			"mariadb": """UPDATE `tabSupply order`  SET `tabSupply order`.status = 'Expired' WHERE {cond} and not exists({so_against_quo})""".format(
 				cond=cond, so_against_quo=so_against_quo
 			),
-			"postgres": """UPDATE `tabQuotation` SET status = 'Expired' FROM `tabSales Order`, `tabSales Order Item` WHERE {cond} and not exists({so_against_quo})""".format(
+			"postgres": """UPDATE `tabSupply order` SET status = 'Expired' FROM `tabSales Order`, `tabSales Order Item` WHERE {cond} and not exists({so_against_quo})""".format(
 				cond=cond, so_against_quo=so_against_quo
 			),
 		},
