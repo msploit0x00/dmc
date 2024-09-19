@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-09-09 12:40:47.415286",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_2zkn",
+  "name1",
+  "kinship",
+  "card_number",
+  "special_discount",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_2zkn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name"
+  },
+  {
+   "fieldname": "kinship",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Kinship",
+   "options": "\n\u0627\u0628\u0646\n\u0627\u0628\u0646\u0629\n\u0632\u0648\u062c\n\u0632\u0648\u062c\u0629\n\u0639\u0645\n\u0639\u0645\u0629\n\u062e\u0627\u0644\n\u062e\u0627\u0644\u0629\n\u0627\u0644\u0648\u0627\u0644\u062f\n\u0627\u0644\u0648\u0627\u0644\u062f\u0629"
+  },
+  {
+   "fieldname": "card_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Card number"
+  },
+  {
+   "fieldname": "special_discount",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Special Discount"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Status"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-09-12 11:00:23.557472",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Employee Family",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
