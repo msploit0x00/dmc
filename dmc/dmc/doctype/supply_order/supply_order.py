@@ -414,7 +414,7 @@ def _make_sales_order(source_name, target_doc=None, customer_group=None, ignore_
 			"Supply order": {"doctype": "Sales Order", "validation": {"docstatus": ["=", 1]}},
 			"Quotation Item": {
 				"doctype": "Sales Order Item",
-				"field_map": {"parent": "prevdoc_docname", "name": "quotation_item"},
+				"field_map": {"parent": "custom_supply_order", "name": "quotation_item"},
 				"postprocess": update_item,
 				"condition": can_map_row,
 			},
