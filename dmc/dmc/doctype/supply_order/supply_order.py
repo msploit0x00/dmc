@@ -419,7 +419,7 @@ def _make_sales_order(source_name, target_doc=None, customer_group=None, ignore_
 				"condition": can_map_row,
 			},
 			"Sales Taxes and Charges": {"doctype": "Sales Taxes and Charges", "add_if_empty": True},
-			"Sales Team": {"doctype": "Sales Team", "add_if_empty": True},
+			# "Sales Team": {"doctype": "Sales Team", "add_if_empty": True},
 			"Payment Schedule": {"doctype": "Payment Schedule", "add_if_empty": True},
 		},
 		target_doc,
