@@ -408,10 +408,10 @@ def _make_sales_order(source_name, target_doc=None, customer_group=None, ignore_
 		return has_qty
 
 	doclist = get_mapped_doc(
-		"Supplyorder",
+		"Supply order",
 		source_name,
 		{
-			"Supplyorder": {"doctype": "Sales Order", "validation": {"docstatus": ["=", 1]}},
+			"Supply order": {"doctype": "Sales Order", "validation": {"docstatus": ["=", 1]}},
 			"Quotation Item": {
 				"doctype": "Sales Order Item",
 				"field_map": {"parent": "prevdoc_docname", "name": "quotation_item"},
