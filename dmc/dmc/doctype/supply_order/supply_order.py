@@ -478,10 +478,10 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 		target.stock_qty = flt(obj.qty) * flt(obj.conversion_factor)
 
 	doclist = get_mapped_doc(
-		"Supplyorder",
+		"Supply order",
 		source_name,
 		{
-			"Supplyorder": {"doctype": "Sales Invoice", "validation": {"docstatus": ["=", 1]}},
+			"Supply order": {"doctype": "Sales Invoice", "validation": {"docstatus": ["=", 1]}},
 			"Quotation Item": {
 				"doctype": "Sales Invoice Item",
 				"postprocess": update_item,
@@ -500,7 +500,7 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 
 def _make_customer(source_name, ignore_permissions=False, customer_group=None):
 	quotation = frappe.db.get_value(
-		"Supplyorder", source_name, ["order_type", "party_name", "customer_name"], as_dict=1
+		"Supply order", source_name, ["order_type", "party_name", "customer_name"], as_dict=1
 	)
 
 	if quotation and quotation.get("party_name"):
