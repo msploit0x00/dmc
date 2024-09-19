@@ -440,7 +440,7 @@ def set_expired_status():
 		WHERE
 			so_item.docstatus = 1 and so.docstatus = 1
 			and so_item.parent = so.name
-			and so_item.prevdoc_docname = `tabSupply order`.name"""
+			and so_item.custom_supply_order = `tabSupply order`.name"""
 
 	# if not exists any SO, set status as Expired
 	frappe.db.multisql(
