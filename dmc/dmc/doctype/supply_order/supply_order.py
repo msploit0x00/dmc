@@ -328,7 +328,7 @@ def make_sales_order(source_name: str, target_doc=None):
 		"Selling Settings", "allow_sales_order_creation_for_expired_quotation"
 	):
 		quotation = frappe.db.get_value(
-			"Supplyorder", source_name, ["transaction_date", "valid_till"], as_dict=1
+			"Supply order", source_name, ["transaction_date", "valid_till"], as_dict=1
 		)
 		if quotation.valid_till and (
 			quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())
