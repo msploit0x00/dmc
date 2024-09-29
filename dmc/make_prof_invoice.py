@@ -18,7 +18,7 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 	doc = frappe.get_doc("Delivery Note", source_name)
 
 	to_make_invoice_qty_map = {}
-	# returned_qty_map = get_returned_qty_map(source_name)
+	returned_qty_map = get_returned_qty_map(source_name)
 	invoiced_qty_map = get_invoiced_qty_map(source_name)
 
 	def set_missing_values(source, target):
@@ -116,3 +116,38 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 		doc.set_payment_schedule()
 
 	return doc
+
+
+
+def get_invoiced_qty_map(delivery_note):
+	"""returns a map: {dn_detail: invoiced_qty}"""
+	invoiced_qty_map = {}
+
+	for dn_detail, qty in frappe.db.sql(
+		"""select dn_detail, qty from `tabSales Invoice Item`
+		where delivery_note=%s and docstatus=1""",
+		delivery_note,
+	):
+		if not invoiced_qty_map.get(dn_detail):
+			invoiced_qty_map[dn_detail] = 0
+		invoiced_qty_map[dn_detail] += qty
+
+	return invoiced_qty_map
+
+
+def get_returned_qty_map(delivery_note):
+	"""returns a map: {so_detail: returned_qty}"""
+	returned_qty_map = frappe._dict(
+		frappe.db.sql(
+			"""select dn_item.dn_detail, abs(dn_item.qty) as qty
+		from `tabDelivery Note Item` dn_item, `tabDelivery Note` dn
+		where dn.name = dn_item.parent
+			and dn.docstatus = 1
+			and dn.is_return = 1
+			and dn.return_against = %s
+	""",
+			delivery_note,
+		)
+	)
+
+	return returned_qty_map
