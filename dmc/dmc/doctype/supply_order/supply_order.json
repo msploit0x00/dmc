@@ -950,6 +950,7 @@
    "allow_on_submit": 1,
    "fieldname": "po_no",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Customer's Purchase Order"
   },
   {
@@ -979,7 +980,7 @@
    "link_fieldname": "custom_supply_order"
   }
  ],
- "modified": "2024-09-23 17:28:05.704159",
+ "modified": "2024-09-29 11:57:14.216565",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Supply order",

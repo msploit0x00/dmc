@@ -21,6 +21,8 @@
   "set_posting_time",
   "due_date",
   "custom_delivery_note_status",
+  "collection_amount",
+  "collection_date",
   "column_break_14",
   "is_pos",
   "pos_profile",
@@ -2175,6 +2177,16 @@
    "fieldtype": "Select",
    "label": "Delivery Note Status",
    "options": "\n\u0645\u0639\u0641\u064a\n\u062e\u0627\u0636\u0639\n\u0645\u0628\u0627\u0634\u0631\n\u063a\u064a\u0631 \u0645\u0628\u0627\u0634\u0631"
+  },
+  {
+   "fieldname": "collection_amount",
+   "fieldtype": "Currency",
+   "label": "Collection Amount"
+  },
+  {
+   "fieldname": "collection_date",
+   "fieldtype": "Date",
+   "label": "Collection Date"
   }
  ],
  "icon": "fa fa-file-text",
@@ -2186,7 +2198,7 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2024-09-29 11:41:21.885299",
+ "modified": "2024-09-29 13:43:37.757191",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice",
