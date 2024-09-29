@@ -1,8 +1,14 @@
 import frappe
+from frappe import _
+from frappe.contacts.doctype.address.address import get_company_address
+from frappe.desk.notifications import clear_doctype_notifications
+from frappe.model.mapper import get_mapped_doc
+from frappe.model.utils import get_fetch_values
+from frappe.utils import cint, flt
 
-
-
-
+from erpnext.controllers.accounts_controller import get_taxes_and_charges, merge_taxes
+from erpnext.controllers.selling_controller import SellingController
+from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 
 
 
@@ -35,7 +41,7 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 			target.update(get_company_address(target.company))
 
 		if target.company_address:
-			target.update(get_fetch_values("Sales Invoice", "company_address", target.company_address))
+			target.update(get_fetch_values("Proforma Invoice", "company_address", target.company_address))
 
 	def update_item(source_doc, target_doc, source_parent):
 		target_doc.qty = to_make_invoice_qty_map[source_doc.name]
