@@ -80,7 +80,7 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 				"validation": {"docstatus": ["=", 1]},
 			},
 			"Delivery Note Item": {
-				"doctype": "Sales Invoice Item",
+				"doctype": "Proforma Invoice Item",
 				"field_map": {
 					"name": "dn_detail",
 					"parent": "delivery_note",
