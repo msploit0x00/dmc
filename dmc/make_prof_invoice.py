@@ -76,7 +76,7 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 		source_name,
 		{
 			"Delivery Note": {
-				"doctype": "Sales Invoice",
+				"doctype": "Proforma Invoice",
 				"validation": {"docstatus": ["=", 1]},
 			},
 			"Delivery Note Item": {
