@@ -6,7 +6,7 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.model.utils import get_fetch_values
 from frappe.utils import cint, flt
 
-from erpnext.controllers.accounts_controller import get_taxes_and_charges, merge_taxes
+from erpnext.controllers.accounts_controller import get_taxes_and_charges
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 
@@ -28,8 +28,8 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 		if len(target.get("items")) == 0:
 			frappe.throw(_("All these items have already been Invoiced/Returned"))
 
-		if args and args.get("merge_taxes"):
-			merge_taxes(source.get("taxes") or [], target)
+		# if args and args.get("merge_taxes"):
+		# 	merge_taxes(source.get("taxes") or [], target)
 
 		target.run_method("calculate_taxes_and_totals")
 
