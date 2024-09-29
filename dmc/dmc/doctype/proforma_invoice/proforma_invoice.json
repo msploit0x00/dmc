@@ -20,6 +20,7 @@
   "posting_time",
   "set_posting_time",
   "due_date",
+  "custom_delivery_note_status",
   "column_break_14",
   "is_pos",
   "pos_profile",
@@ -29,7 +30,6 @@
   "update_billed_amount_in_sales_order",
   "update_billed_amount_in_delivery_note",
   "is_debit_note",
-  "amended_from",
   "accounting_dimensions_section",
   "cost_center",
   "dimension_col_break",
@@ -446,16 +446,12 @@
   {
    "fieldname": "amended_from",
    "fieldtype": "Link",
-   "hide_days": 1,
-   "hide_seconds": 1,
-   "ignore_user_permissions": 1,
    "label": "Amended From",
    "no_copy": 1,
-   "oldfieldname": "amended_from",
-   "oldfieldtype": "Link",
-   "options": "Sales Invoice",
+   "options": "Proforma Invoice",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "collapsible": 1,
@@ -642,7 +638,7 @@
    "label": "Items",
    "oldfieldname": "entries",
    "oldfieldtype": "Table",
-   "options": "Sales Invoice Item",
+   "options": "Proforma Invoice Item",
    "reqd": 1
   },
   {
@@ -1772,7 +1768,6 @@
    "oldfieldtype": "Link",
    "options": "Account",
    "print_hide": 1,
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -2174,6 +2169,12 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "custom_delivery_note_status",
+   "fieldtype": "Select",
+   "label": "Delivery Note Status",
+   "options": "\n\u0645\u0639\u0641\u064a\n\u062e\u0627\u0636\u0639\n\u0645\u0628\u0627\u0634\u0631\n\u063a\u064a\u0631 \u0645\u0628\u0627\u0634\u0631"
   }
  ],
  "icon": "fa fa-file-text",
@@ -2185,7 +2186,7 @@
    "link_fieldname": "consolidated_invoice"
   }
  ],
- "modified": "2024-09-29 10:13:18.696012",
+ "modified": "2024-09-29 11:41:21.885299",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice",
