@@ -25,8 +25,8 @@ def make_prof_invoice(source_name, target_doc=None, args=None):
 		target.run_method("set_missing_values")
 		target.run_method("set_po_nos")
 
-		if len(target.get("items")) == 0:
-			frappe.throw(_("All these items have already been Invoiced/Returned"))
+		# if len(target.get("items")) == 0:
+		# 	frappe.throw(_("All these items have already been Invoiced/Returned"))
 
 		# if args and args.get("merge_taxes"):
 		# 	merge_taxes(source.get("taxes") or [], target)
