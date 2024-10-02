@@ -43,6 +43,8 @@
   "rate",
   "amount",
   "item_tax_template",
+  "custom_actual_tax",
+  "total_amount_incl_tax",
   "col_break3",
   "base_rate",
   "base_amount",
@@ -85,6 +87,7 @@
   "serial_and_batch_bundle",
   "batch_no",
   "incoming_rate",
+  "custom_batch_number",
   "col_break5",
   "allow_zero_valuation_rate",
   "serial_no",
@@ -897,11 +900,26 @@
    "no_copy": 1,
    "print_hide": 1,
    "report_hide": 1
+  },
+  {
+   "fieldname": "custom_actual_tax",
+   "fieldtype": "Currency",
+   "label": "Actual Tax"
+  },
+  {
+   "fieldname": "total_amount_incl_tax",
+   "fieldtype": "Currency",
+   "label": "Total Amount Incl Tax"
+  },
+  {
+   "fieldname": "custom_batch_number",
+   "fieldtype": "Small Text",
+   "label": "Batch Number"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2024-09-29 11:57:27.008236",
+ "modified": "2024-10-02 10:24:23.201715",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice Item",

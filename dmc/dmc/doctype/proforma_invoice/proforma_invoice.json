@@ -23,6 +23,8 @@
   "custom_delivery_note_status",
   "collection_amount",
   "collection_date",
+  "custom_original_supply_order",
+  "custom_accountant_user",
   "column_break_14",
   "is_pos",
   "pos_profile",
@@ -32,6 +34,7 @@
   "update_billed_amount_in_sales_order",
   "update_billed_amount_in_delivery_note",
   "is_debit_note",
+  "delivery_note",
   "accounting_dimensions_section",
   "cost_center",
   "dimension_col_break",
@@ -216,6 +219,7 @@
   "is_discounted",
   "remarks",
   "repost_required",
+  "delivery_note_cs",
   "connections_tab",
   "amended_from"
  ],
@@ -2176,17 +2180,47 @@
    "fieldname": "custom_delivery_note_status",
    "fieldtype": "Select",
    "label": "Delivery Note Status",
-   "options": "\n\u0645\u0639\u0641\u064a\n\u062e\u0627\u0636\u0639\n\u0645\u0628\u0627\u0634\u0631\n\u063a\u064a\u0631 \u0645\u0628\u0627\u0634\u0631"
+   "options": "\n\u062e\u0627\u0636\u0639\n\u0645\u0639\u0641\u064a"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "collection_amount",
    "fieldtype": "Currency",
-   "label": "Collection Amount"
+   "label": "Collection Amount",
+   "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "collection_date",
    "fieldtype": "Date",
-   "label": "Collection Date"
+   "label": "Collection Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_original_supply_order",
+   "fieldtype": "Link",
+   "label": "Original Supply Order",
+   "options": "Supply order",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "delivery_note",
+   "fieldtype": "Link",
+   "label": "Delivery Note",
+   "options": "Delivery Note"
+  },
+  {
+   "fieldname": "delivery_note_cs",
+   "fieldtype": "Link",
+   "label": "Delivery Note",
+   "options": "Delivery Note"
+  },
+  {
+   "fieldname": "custom_accountant_user",
+   "fieldtype": "Data",
+   "label": "Accountant User",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
@@ -2196,9 +2230,13 @@
    "group": "Reference",
    "link_doctype": "POS Invoice",
    "link_fieldname": "consolidated_invoice"
+  },
+  {
+   "link_doctype": "Delivery Note",
+   "link_fieldname": "proforma_invoice"
   }
  ],
- "modified": "2024-09-29 13:43:37.757191",
+ "modified": "2024-10-02 10:36:03.941163",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice",

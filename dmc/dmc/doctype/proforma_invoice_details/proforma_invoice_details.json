@@ -37,7 +37,7 @@
    "fieldname": "to_be_paid",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "To be Paid"
+   "label": "Allocated Amount"
   },
   {
    "fieldname": "outstanding_amount",
@@ -49,7 +49,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-09-29 14:54:39.502592",
+ "modified": "2024-09-30 09:47:08.106598",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice Details",
