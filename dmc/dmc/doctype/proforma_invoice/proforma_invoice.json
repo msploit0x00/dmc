@@ -34,7 +34,7 @@
   "update_billed_amount_in_sales_order",
   "update_billed_amount_in_delivery_note",
   "is_debit_note",
-  "delivery_note",
+  "custom_delivery_note",
   "accounting_dimensions_section",
   "cost_center",
   "dimension_col_break",
@@ -2204,13 +2204,6 @@
    "read_only": 1
   },
   {
-   "allow_on_submit": 1,
-   "fieldname": "delivery_note",
-   "fieldtype": "Link",
-   "label": "Delivery Note",
-   "options": "Delivery Note"
-  },
-  {
    "fieldname": "delivery_note_cs",
    "fieldtype": "Link",
    "label": "Delivery Note",
@@ -2221,6 +2214,11 @@
    "fieldtype": "Data",
    "label": "Accountant User",
    "read_only": 1
+  },
+  {
+   "fieldname": "custom_delivery_note",
+   "fieldtype": "Data",
+   "label": "Delivery Note"
   }
  ],
  "icon": "fa fa-file-text",
@@ -2236,7 +2234,7 @@
    "link_fieldname": "proforma_invoice"
   }
  ],
- "modified": "2024-10-02 10:36:03.941163",
+ "modified": "2024-10-02 11:23:25.212236",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice",
