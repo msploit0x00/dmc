@@ -114,9 +114,9 @@ app_license = "mit"
 # ---------------
 # Override standard doctype classes
 
-override_doctype_class = {
-	"Sales Order": "dmc.remaining.CustomSalesOrder"
-}
+# override_doctype_class = {
+# 	"Sales Order": "dmc.remaining.CustomSalesOrder"
+# }
 
 # Document Events
 # ---------------
