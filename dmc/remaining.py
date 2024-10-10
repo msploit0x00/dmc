@@ -4,7 +4,7 @@ from erpnext.selling.doctype.sales_order.sales_order import SalesOrder
 
 
 class CustomSalesOrder(SalesOrder):
-    def on_submit(self):
+    def on_update_after_submit(self):
        so_items = self.items
        supply_order = self.items[0].custom_supply_order
 
