@@ -17,7 +17,7 @@ class CustomSalesOrder(SalesOrder):
        for row in so_items:
         for orginal in sup_items:
             if row.item_code == original.item_code:
-                orginal.cutom_remaining = orginal.custom_remaining - orginal.custom_total_sub_qty
+                orginal.cutom_remaining = orginal.qty - orginal.custom_total_sub_qty
 
 
 
