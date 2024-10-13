@@ -52,7 +52,7 @@ def create_proforma(frm):
 
     prof = data.get("custom_proforma_invoice_details")
 
-    invoice = data.get("invoices")
+    invoice = data.get("payments")
 
     for inv in invoice:
         for pr in prof:
@@ -61,7 +61,7 @@ def create_proforma(frm):
         'grand_total': pr["grand_total"],
         'to_be_paid': pr["to_be_paid"],
         'parenttype': 'Payment Entry',
-        'parent': inv['invoice_number'],
+        'parent': inv['reference_name'],
         })
 
         doc.insert(ignore_permissions=True)
