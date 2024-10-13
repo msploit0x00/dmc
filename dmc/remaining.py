@@ -47,24 +47,47 @@ def set_remaining(rem,row_name):
 
 @frappe.whitelist(allow_guest=True)
 def create_proforma(frm):
+    try:
+        data = json.loads(frm)
 
-    data =json.loads(frm)
+        # Extracting the required fields from the data
+        prof = data.get("custom_proforma_invoice_details", [])
+        invoice = data.get("payments", [])
 
-    prof = data.get("custom_proforma_invoice_details")
+        if not prof or not invoice:
+            frappe.throw("Missing 'custom_proforma_invoice_details' or 'payments' in the request data.")
 
-    invoice = data.get("payments")
+        # Iterating over each payment and associated proforma details
+        for inv in invoice:
+            reference_name = inv.get('reference_name')
+            if not reference_name:
+                frappe.throw("Missing 'reference_name' in payment entry.")
 
-    for inv in invoice:
-        for pr in prof:
-            doc = frappe.get_doc("Proforma Invoice Details",{
-        'proforma_invoice': pr["proforma_invoice"],
-        'grand_total': pr["grand_total"],
-        'to_be_paid': pr["to_be_paid"],
-        'parenttype': 'Payment Entry',
-        'parent': inv['reference_name'],
-        })
+            for pr in prof:
+                proforma_invoice = pr.get('proforma_invoice')
+                grand_total = pr.get('grand_total')
+                to_be_paid = pr.get('to_be_paid')
 
-            doc.insert(ignore_permissions=True)
+                if not all([proforma_invoice, grand_total, to_be_paid]):
+                    frappe.throw(f"Missing required fields in proforma details: {pr}")
+
+                # Creating the Proforma Invoice Details document
+                doc = frappe.get_doc({
+                    'doctype': 'Proforma Invoice Details',
+                    'proforma_invoice': proforma_invoice,
+                    'grand_total': grand_total,
+                    'to_be_paid': to_be_paid,
+                    'parenttype': 'Payment Entry',
+                    'parent': reference_name,
+                })
+
+                # Inserting the document
+                doc.insert(ignore_permissions=True)
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Proforma Creation Error")
+        frappe.throw(f"An error occurred: {str(e)}")
+
         # frappe.db.commit()
 
 
