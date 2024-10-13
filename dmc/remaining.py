@@ -56,7 +56,7 @@ def create_proforma(frm):
 
     for inv in invoice:
         for pr in prof:
-            doc = frappe.new_doc("Proforma Invoice Details",{
+            doc = frappe.get_doc("Proforma Invoice Details",{
         'proforma_invoice': pr["proforma_invoice"],
         'grand_total': pr["grand_total"],
         'to_be_paid': pr["to_be_paid"],
