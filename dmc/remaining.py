@@ -65,7 +65,7 @@ def create_proforma(frm):
         })
 
             doc.insert(ignore_permissions=True)
-        frappe.db.commit()
+        # frappe.db.commit()
 
 
 
