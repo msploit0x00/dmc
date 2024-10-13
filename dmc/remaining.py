@@ -45,7 +45,7 @@ def set_remaining(rem,row_name):
 
 
 
-
+@frappe.whitelist(allow_guest=True)
 def create_proforma(frm):
 
     data =json.loads(frm)
