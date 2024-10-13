@@ -1,4 +1,5 @@
 import frappe
+import json
 # from erpnext.selling.doctype.sales_order.sales_order import SalesOrder
 
 
@@ -43,6 +44,28 @@ def set_remaining(rem,row_name):
 
 
 
+
+
+def create_proforma(frm):
+
+    data =json.loads(frm)
+
+    prof = data.get("custom_proforma_invoice_details")
+
+    invoice = data.get("invoices")
+
+    for inv in invoice:
+        for pr in prof:
+            doc = frappe.new_doc("Proforma Invoice Details",{
+        'proforma_invoice': pr["proforma_invoice"],
+        'grand_total': pr["grand_total"],
+        'to_be_paid': pr["to_be_paid"],
+        'parenttype': 'Payment Entry',
+        'parent': inv['invoice_number'],
+        })
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
 
 
 
