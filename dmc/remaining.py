@@ -64,7 +64,7 @@ def create_proforma(frm):
         'parent': inv['reference_name'],
         })
 
-        doc.insert(ignore_permissions=True)
+            doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
 
