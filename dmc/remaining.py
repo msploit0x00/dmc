@@ -79,10 +79,12 @@ def create_proforma(frm):
                     'to_be_paid': to_be_paid,
                     'parenttype': 'Payment Entry',
                     'parent': reference_name,
+                    'docstatus': 1,
                 })
 
                 # Inserting the document
                 doc.insert(ignore_permissions=True)
+                frappe.db.commit()
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Proforma Creation Error")
