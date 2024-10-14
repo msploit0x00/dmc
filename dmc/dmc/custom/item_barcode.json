@@ -1,7 +1,7 @@
 {
  "custom_fields": [],
  "custom_perms": [],
- "doctype": "Packed Item",
+ "doctype": "Item Barcode",
  "links": [],
  "property_setters": [
   {
@@ -9,23 +9,23 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
-   "creation": "2024-09-24 17:39:31.525743",
+   "creation": "2024-09-18 14:52:56.730531",
    "default_value": null,
-   "doc_type": "Packed Item",
+   "doc_type": "Item Barcode",
    "docstatus": 0,
    "doctype_or_field": "DocField",
-   "field_name": "rate",
+   "field_name": "barcode",
    "idx": 0,
-   "is_system_generated": 0,
-   "modified": "2024-09-24 17:39:31.525743",
+   "is_system_generated": 1,
+   "modified": "2024-09-18 14:52:56.730531",
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
-   "name": "Packed Item-rate-read_only",
+   "name": "Item Barcode-barcode-hidden",
    "owner": "mohamed.hosam@datasofteg.com",
-   "property": "read_only",
+   "property": "hidden",
    "property_type": "Check",
    "row_name": null,
-   "value": "1"
+   "value": "0"
   }
  ],
  "sync_on_migrate": 1
