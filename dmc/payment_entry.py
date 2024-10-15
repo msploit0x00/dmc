@@ -11,6 +11,7 @@ class CustomPaymentEntry(PaymentEntry):
         for row in proforma:
             prof = frappe.get_doc("Proforma Invoice", row.proforma_invoice)
             prof.ignore_validate_update_after_submit = True
-            prof.db.set('collection_amount', row.to_be_paid)
+            prof.db_set('collection_amount', row.to_be_paid)
 
+        frappe.msgprint("Proforma Updated Successfully")
 
