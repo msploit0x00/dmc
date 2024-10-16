@@ -35,6 +35,7 @@
   "update_billed_amount_in_delivery_note",
   "is_debit_note",
   "custom_delivery_note",
+  "fully_paid",
   "accounting_dimensions_section",
   "cost_center",
   "dimension_col_break",
@@ -2219,6 +2220,15 @@
    "fieldname": "custom_delivery_note",
    "fieldtype": "Data",
    "label": "Delivery Note"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "fully_paid",
+   "fieldtype": "Check",
+   "ignore_user_permissions": 1,
+   "label": "Fully Paid",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
@@ -2234,7 +2244,7 @@
    "link_fieldname": "proforma_invoice"
   }
  ],
- "modified": "2024-10-02 11:23:25.212236",
+ "modified": "2024-10-16 10:42:25.611192",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice",
