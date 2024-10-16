@@ -13,5 +13,8 @@ class CustomPaymentEntry(PaymentEntry):
             prof.ignore_validate_update_after_submit = True
             prof.db_set('collection_amount', row.to_be_paid)
 
+            if prof.collection_amount == prof.grand_total:
+                prof.db_set("fully_paid", 1)
+
         frappe.msgprint("Proforma Updated Successfully")
 
