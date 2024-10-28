@@ -118,7 +118,7 @@ class Supplyorder(SellingController):
 			self.indicator_title = "Expired"
 
 	def validate(self):
-		super(Supplyorder, self).validate()
+#		super(Supplyorder, self).validate()
 		self.set_status()
 		self.validate_uom_is_integer("stock_uom", "qty")
 		self.validate_valid_till()
