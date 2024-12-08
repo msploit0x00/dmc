@@ -14,7 +14,7 @@ MIT
 ### Commit ID
 `24261cb`
 
-![Commit 24261cb](dmc/images/Commit%2024261cb.webp)
+![Commit 24261cb](dmc/images/n1.png)
 
 ### Description:
 
