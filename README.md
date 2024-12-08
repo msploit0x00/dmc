@@ -6,10 +6,21 @@ dmc project
 
 mit
 
-# 24261cb
-![Commit 24261cb](dmc/images/Commit 24261cb.webp)
+## Dmc Project
 
-# Description :
-# Schedule_date (1) IN PurchaseRequest oldest_date (2) IN Delivery Note
-# (1) Total Sales Withinn 6 Months from Schedule_date (1)
-# (2) Calculate the number of months (minimum 1 month) Between 1 and 2
+### License
+MIT
+
+### Commit ID
+`24261cb`
+
+![Commit 24261cb](dmc/images/Commit%2024261cb.webp)
+
+### Description:
+
+1. **Schedule_date (1)** in **PurchaseRequest**
+2. **Oldest_date (2)** in **Delivery Note**
+
+#### Workflow:
+- **Step 1:** Total Sales within 6 Months from `Schedule_date (1)` in the Purchase Request.
+- **Step 2:** Calculate the number of months (minimum 1 month) between `Schedule_date (1)` and `Oldest_date (2)` in the Delivery Note.
