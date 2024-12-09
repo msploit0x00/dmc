@@ -21,7 +21,7 @@ import json
 
 
 
-
+#ahmed reda el king
 
 @frappe.whitelist(allow_guest=True)
 def set_remaining(rem,item_code,row_name):
