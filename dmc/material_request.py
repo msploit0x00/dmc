@@ -59,7 +59,7 @@ class CustomPurchaseRequest(MaterialRequest):
                     months_diff = 6
 
                 # Compute average sold quantity
-                average_qty = total_qty / months_diff if months_diff else 0
+                average_qty = total_qty / 6
                 rounded_qty = round(average_qty)
 
                 # Update custom fields
