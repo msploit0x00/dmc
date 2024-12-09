@@ -24,20 +24,21 @@ import json
 
 
 @frappe.whitelist(allow_guest=True)
-def set_remaining(rem,row_name):
+def set_remaining(rem,item_code,row_name):
     
     update = frappe.db.sql("""
 
         UPDATE `tabQuotation Item`
-        SET custom_remaining = %s
+        SET custom_remaining = %s, item_code=%s
         where name = %s
     
     
     
     
-    """,(rem,row_name))
+    """,(rem,item_code,row_name))
     frappe.db.commit()
 
+    print("UPDATE",update)
     return "Updated Successfully"
 
 
