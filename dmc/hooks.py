@@ -114,14 +114,20 @@ app_license = "mit"
 # ---------------
 # Override standard doctype classes
 
+# override_doctype_class = {
+# 	# "Sales Order": "dmc.remaining.CustomSalesOrder",
+#     "Payment Entry":"dmc.payment_entry.CustomPaymentEntry",
+#     "Purchase Request": "dmc.purchase_request_validate.CustomPurchaseRequest  ",
+# }
 override_doctype_class = {
-	# "Sales Order": "dmc.remaining.CustomSalesOrder",
-    "Payment Entry":"dmc.payment_entry.CustomPaymentEntry"
+    "Payment Entry": "dmc.payment_entry.CustomPaymentEntry",
+    "Material Request": "dmc.material_request.CustomPurchaseRequest",
 }
 
 # Document Events
 # ---------------
 # Hook on document methods and events
+
 
 # doc_events = {
 # 	"*": {
