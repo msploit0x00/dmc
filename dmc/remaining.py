@@ -24,20 +24,34 @@ import json
 #ahmed reda el king
 
 @frappe.whitelist(allow_guest=True)
+<<<<<<< HEAD
+def set_remaining(rem, item_code, row_name):
+=======
 def set_remaining(rem,item_code,row_name):
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
     
     update = frappe.db.sql("""
 
         UPDATE `tabQuotation Item`
+<<<<<<< HEAD
+        SET custom_remaining = %s,item_code = %s
+        where name = %s 
+=======
         SET custom_remaining = %s, item_code=%s
         where name = %s
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
     
     
     
     
+<<<<<<< HEAD
+    """,(rem, item_code, row_name))
+    frappe.db.commit()
+=======
     """,(rem,item_code,row_name))
     frappe.db.commit()
 
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
     print("UPDATE",update)
     return "Updated Successfully"
 

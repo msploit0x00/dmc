@@ -89,7 +89,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
+   "idx": 21,
+=======
    "idx": 22,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -153,7 +157,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
+   "idx": 22,
+=======
    "idx": 23,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -204,7 +212,11 @@
    "collapsible_depends_on": null,
    "columns": 0,
    "creation": "2024-11-06 17:23:37.751958",
+<<<<<<< HEAD
+   "default": null,
+=======
    "default": "\u0642\u0627\u064a\u0645\u0629 \u0627\u0633\u0639\u0627\u0631 \u0628\u064a\u0639 \u0639\u0645\u0644\u0627\u0621 \u0646\u0642\u062f\u064a",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "depends_on": null,
    "description": null,
    "docstatus": 0,
@@ -213,11 +225,19 @@
    "fetch_if_empty": 0,
    "fieldname": "custom_customer_price_list",
    "fieldtype": "Link",
+<<<<<<< HEAD
+   "hidden": 0,
+   "hide_border": 0,
+   "hide_days": 0,
+   "hide_seconds": 0,
+   "idx": 27,
+=======
    "hidden": 1,
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
    "idx": 28,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -269,7 +289,11 @@
    "columns": 0,
    "creation": "2024-11-04 14:08:06.198347",
    "default": "",
+<<<<<<< HEAD
+   "depends_on": "eval:doc.purpose == 'Material Issue'",
+=======
    "depends_on": "eval:doc.stock_entry_type == 'Material Issue'",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "description": null,
    "docstatus": 0,
    "dt": "Stock Entry",
@@ -284,10 +308,17 @@
    "idx": 15,
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
+<<<<<<< HEAD
+   "in_global_search": 0,
+   "in_list_view": 0,
+   "in_preview": 0,
+   "in_standard_filter": 0,
+=======
    "in_global_search": 1,
    "in_list_view": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "insert_after": "asset_repair",
    "is_system_generated": 0,
    "is_virtual": 0,
@@ -301,7 +332,11 @@
    "name": "Stock Entry-custom_issue_type_",
    "no_copy": 0,
    "non_negative": 0,
+<<<<<<< HEAD
+   "options": "\n\u0635\u0631\u0641 \u0631\u062f \u0633\u0644\u0641\u064a\u0627\u062a\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u062a\u0633\u062c\u064a\u0644\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0645\u0646\u062f\u0648\u0628\n\u0635\u0631\u0641 \u0628\u0636\u0627\u0639\u0629 \u062a\u0627\u0644\u0641\u0629\n\u0635\u0631\u0641 \u0647\u062f\u0627\u064a\u0627\n\u0635\u0631\u0641 \u062a\u0628\u0631\u0639\u0627\u062a\n \u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0639\u0645\u064a\u0644\n\u0635\u0631\u0641 \u0630\u0643\u0627\u0629 \u0627\u0644\u0645\u0627\u0644\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0635\u064a\u062f\u0644\u0629\n\u062a\u0633\u0648\u064a\u0647 \u0635\u0631\u0641\n\u0625\u0639\u0627\u062f\u0629 \u062a\u0635\u062f\u064a\u0631\n\u0635\u0631\u0641 \u0645\u0631\u062f\u0648\u062f\u0627\u062a \u0645\u0634\u062a\u0631\u064a\u0627\u062a\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0645\u0646\u0627\u0642\u0635\u0629",
+=======
    "options": "\n\u0635\u0631\u0641 \u0631\u062f \u0633\u0644\u0641\u064a\u0627\u062a\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u062a\u0633\u062c\u064a\u0644\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0645\u0646\u062f\u0648\u0628\n\u0635\u0631\u0641 \u0628\u0636\u0627\u0639\u0629 \u062a\u0627\u0644\u0641\u0629\n\u0635\u0631\u0641 \u0647\u062f\u0627\u064a\u0627\n\u0635\u0631\u0641 \u062a\u0628\u0631\u0639\u0627\u062a\n \u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0639\u0645\u064a\u0644\n\u0635\u0631\u0641 \u0630\u0643\u0627\u0629 \u0627\u0644\u0645\u0627\u0644\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0635\u064a\u062f\u0644\u0629\n\u062a\u0633\u0648\u064a\u0647 \u0635\u0631\u0641\n\u0625\u0639\u0627\u062f\u0629 \u062a\u0635\u062f\u064a\u0631\n\u0635\u0631\u0641 \u0645\u0631\u062f\u0648\u062f\u0627\u062a \u0645\u0634\u062a\u0631\u064a\u0627\u062a\n\u0635\u0631\u0641 \u0639\u064a\u0646\u0627\u062a \u0645\u0646\u0627\u0642\u0635\u0629\n\u0623\u0633\u062a\u0628\u062f\u0627\u0644 \u0623\u0635\u0646\u0627\u0641 - \u0635\u0631\u0641\n\u0623\u0630\u0646 \u0635\u0631\u0641 \u0633\u0644\u0641\u064a\u0627\u062a \u062c\u064a\u0634",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "owner": "mohamed.hosam@datasofteg.com",
    "permlevel": 0,
    "placeholder": null,
@@ -345,7 +380,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
+   "idx": 54,
+=======
    "idx": 56,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -397,7 +436,11 @@
    "columns": 0,
    "creation": "2024-11-05 15:12:32.608626",
    "default": null,
+<<<<<<< HEAD
+   "depends_on": "eval:doc.purpose == 'Material Receipt'",
+=======
    "depends_on": "eval:doc.stock_entry_type=='Material Receipt'",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "description": null,
    "docstatus": 0,
    "dt": "Stock Entry",
@@ -422,14 +465,22 @@
    "label": "Receipt  Type",
    "length": 0,
    "link_filters": null,
+<<<<<<< HEAD
+   "mandatory_depends_on": "eval:doc.purpose == 'Material Receipt'",
+=======
    "mandatory_depends_on": "",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "modified": "2024-11-05 15:12:32.608626",
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
    "name": "Stock Entry-custom_receipt__type",
    "no_copy": 0,
    "non_negative": 0,
+<<<<<<< HEAD
+   "options": "\n\u0623\u0633\u062a\u0628\u062f\u0627\u0644 \u0623\u0635\u0646\u0627\u0641 - \u0625\u0636\u0627\u0641\u0629\n\u0627\u0633\u062a\u0644\u0627\u0645 \u0633\u0644\u0641\u064a\u0627\u062a \n\u0645\u0634\u062a\u0631\u064a\u0627\u062a \u0645\u062d\u0644\u064a\u0629\n\u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0631\u062f \u0639\u064a\u0646\u0627\u062a\n\u0623\u0631\u062a\u062c\u0627\u0639 \u0645\u0631\u062f\u0648\u062f\u0627\u062a \u0645\u0628\u064a\u0639\u0627\u062a\n\u0623\u0633\u062a\u0631\u062c\u0627\u0639 \u0623\u0635\u0646\u0627\u0641\n\u062a\u0633\u0648\u064a\u0629 \u0627\u0636\u0627\u0641\u0629\n\u0631\u062f \u0639\u064a\u0646\u0627\u062a \u0645\u0646\u0627\u0642\u0635\u0629\n\u0631\u062f \u0639\u064a\u0646\u0627\u062a \u062a\u0633\u062c\u064a\u0644\n\u0645\u062d\u0636\u0631 \u0641\u062d\u0635 \u0648\u0627\u0636\u0627\u0641\u0629\n\u0631\u062f \u062a\u0628\u0631\u0639\u0627\u062a\n\u0631\u062f \u0647\u062f\u0627\u064a\u0627",
+=======
    "options": "\n\u0623\u0630\u0646 \u0623\u0633\u062a\u0628\u062f\u0627\u0644 \u0623\u0635\u0646\u0627\u0641 - \u0625\u0636\u0627\u0641\u0629\n\u0627\u0633\u062a\u0644\u0627\u0645 \u0633\u0644\u0641\u064a\u0627\u062a\n\u0645\u0634\u062a\u0631\u064a\u0627\u062a \u0645\u062d\u0644\u064a\u0629\n\u0623\u0630\u0646 \u0627\u0633\u062a\u0631\u062c\u0627\u0639 \u0631\u062f \u0639\u064a\u0646\u0627\u062a\n\u0623\u0630\u0646 \u0623\u0631\u062a\u062c\u0627\u0639 \u0645\u0631\u062f\u0648\u062f\u0627\u062a \u0645\u0628\u064a\u0639\u0627\u062a\n\u0623\u0630\u0646 \u0623\u0633\u062a\u0631\u062c\u0627\u0639 \u0623\u0635\u0646\u0627\u0641\n\u062a\u0633\u0648\u064a\u0629 \u0627\u0636\u0627\u0641\u0629\n\u0625\u0630\u0646 \u0631\u062f \u0639\u064a\u0646\u0627\u062a \u0645\u0646\u0627\u0642\u0635\u0629\n\u0631\u062f \u0639\u064a\u0646\u0627\u062a \u062a\u0633\u062c\u064a\u0644\n\u0645\u062d\u0636\u0631 \u0641\u062d\u0635 \u0648\u0627\u0636\u0627\u0641\u0629\n\u0625\u0630\u0646 \u0631\u062f \u062a\u0628\u0631\u0639\u0627\u062a\n\u0625\u0630\u0646 \u0631\u062f \u0647\u062f\u0627\u064a\u0627",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "owner": "mohamed.hosam@datasofteg.com",
    "permlevel": 0,
    "placeholder": null,
@@ -459,6 +510,8 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+<<<<<<< HEAD
+=======
    "creation": "2024-11-07 01:11:48.616908",
    "default": null,
    "depends_on": "eval:doc.custom_receipt__type ==='\u0623\u0630\u0646 \u0623\u0633\u062a\u0628\u062f\u0627\u0644 \u0623\u0635\u0646\u0627\u0641 - \u0625\u0636\u0627\u0641\u0629'",
@@ -587,6 +640,7 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "creation": "2024-11-06 17:50:42.134357",
    "default": null,
    "depends_on": null,
@@ -597,18 +651,30 @@
    "fetch_if_empty": 0,
    "fieldname": "custom_scan_barcodes",
    "fieldtype": "Data",
+<<<<<<< HEAD
+   "hidden": 0,
+   "hide_border": 0,
+   "hide_days": 0,
+   "hide_seconds": 0,
+   "idx": 48,
+=======
    "hidden": 1,
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
    "idx": 50,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
    "in_list_view": 0,
    "in_preview": 0,
    "in_standard_filter": 0,
+<<<<<<< HEAD
+   "insert_after": "scan_barcode",
+=======
    "insert_after": "sb0",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "is_system_generated": 0,
    "is_virtual": 0,
    "label": "Scan Barcodes",
@@ -665,7 +731,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
+   "idx": 53,
+=======
    "idx": 55,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -714,6 +784,9 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
+   "creation": "2024-11-06 17:50:41.970116",
+=======
    "creation": "2024-11-07 12:01:24.993791",
    "default_value": null,
    "doc_type": "Stock Entry",
@@ -807,6 +880,7 @@
    "_liked_by": null,
    "_user_tags": null,
    "creation": "2024-11-10 19:51:11.260426",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "default_value": null,
    "doc_type": "Stock Entry",
    "docstatus": 0,
@@ -814,7 +888,11 @@
    "field_name": null,
    "idx": 0,
    "is_system_generated": 0,
+<<<<<<< HEAD
+   "modified": "2024-11-06 17:50:41.970116",
+=======
    "modified": "2024-11-10 19:51:11.260426",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "modified_by": "Administrator",
    "module": null,
    "name": "Stock Entry-main-field_order",
@@ -822,13 +900,20 @@
    "property": "field_order",
    "property_type": "Data",
    "row_name": null,
+<<<<<<< HEAD
+   "value": "[\"stock_entry_details_tab\", \"naming_series\", \"stock_entry_type\", \"outgoing_stock_entry\", \"purpose\", \"add_to_transit\", \"work_order\", \"purchase_order\", \"subcontracting_order\", \"delivery_note_no\", \"sales_invoice_no\", \"pick_list\", \"purchase_receipt_no\", \"asset_repair\", \"custom_issue_type_\", \"custom_receipt__type\", \"col2\", \"company\", \"posting_date\", \"posting_time\", \"custom_customer\", \"custom_customer_name\", \"column_break_eaoa\", \"set_posting_time\", \"inspection_required\", \"apply_putaway_rule\", \"custom_customer_price_list\", \"bom_info_section\", \"from_bom\", \"use_multi_level_bom\", \"bom_no\", \"cb1\", \"fg_completed_qty\", \"get_items\", \"section_break_7qsm\", \"process_loss_percentage\", \"column_break_e92r\", \"process_loss_qty\", \"section_break_jwgn\", \"from_warehouse\", \"source_warehouse_address\", \"source_address_display\", \"cb0\", \"to_warehouse\", \"target_warehouse_address\", \"target_address_display\", \"sb0\", \"scan_barcode\", \"scan_barcodes\", \"items_section\", \"items\", \"get_stock_and_rate\", \"custom_section_break_38yci\", \"custom_items_reference\", \"section_break_19\", \"total_outgoing_value\", \"column_break_22\", \"total_incoming_value\", \"value_difference\", \"additional_costs_section\", \"additional_costs\", \"total_additional_costs\", \"supplier_info_tab\", \"contact_section\", \"supplier\", \"supplier_name\", \"supplier_address\", \"address_display\", \"accounting_dimensions_section\", \"project\", \"other_info_tab\", \"printing_settings\", \"select_print_heading\", \"print_settings_col_break\", \"letter_head\", \"more_info\", \"is_opening\", \"remarks\", \"col5\", \"per_transferred\", \"total_amount\", \"job_card\", \"amended_from\", \"credit_note\", \"is_return\", \"tab_connections\", \"bank_guarantee\"]"
+=======
    "value": "[\"stock_entry_details_tab\", \"naming_series\", \"stock_entry_type\", \"outgoing_stock_entry\", \"purpose\", \"add_to_transit\", \"work_order\", \"purchase_order\", \"subcontracting_order\", \"delivery_note_no\", \"sales_invoice_no\", \"pick_list\", \"purchase_receipt_no\", \"asset_repair\", \"custom_issue_type_\", \"custom_receipt__type\", \"custom_receipt_reference_number\", \"col2\", \"company\", \"posting_date\", \"posting_time\", \"custom_customer\", \"custom_customer_name\", \"column_break_eaoa\", \"set_posting_time\", \"inspection_required\", \"apply_putaway_rule\", \"custom_customer_price_list\", \"custom_replacement\", \"bom_info_section\", \"from_bom\", \"use_multi_level_bom\", \"bom_no\", \"cb1\", \"fg_completed_qty\", \"get_items\", \"section_break_7qsm\", \"process_loss_percentage\", \"column_break_e92r\", \"process_loss_qty\", \"section_break_jwgn\", \"from_warehouse\", \"source_warehouse_address\", \"source_address_display\", \"cb0\", \"to_warehouse\", \"target_warehouse_address\", \"target_address_display\", \"sb0\", \"custom_scan_barcodes\", \"scan_barcode\", \"items_section\", \"items\", \"get_stock_and_rate\", \"custom_section_break_38yci\", \"custom_items_reference\", \"section_break_19\", \"total_outgoing_value\", \"column_break_22\", \"total_incoming_value\", \"value_difference\", \"additional_costs_section\", \"additional_costs\", \"total_additional_costs\", \"supplier_info_tab\", \"contact_section\", \"supplier\", \"supplier_name\", \"supplier_address\", \"address_display\", \"accounting_dimensions_section\", \"project\", \"other_info_tab\", \"printing_settings\", \"select_print_heading\", \"print_settings_col_break\", \"letter_head\", \"more_info\", \"is_opening\", \"remarks\", \"col5\", \"per_transferred\", \"total_amount\", \"job_card\", \"amended_from\", \"credit_note\", \"is_return\", \"tab_connections\", \"bank_guarantee\"]"
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
   },
   {
    "_assign": null,
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
+   "creation": "2024-10-15 11:37:00.380958",
+=======
    "creation": "2024-11-07 12:01:24.951657",
    "default_value": null,
    "doc_type": "Stock Entry",
@@ -876,6 +961,7 @@
    "_liked_by": null,
    "_user_tags": null,
    "creation": "2024-11-10 19:13:38.763202",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "default_value": null,
    "doc_type": "Stock Entry",
    "docstatus": 0,
@@ -883,15 +969,25 @@
    "field_name": "scan_barcode",
    "idx": 0,
    "is_system_generated": 1,
+<<<<<<< HEAD
+   "modified": "2024-10-15 11:37:00.380958",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+   "module": null,
+   "name": "Stock Entry-scan_barcode-hidden",
+   "owner": "mohamed.hosam@datasofteg.com",
+=======
    "modified": "2024-11-10 19:13:38.763202",
    "modified_by": "Administrator",
    "module": null,
    "name": "Stock Entry-scan_barcode-hidden",
    "owner": "Administrator",
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "property": "hidden",
    "property_type": "Check",
    "row_name": null,
    "value": "0"
+<<<<<<< HEAD
+=======
   },
   {
    "_assign": null,
@@ -938,6 +1034,7 @@
    "property_type": "Check",
    "row_name": null,
    "value": "1"
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
   }
  ],
  "sync_on_migrate": 1
