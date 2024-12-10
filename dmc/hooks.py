@@ -4,7 +4,7 @@ app_publisher = "mina"
 app_description = "dmc project"
 app_email = "mina.m@datasofteg.com"
 app_license = "mit"
-# required_apps = []
+required_apps = []
 
 # Includes in <head>
 # ------------------      
