@@ -11,6 +11,8 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+<<<<<<< HEAD
+=======
    "creation": "2024-11-05 15:34:09.131140",
    "default": null,
    "depends_on": null,
@@ -75,6 +77,7 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+>>>>>>> 5e33a24 (Ahmed Reda Task item code suuply order)
    "creation": "2024-10-31 14:27:06.663562",
    "default": null,
    "depends_on": null,
