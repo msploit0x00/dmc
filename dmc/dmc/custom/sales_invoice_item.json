@@ -1779,6 +1779,7 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-09-24 17:39:31.568299",
    "default_value": null,
    "doc_type": "Sales Invoice Item",
@@ -1826,6 +1827,9 @@
    "_liked_by": null,
    "_user_tags": null,
    "creation": "2024-09-18 14:52:57.159939",
+=======
+   "creation": "2024-08-14 13:11:27.928327",
+>>>>>>> d196cad (dmc customizations)
    "default_value": null,
    "doc_type": "Sales Invoice Item",
    "docstatus": 0,
@@ -1833,7 +1837,11 @@
    "field_name": "target_warehouse",
    "idx": 0,
    "is_system_generated": 0,
+<<<<<<< HEAD
    "modified": "2024-09-18 14:52:57.159939",
+=======
+   "modified": "2024-08-14 13:11:27.928327",
+>>>>>>> d196cad (dmc customizations)
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
    "name": "Sales Invoice Item-target_warehouse-hidden",
@@ -1848,7 +1856,11 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-09-18 14:52:56.703745",
+=======
+   "creation": "2024-08-14 13:11:27.553079",
+>>>>>>> d196cad (dmc customizations)
    "default_value": null,
    "doc_type": "Sales Invoice Item",
    "docstatus": 0,
@@ -1856,7 +1868,11 @@
    "field_name": "barcode",
    "idx": 0,
    "is_system_generated": 1,
+<<<<<<< HEAD
    "modified": "2024-09-18 14:52:56.703745",
+=======
+   "modified": "2024-08-14 13:11:27.553079",
+>>>>>>> d196cad (dmc customizations)
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
    "name": "Sales Invoice Item-barcode-hidden",
@@ -1871,6 +1887,55 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
+=======
+   "creation": "2024-08-12 10:42:36.718091",
+   "default_value": null,
+   "doc_type": "Sales Invoice Item",
+   "docstatus": 0,
+   "doctype_or_field": "DocField",
+   "field_name": "discount_account",
+   "idx": 0,
+   "is_system_generated": 0,
+   "modified": "2024-08-12 10:42:36.718091",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+   "module": null,
+   "name": "Sales Invoice Item-discount_account-mandatory_depends_on",
+   "owner": "mohamed.hosam@datasofteg.com",
+   "property": "mandatory_depends_on",
+   "property_type": "Code",
+   "row_name": null,
+   "value": "eval: doc.discount_amount"
+  },
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+   "creation": "2024-08-12 10:42:36.690484",
+   "default_value": null,
+   "doc_type": "Sales Invoice Item",
+   "docstatus": 0,
+   "doctype_or_field": "DocField",
+   "field_name": "discount_account",
+   "idx": 0,
+   "is_system_generated": 0,
+   "modified": "2024-08-12 10:42:36.690484",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+   "module": null,
+   "name": "Sales Invoice Item-discount_account-hidden",
+   "owner": "mohamed.hosam@datasofteg.com",
+   "property": "hidden",
+   "property_type": "Check",
+   "row_name": null,
+   "value": "0"
+  },
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+>>>>>>> d196cad (dmc customizations)
    "creation": "2024-07-30 15:59:57.843287",
    "default_value": null,
    "doc_type": "Sales Invoice Item",

@@ -37,7 +37,10 @@
    "is_virtual": 0,
    "label": "Employee",
    "length": 0,
+<<<<<<< HEAD
    "link_filters": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "mandatory_depends_on": null,
    "modified": "2023-12-24 13:05:12.696682",
    "modified_by": "ali@datasofteg.com",
@@ -48,7 +51,10 @@
    "options": "Employee",
    "owner": "Administrator",
    "permlevel": 0,
+<<<<<<< HEAD
    "placeholder": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "precision": "",
    "print_hide": 0,
    "print_hide_if_no_value": 0,
@@ -58,7 +64,10 @@
    "report_hide": 0,
    "reqd": 0,
    "search_index": 0,
+<<<<<<< HEAD
    "show_dashboard": 0,
+=======
+>>>>>>> d196cad (dmc customizations)
    "sort_options": 0,
    "translatable": 1,
    "unique": 0,

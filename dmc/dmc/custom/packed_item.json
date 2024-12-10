@@ -9,7 +9,11 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-09-24 17:39:31.525743",
+=======
+   "creation": "2024-08-12 10:42:36.652853",
+>>>>>>> d196cad (dmc customizations)
    "default_value": null,
    "doc_type": "Packed Item",
    "docstatus": 0,
@@ -17,8 +21,13 @@
    "field_name": "rate",
    "idx": 0,
    "is_system_generated": 0,
+<<<<<<< HEAD
    "modified": "2024-10-20 16:09:56.728508",
    "modified_by": "Administrator",
+=======
+   "modified": "2024-08-12 10:42:36.652853",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+>>>>>>> d196cad (dmc customizations)
    "module": null,
    "name": "Packed Item-rate-read_only",
    "owner": "mohamed.hosam@datasofteg.com",
