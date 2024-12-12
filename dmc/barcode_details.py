@@ -61,7 +61,7 @@ def get_barcode_details(barcode):
         "formatted_date": formatted_date,
         "item_code": item_code,
         "barcode_uom": barcode_uom,
-        "conversion_factor": conversion_factor
+        "conversion_factor": conversion_factor if len(conversion_factor) > 0 else "no uom"
     }
 
 
