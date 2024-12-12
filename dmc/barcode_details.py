@@ -17,7 +17,7 @@ def get_barcode_details(barcode):
     formatted_date = ""
     item_code = get_item_code(barcode)
     barcode_uom = get_barcode_uom(barcode)
-    # conversion_factor = get_conversion_factor(item_code,barcode_uom)
+    conversion_factor = get_conversion_factor(item_code[0].parent,barcode_uom[0].uom)
 
     # Check if barcode length is greater than or equal to 40
     if len(barcode) >= 40:
@@ -61,7 +61,7 @@ def get_barcode_details(barcode):
         "formatted_date": formatted_date,
         "item_code": item_code,
         "barcode_uom": barcode_uom,
-        # "conversion_factor": conversion_factor if len(conversion_factor) > 0 else "no uom"
+        "conversion_factor": conversion_factor
     }
 
 
