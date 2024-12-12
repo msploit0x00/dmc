@@ -7,7 +7,7 @@ app_license = "mit"
 # required_apps = []
 
 # Includes in <head>
-# ------------------
+# ------------------      
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/dmc/css/dmc.css"
@@ -28,6 +28,9 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
+doctype_js = {
+    "Stock Reconciliation": "public/js/stock_reconcilition.override.js",
+}
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
