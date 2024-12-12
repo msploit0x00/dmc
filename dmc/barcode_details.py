@@ -5,6 +5,8 @@ from dmc.get_item_code import get_item_code
 from dmc.get_item_code import get_barcode_uom
 from dmc.get_item_code import get_conversion_factor
 
+
+
 @frappe.whitelist(allow_guest=True)
 def get_barcode_details(barcode):
     if not barcode:
