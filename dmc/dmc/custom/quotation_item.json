@@ -11,7 +11,11 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+<<<<<<< HEAD
    "creation": "2024-09-24 14:24:03.095723",
+=======
+   "creation": "2024-08-20 15:02:57.130792",
+>>>>>>> d196cad (dmc customizations)
    "default": null,
    "depends_on": null,
    "description": null,
@@ -19,19 +23,29 @@
    "dt": "Quotation Item",
    "fetch_from": null,
    "fetch_if_empty": 0,
+<<<<<<< HEAD
    "fieldname": "custom_actual_quantity",
    "fieldtype": "Float",
+=======
+   "fieldname": "custom_tax_amount",
+   "fieldtype": "Currency",
+>>>>>>> d196cad (dmc customizations)
    "hidden": 0,
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
    "idx": 81,
+=======
+   "idx": 39,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
    "in_list_view": 0,
    "in_preview": 0,
    "in_standard_filter": 0,
+<<<<<<< HEAD
    "insert_after": "page_break",
    "is_system_generated": 0,
    "is_virtual": 0,
@@ -49,6 +63,23 @@
    "owner": "Administrator",
    "permlevel": 0,
    "placeholder": null,
+=======
+   "insert_after": "custom_item_rate_after_tax",
+   "is_system_generated": 0,
+   "is_virtual": 0,
+   "label": "Tax Amount",
+   "length": 0,
+   "mandatory_depends_on": null,
+   "modified": "2024-08-20 15:02:57.130792",
+   "modified_by": "asaeed@datasofteg.com",
+   "module": null,
+   "name": "Quotation Item-custom_tax_amount",
+   "no_copy": 0,
+   "non_negative": 0,
+   "options": null,
+   "owner": "asaeed@datasofteg.com",
+   "permlevel": 0,
+>>>>>>> d196cad (dmc customizations)
    "precision": "",
    "print_hide": 0,
    "print_hide_if_no_value": 0,
@@ -58,6 +89,7 @@
    "report_hide": 0,
    "reqd": 0,
    "search_index": 0,
+<<<<<<< HEAD
    "show_dashboard": 0,
    "sort_options": 0,
    "translatable": 0,
@@ -123,6 +155,8 @@
    "reqd": 0,
    "search_index": 0,
    "show_dashboard": 0,
+=======
+>>>>>>> d196cad (dmc customizations)
    "sort_options": 0,
    "translatable": 0,
    "unique": 0,
@@ -153,7 +187,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
    "idx": 42,
+=======
+   "idx": 38,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -163,9 +201,14 @@
    "insert_after": "tax_rate",
    "is_system_generated": 0,
    "is_virtual": 0,
+<<<<<<< HEAD
    "label": "Unite Price After Tax",
    "length": 0,
    "link_filters": null,
+=======
+   "label": "Item Rate After Tax",
+   "length": 0,
+>>>>>>> d196cad (dmc customizations)
    "mandatory_depends_on": null,
    "modified": "2024-08-20 14:45:30.977838",
    "modified_by": "Administrator",
@@ -176,7 +219,10 @@
    "options": null,
    "owner": "Administrator",
    "permlevel": 0,
+<<<<<<< HEAD
    "placeholder": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "precision": "",
    "print_hide": 0,
    "print_hide_if_no_value": 0,
@@ -186,6 +232,7 @@
    "report_hide": 0,
    "reqd": 0,
    "search_index": 0,
+<<<<<<< HEAD
    "show_dashboard": 0,
    "sort_options": 0,
    "translatable": 0,
@@ -315,6 +362,8 @@
    "reqd": 0,
    "search_index": 0,
    "show_dashboard": 0,
+=======
+>>>>>>> d196cad (dmc customizations)
    "sort_options": 0,
    "translatable": 0,
    "unique": 0,
@@ -345,7 +394,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
    "idx": 41,
+=======
+   "idx": 37,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -357,7 +410,10 @@
    "is_virtual": 0,
    "label": "Tax Rate (%)",
    "length": 0,
+<<<<<<< HEAD
    "link_filters": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "mandatory_depends_on": null,
    "modified": "2024-07-31 02:35:59.035648",
    "modified_by": "mohamed.hosam@datasofteg.com",
@@ -368,7 +424,10 @@
    "options": null,
    "owner": "mohamed.hosam@datasofteg.com",
    "permlevel": 0,
+<<<<<<< HEAD
    "placeholder": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "precision": "",
    "print_hide": 0,
    "print_hide_if_no_value": 0,
@@ -378,7 +437,10 @@
    "report_hide": 0,
    "reqd": 0,
    "search_index": 0,
+<<<<<<< HEAD
    "show_dashboard": 0,
+=======
+>>>>>>> d196cad (dmc customizations)
    "sort_options": 0,
    "translatable": 0,
    "unique": 0,
@@ -409,7 +471,11 @@
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
    "idx": 40,
+=======
+   "idx": 36,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
@@ -419,9 +485,14 @@
    "insert_after": "item_tax_template",
    "is_system_generated": 0,
    "is_virtual": 0,
+<<<<<<< HEAD
    "label": "Total Price",
    "length": 0,
    "link_filters": null,
+=======
+   "label": "Total Amount (Incl. Tax)",
+   "length": 0,
+>>>>>>> d196cad (dmc customizations)
    "mandatory_depends_on": null,
    "modified": "2024-07-31 02:22:21.350812",
    "modified_by": "mohamed.hosam@datasofteg.com",
@@ -432,7 +503,10 @@
    "options": null,
    "owner": "mohamed.hosam@datasofteg.com",
    "permlevel": 0,
+<<<<<<< HEAD
    "placeholder": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "precision": "",
    "print_hide": 0,
    "print_hide_if_no_value": 0,
@@ -442,11 +516,15 @@
    "report_hide": 0,
    "reqd": 0,
    "search_index": 0,
+<<<<<<< HEAD
    "show_dashboard": 0,
+=======
+>>>>>>> d196cad (dmc customizations)
    "sort_options": 0,
    "translatable": 0,
    "unique": 0,
    "width": null
+<<<<<<< HEAD
   },
   {
    "_assign": null,
@@ -575,6 +653,8 @@
    "translatable": 1,
    "unique": 0,
    "width": null
+=======
+>>>>>>> d196cad (dmc customizations)
   }
  ],
  "custom_perms": [],
@@ -594,8 +674,13 @@
    "field_name": "amount",
    "idx": 0,
    "is_system_generated": 0,
+<<<<<<< HEAD
    "modified": "2024-10-20 16:10:00.013816",
    "modified_by": "Administrator",
+=======
+   "modified": "2024-08-22 13:32:16.562991",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+>>>>>>> d196cad (dmc customizations)
    "module": null,
    "name": "Quotation Item-amount-label",
    "owner": "mohamed.hosam@datasofteg.com",
@@ -609,6 +694,7 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-08-29 11:02:54.348441",
    "default_value": null,
    "doc_type": "Quotation Item",
@@ -655,6 +741,8 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+=======
+>>>>>>> d196cad (dmc customizations)
    "creation": "2024-08-22 13:32:04.359903",
    "default_value": null,
    "doc_type": "Quotation Item",
@@ -663,8 +751,13 @@
    "field_name": "rate",
    "idx": 0,
    "is_system_generated": 0,
+<<<<<<< HEAD
    "modified": "2024-10-20 16:10:00.075281",
    "modified_by": "Administrator",
+=======
+   "modified": "2024-08-22 13:32:04.359903",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+>>>>>>> d196cad (dmc customizations)
    "module": null,
    "name": "Quotation Item-rate-label",
    "owner": "mohamed.hosam@datasofteg.com",
@@ -672,6 +765,32 @@
    "property_type": "Data",
    "row_name": null,
    "value": "Unit price"
+<<<<<<< HEAD
+=======
+  },
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+   "creation": "2024-08-22 13:30:54.958750",
+   "default_value": null,
+   "doc_type": "Quotation Item",
+   "docstatus": 0,
+   "doctype_or_field": "DocType",
+   "field_name": null,
+   "idx": 0,
+   "is_system_generated": 0,
+   "modified": "2024-08-22 13:30:54.958750",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+   "module": null,
+   "name": "Quotation Item-main-field_order",
+   "owner": "mohamed.hosam@datasofteg.com",
+   "property": "field_order",
+   "property_type": "Data",
+   "row_name": null,
+   "value": "[\"item_code\", \"customer_item_code\", \"col_break1\", \"item_name\", \"section_break_5\", \"description\", \"item_group\", \"brand\", \"image_section\", \"image\", \"image_view\", \"quantity_and_rate\", \"qty\", \"stock_uom\", \"col_break2\", \"uom\", \"conversion_factor\", \"stock_qty\", \"section_break_16\", \"price_list_rate\", \"base_price_list_rate\", \"discount_and_margin\", \"margin_type\", \"margin_rate_or_amount\", \"rate_with_margin\", \"column_break_18\", \"discount_percentage\", \"discount_amount\", \"base_rate_with_margin\", \"section_break1\", \"rate\", \"net_rate\", \"amount\", \"net_amount\", \"item_tax_template\", \"total_amount_incl_tax\", \"tax_rate\", \"custom_item_rate_after_tax\", \"custom_tax_amount\", \"col_break3\", \"base_rate\", \"base_net_rate\", \"base_amount\", \"base_net_amount\", \"pricing_rules\", \"stock_uom_rate\", \"is_free_item\", \"is_alternative\", \"has_alternative_item\", \"section_break_43\", \"valuation_rate\", \"column_break_45\", \"gross_profit\", \"item_weight_details\", \"weight_per_unit\", \"total_weight\", \"column_break_20\", \"weight_uom\", \"reference\", \"warehouse\", \"against_blanket_order\", \"blanket_order\", \"blanket_order_rate\", \"column_break_30\", \"prevdoc_doctype\", \"prevdoc_docname\", \"item_balance\", \"projected_qty\", \"actual_qty\", \"col_break4\", \"stock_balance\", \"item_tax_rate\", \"shopping_cart_section\", \"additional_notes\", \"section_break_61\", \"page_break\"]"
+>>>>>>> d196cad (dmc customizations)
   }
  ],
  "sync_on_migrate": 1
