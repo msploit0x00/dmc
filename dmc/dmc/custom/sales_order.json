@@ -11,7 +11,11 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+<<<<<<< HEAD
    "creation": "2024-10-02 15:47:02.572705",
+=======
+   "creation": "2024-08-26 19:28:20.143289",
+>>>>>>> d196cad (dmc customizations)
    "default": null,
    "depends_on": null,
    "description": null,
@@ -19,6 +23,7 @@
    "dt": "Sales Order",
    "fetch_from": null,
    "fetch_if_empty": 0,
+<<<<<<< HEAD
    "fieldname": "custom_upaa",
    "fieldtype": "Check",
    "hidden": 1,
@@ -203,18 +208,26 @@
    "fetch_from": null,
    "fetch_if_empty": 0,
    "fieldname": "custom_supply_order",
+=======
+   "fieldname": "custom_original_supply_order",
+>>>>>>> d196cad (dmc customizations)
    "fieldtype": "Link",
    "hidden": 0,
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
    "idx": 160,
+=======
+   "idx": 15,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
    "in_list_view": 0,
    "in_preview": 0,
    "in_standard_filter": 0,
+<<<<<<< HEAD
    "insert_after": "represents_company",
    "is_system_generated": 0,
    "is_virtual": 0,
@@ -286,6 +299,18 @@
    "modified_by": "Administrator",
    "module": null,
    "name": "Sales Order-custom_sub_of_supply_order",
+=======
+   "insert_after": "custom_upa",
+   "is_system_generated": 0,
+   "is_virtual": 0,
+   "label": "Original Supply Order",
+   "length": 0,
+   "mandatory_depends_on": null,
+   "modified": "2024-08-26 19:28:20.143289",
+   "modified_by": "Administrator",
+   "module": null,
+   "name": "Sales Order-custom_original_supply_order",
+>>>>>>> d196cad (dmc customizations)
    "no_copy": 0,
    "non_negative": 0,
    "options": "Sales Order",
@@ -313,10 +338,17 @@
    "allow_in_quick_entry": 0,
    "allow_on_submit": 0,
    "bold": 0,
+<<<<<<< HEAD
    "collapsible": 1,
    "collapsible_depends_on": null,
    "columns": 0,
    "creation": "2024-09-03 14:54:33.548890",
+=======
+   "collapsible": 0,
+   "collapsible_depends_on": null,
+   "columns": 0,
+   "creation": "2024-08-26 19:12:39.626429",
+>>>>>>> d196cad (dmc customizations)
    "default": null,
    "depends_on": null,
    "description": null,
@@ -324,6 +356,7 @@
    "dt": "Sales Order",
    "fetch_from": null,
    "fetch_if_empty": 0,
+<<<<<<< HEAD
    "fieldname": "custom_connections_sub_orders",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -387,17 +420,26 @@
    "fetch_if_empty": 0,
    "fieldname": "custom_connections_sub_order",
    "fieldtype": "Table",
+=======
+   "fieldname": "custom_upa",
+   "fieldtype": "Select",
+>>>>>>> d196cad (dmc customizations)
    "hidden": 0,
    "hide_border": 0,
    "hide_days": 0,
    "hide_seconds": 0,
+<<<<<<< HEAD
    "idx": 28,
+=======
+   "idx": 14,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
    "in_list_view": 0,
    "in_preview": 0,
    "in_standard_filter": 0,
+<<<<<<< HEAD
    "insert_after": "custom_connections_sub_orders",
    "is_system_generated": 0,
    "is_virtual": 0,
@@ -411,6 +453,21 @@
    "no_copy": 0,
    "non_negative": 0,
    "options": "Connections Sub Order",
+=======
+   "insert_after": "delivery_date",
+   "is_system_generated": 0,
+   "is_virtual": 0,
+   "label": "UPA",
+   "length": 0,
+   "mandatory_depends_on": null,
+   "modified": "2024-08-26 19:12:39.626429",
+   "modified_by": "Administrator",
+   "module": null,
+   "name": "Sales Order-custom_upa",
+   "no_copy": 0,
+   "non_negative": 0,
+   "options": "\nOriginal Order\nOriginal Sub Order",
+>>>>>>> d196cad (dmc customizations)
    "owner": "Administrator",
    "permlevel": 0,
    "precision": "",
@@ -423,6 +480,7 @@
    "reqd": 0,
    "search_index": 0,
    "sort_options": 0,
+<<<<<<< HEAD
    "translatable": 0,
    "unique": 0,
    "width": null
@@ -484,6 +542,8 @@
    "reqd": 0,
    "search_index": 0,
    "sort_options": 0,
+=======
+>>>>>>> d196cad (dmc customizations)
    "translatable": 1,
    "unique": 0,
    "width": null
@@ -499,7 +559,11 @@
    "collapsible": 0,
    "collapsible_depends_on": null,
    "columns": 0,
+<<<<<<< HEAD
    "creation": "2024-08-26 19:28:20.143289",
+=======
+   "creation": "2024-08-20 15:33:19.069062",
+>>>>>>> d196cad (dmc customizations)
    "default": null,
    "depends_on": null,
    "description": null,
@@ -507,6 +571,7 @@
    "dt": "Sales Order",
    "fetch_from": null,
    "fetch_if_empty": 0,
+<<<<<<< HEAD
    "fieldname": "custom_original_supply_order",
    "fieldtype": "Link",
    "hidden": 1,
@@ -514,12 +579,22 @@
    "hide_days": 0,
    "hide_seconds": 0,
    "idx": 15,
+=======
+   "fieldname": "custom_customers_purchase_order_2",
+   "fieldtype": "Data",
+   "hidden": 0,
+   "hide_border": 0,
+   "hide_days": 0,
+   "hide_seconds": 0,
+   "idx": 18,
+>>>>>>> d196cad (dmc customizations)
    "ignore_user_permissions": 0,
    "ignore_xss_filter": 0,
    "in_global_search": 0,
    "in_list_view": 0,
    "in_preview": 0,
    "in_standard_filter": 0,
+<<<<<<< HEAD
    "insert_after": "custom_upa",
    "is_system_generated": 0,
    "is_virtual": 0,
@@ -595,6 +670,22 @@
    "non_negative": 0,
    "options": "\nOriginal Order\nOriginal Sub Order\nSales order",
    "owner": "Administrator",
+=======
+   "insert_after": "po_no",
+   "is_system_generated": 0,
+   "is_virtual": 0,
+   "label": "Customer's Purchase Order 2",
+   "length": 0,
+   "mandatory_depends_on": null,
+   "modified": "2024-08-20 15:33:19.069062",
+   "modified_by": "asaeed@datasofteg.com",
+   "module": null,
+   "name": "Sales Order-custom_customers_purchase_order_2",
+   "no_copy": 0,
+   "non_negative": 0,
+   "options": null,
+   "owner": "asaeed@datasofteg.com",
+>>>>>>> d196cad (dmc customizations)
    "permlevel": 0,
    "precision": "",
    "print_hide": 0,
@@ -674,6 +765,7 @@
  ],
  "custom_perms": [],
  "doctype": "Sales Order",
+<<<<<<< HEAD
  "links": [
   {
    "creation": "2013-06-18 12:39:59",
@@ -696,13 +788,20 @@
    "table_fieldname": null
   }
  ],
+=======
+ "links": [],
+>>>>>>> d196cad (dmc customizations)
  "property_setters": [
   {
    "_assign": null,
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-10-02 17:05:33.783565",
+=======
+   "creation": "2024-08-26 20:54:28.251111",
+>>>>>>> d196cad (dmc customizations)
    "default_value": null,
    "doc_type": "Sales Order",
    "docstatus": 0,
@@ -710,6 +809,7 @@
    "field_name": null,
    "idx": 0,
    "is_system_generated": 0,
+<<<<<<< HEAD
    "modified": "2024-10-02 17:05:33.783565",
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
@@ -719,12 +819,24 @@
    "property_type": "Data",
    "row_name": null,
    "value": "[\"workflow_state\", \"customer_section\", \"column_break0\", \"title\", \"naming_series\", \"customer\", \"customer_name\", \"tax_id\", \"order_type\", \"customer_address\", \"column_break_7\", \"transaction_date\", \"delivery_date\", \"custom_upa\", \"custom_original_supply_order\", \"custom_sub_number\", \"custom_sub_of_supply_order\", \"custom_upaa\", \"column_break1\", \"po_no\", \"po_date\", \"company\", \"skip_delivery_note\", \"amended_from\", \"custom_upa_type\", \"custom_delivery_note_status\", \"custom_connections_sub_orders\", \"custom_connections_sub_order\", \"accounting_dimensions_section\", \"cost_center\", \"dimension_col_break\", \"project\", \"currency_and_price_list\", \"currency\", \"conversion_rate\", \"column_break2\", \"selling_price_list\", \"price_list_currency\", \"plc_conversion_rate\", \"ignore_pricing_rule\", \"sec_warehouse\", \"scan_barcode\", \"column_break_28\", \"set_warehouse\", \"reserve_stock\", \"items_section\", \"items\", \"section_break_31\", \"total_qty\", \"total_net_weight\", \"column_break_33\", \"base_total\", \"base_net_total\", \"column_break_33a\", \"total\", \"net_total\", \"taxes_section\", \"tax_category\", \"taxes_and_charges\", \"column_break_38\", \"shipping_rule\", \"column_break_49\", \"incoterm\", \"named_place\", \"section_break_40\", \"taxes\", \"section_break_43\", \"base_total_taxes_and_charges\", \"column_break_46\", \"total_taxes_and_charges\", \"totals\", \"base_grand_total\", \"base_rounding_adjustment\", \"base_rounded_total\", \"base_in_words\", \"column_break3\", \"grand_total\", \"rounding_adjustment\", \"rounded_total\", \"in_words\", \"advance_paid\", \"disable_rounded_total\", \"section_break_48\", \"apply_discount_on\", \"base_discount_amount\", \"coupon_code\", \"column_break_50\", \"additional_discount_percentage\", \"discount_amount\", \"sec_tax_breakup\", \"other_charges_calculation\", \"packing_list\", \"packed_items\", \"pricing_rule_details\", \"pricing_rules\", \"contact_info\", \"billing_address_column\", \"address_display\", \"customer_group\", \"territory\", \"column_break_84\", \"contact_person\", \"contact_display\", \"contact_phone\", \"contact_mobile\", \"contact_email\", \"shipping_address_column\", \"shipping_address_name\", \"shipping_address\", \"column_break_93\", \"dispatch_address_name\", \"dispatch_address\", \"col_break46\", \"company_address\", \"column_break_92\", \"company_address_display\", \"payment_schedule_section\", \"payment_terms_section\", \"payment_terms_template\", \"payment_schedule\", \"terms_section_break\", \"tc_name\", \"terms\", \"more_info\", \"section_break_78\", \"status\", \"delivery_status\", \"per_delivered\", \"column_break_81\", \"per_billed\", \"per_picked\", \"billing_status\", \"sales_team_section_break\", \"sales_partner\", \"column_break7\", \"amount_eligible_for_commission\", \"commission_rate\", \"total_commission\", \"section_break1\", \"sales_team\", \"loyalty_points_redemption\", \"loyalty_points\", \"column_break_116\", \"loyalty_amount\", \"subscription_section\", \"from_date\", \"to_date\", \"column_break_108\", \"auto_repeat\", \"update_auto_repeat_reference\", \"printing_details\", \"letter_head\", \"group_same_items\", \"column_break4\", \"select_print_heading\", \"language\", \"additional_info_section\", \"is_internal_customer\", \"represents_company\", \"custom_supply_order\", \"column_break_152\", \"source\", \"inter_company_order_reference\", \"campaign\", \"party_account_currency\", \"connections_tab\"]"
+=======
+   "modified": "2024-08-26 20:54:28.251111",
+   "modified_by": "Administrator",
+   "module": null,
+   "name": "Sales Order-main-field_order",
+   "owner": "Administrator",
+   "property": "field_order",
+   "property_type": "Data",
+   "row_name": null,
+   "value": "[\"workflow_state\", \"customer_section\", \"column_break0\", \"title\", \"naming_series\", \"customer\", \"customer_name\", \"tax_id\", \"order_type\", \"customer_address\", \"column_break_7\", \"transaction_date\", \"delivery_date\", \"custom_upa\", \"custom_original_supply_order\", \"column_break1\", \"po_no\", \"custom_customers_purchase_order_2\", \"po_date\", \"company\", \"skip_delivery_note\", \"amended_from\", \"accounting_dimensions_section\", \"cost_center\", \"dimension_col_break\", \"project\", \"currency_and_price_list\", \"currency\", \"conversion_rate\", \"column_break2\", \"selling_price_list\", \"price_list_currency\", \"plc_conversion_rate\", \"ignore_pricing_rule\", \"sec_warehouse\", \"scan_barcode\", \"column_break_28\", \"set_warehouse\", \"reserve_stock\", \"items_section\", \"items\", \"section_break_31\", \"total_qty\", \"total_net_weight\", \"column_break_33\", \"base_total\", \"base_net_total\", \"column_break_33a\", \"total\", \"net_total\", \"taxes_section\", \"tax_category\", \"taxes_and_charges\", \"column_break_38\", \"shipping_rule\", \"column_break_49\", \"incoterm\", \"named_place\", \"section_break_40\", \"taxes\", \"section_break_43\", \"base_total_taxes_and_charges\", \"column_break_46\", \"total_taxes_and_charges\", \"totals\", \"base_grand_total\", \"base_rounding_adjustment\", \"base_rounded_total\", \"base_in_words\", \"column_break3\", \"grand_total\", \"rounding_adjustment\", \"rounded_total\", \"in_words\", \"advance_paid\", \"disable_rounded_total\", \"section_break_48\", \"apply_discount_on\", \"base_discount_amount\", \"coupon_code\", \"column_break_50\", \"additional_discount_percentage\", \"discount_amount\", \"sec_tax_breakup\", \"other_charges_calculation\", \"packing_list\", \"packed_items\", \"pricing_rule_details\", \"pricing_rules\", \"contact_info\", \"billing_address_column\", \"address_display\", \"customer_group\", \"territory\", \"column_break_84\", \"contact_person\", \"contact_display\", \"contact_phone\", \"contact_mobile\", \"contact_email\", \"shipping_address_column\", \"shipping_address_name\", \"shipping_address\", \"column_break_93\", \"dispatch_address_name\", \"dispatch_address\", \"col_break46\", \"company_address\", \"column_break_92\", \"company_address_display\", \"payment_schedule_section\", \"payment_terms_section\", \"payment_terms_template\", \"payment_schedule\", \"terms_section_break\", \"tc_name\", \"terms\", \"more_info\", \"section_break_78\", \"status\", \"delivery_status\", \"per_delivered\", \"column_break_81\", \"per_billed\", \"per_picked\", \"billing_status\", \"sales_team_section_break\", \"sales_partner\", \"column_break7\", \"amount_eligible_for_commission\", \"commission_rate\", \"total_commission\", \"section_break1\", \"sales_team\", \"loyalty_points_redemption\", \"loyalty_points\", \"column_break_116\", \"loyalty_amount\", \"subscription_section\", \"from_date\", \"to_date\", \"column_break_108\", \"auto_repeat\", \"update_auto_repeat_reference\", \"printing_details\", \"letter_head\", \"group_same_items\", \"column_break4\", \"select_print_heading\", \"language\", \"additional_info_section\", \"is_internal_customer\", \"represents_company\", \"column_break_152\", \"source\", \"inter_company_order_reference\", \"campaign\", \"party_account_currency\", \"connections_tab\"]"
+>>>>>>> d196cad (dmc customizations)
   },
   {
    "_assign": null,
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-09-24 17:39:31.442001",
    "default_value": null,
    "doc_type": "Sales Order",
@@ -772,6 +884,9 @@
    "_liked_by": null,
    "_user_tags": null,
    "creation": "2024-09-18 14:52:56.829215",
+=======
+   "creation": "2024-08-14 13:11:27.627340",
+>>>>>>> d196cad (dmc customizations)
    "default_value": null,
    "doc_type": "Sales Order",
    "docstatus": 0,
@@ -779,7 +894,11 @@
    "field_name": "scan_barcode",
    "idx": 0,
    "is_system_generated": 1,
+<<<<<<< HEAD
    "modified": "2024-09-18 14:52:56.829215",
+=======
+   "modified": "2024-08-14 13:11:27.627340",
+>>>>>>> d196cad (dmc customizations)
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
    "name": "Sales Order-scan_barcode-hidden",
@@ -794,11 +913,16 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
+<<<<<<< HEAD
    "creation": "2024-09-11 10:35:12.646841",
+=======
+   "creation": "2024-08-12 10:42:36.543412",
+>>>>>>> d196cad (dmc customizations)
    "default_value": null,
    "doc_type": "Sales Order",
    "docstatus": 0,
    "doctype_or_field": "DocField",
+<<<<<<< HEAD
    "field_name": "customer_address",
    "idx": 0,
    "is_system_generated": 1,
@@ -1013,10 +1137,43 @@
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
    "name": "Sales Order-order_type-hidden",
+=======
+   "field_name": "tax_id",
+   "idx": 0,
+   "is_system_generated": 0,
+   "modified": "2024-08-12 10:42:36.543412",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+   "module": null,
+   "name": "Sales Order-tax_id-print_hide",
+   "owner": "mohamed.hosam@datasofteg.com",
+   "property": "print_hide",
+   "property_type": "Check",
+   "row_name": null,
+   "value": "0"
+  },
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+   "creation": "2024-08-12 10:42:36.512619",
+   "default_value": null,
+   "doc_type": "Sales Order",
+   "docstatus": 0,
+   "doctype_or_field": "DocField",
+   "field_name": "tax_id",
+   "idx": 0,
+   "is_system_generated": 0,
+   "modified": "2024-08-12 10:42:36.512619",
+   "modified_by": "mohamed.hosam@datasofteg.com",
+   "module": null,
+   "name": "Sales Order-tax_id-hidden",
+>>>>>>> d196cad (dmc customizations)
    "owner": "mohamed.hosam@datasofteg.com",
    "property": "hidden",
    "property_type": "Check",
    "row_name": null,
+<<<<<<< HEAD
    "value": "1"
   },
   {
@@ -1087,6 +1244,9 @@
    "property_type": "Text",
    "row_name": null,
    "value": "SAL-ORD-.YYYY.-\nSAL-ORG-.YYYY.-"
+=======
+   "value": "0"
+>>>>>>> d196cad (dmc customizations)
   },
   {
    "_assign": null,
