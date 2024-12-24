@@ -1,0 +1,32 @@
+{
+ "custom_fields": [],
+ "custom_perms": [],
+ "doctype": "Cost Center",
+ "links": [],
+ "property_setters": [
+  {
+   "_assign": null,
+   "_comments": null,
+   "_liked_by": null,
+   "_user_tags": null,
+   "creation": "2024-12-17 10:17:21.383061",
+   "default_value": null,
+   "doc_type": "Cost Center",
+   "docstatus": 0,
+   "doctype_or_field": "DocType",
+   "field_name": null,
+   "idx": 0,
+   "is_system_generated": 0,
+   "modified": "2024-12-17 10:17:21.383061",
+   "modified_by": "logayn@datasofteg.com",
+   "module": null,
+   "name": "Cost Center-main-search_fields",
+   "owner": "logayn@datasofteg.com",
+   "property": "search_fields",
+   "property_type": "Data",
+   "row_name": null,
+   "value": "parent_cost_center, is_group,cost_center_number"
+  }
+ ],
+ "sync_on_migrate": 1
+}

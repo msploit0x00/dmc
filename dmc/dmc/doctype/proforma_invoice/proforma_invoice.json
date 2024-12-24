@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_import": 1,
- "autoname": "naming_series:",
+ "autoname": "naming_series:naming_series",
  "creation": "2024-09-29 10:13:18.696012",
  "default_view": "List",
  "doctype": "DocType",
@@ -2244,7 +2244,7 @@
    "link_fieldname": "proforma_invoice"
   }
  ],
- "modified": "2024-10-16 10:42:25.611192",
+ "modified": "2024-12-10 12:08:52.246360",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice",
