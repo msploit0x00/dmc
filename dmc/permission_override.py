@@ -10,4 +10,4 @@ class CustomPermission(Permission):
     def on_submit(self):
         if self.docstatus == 1:
             get_the_rule(employee_id=self.employee,date=self.date,doctype=self.doctype,ref_docname=self.name)
-            frappe.msgrint("test")
+            frappe.msgprint("test")
