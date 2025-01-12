@@ -7,6 +7,6 @@ from hr_sum_additionals.hr_sum_additionals.doctype.penalties_rules.penalties_rul
 
 
 class CustomPermission(self):
-    def on_submit(self):
+    def on_submit():
         if self.docstatus == 1:
             get_the_rule(employee_id=self.employee,date=self.date,doctype=self.doctype,ref_docname=self.name)
