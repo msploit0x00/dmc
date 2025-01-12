@@ -125,6 +125,7 @@ doctype_js = {
 override_doctype_class = {
     "Payment Entry": "dmc.payment_entry.CustomPaymentEntry",
     "Material Request": "dmc.material_request.CustomPurchaseRequest",
+    "Permission": "dmc.permission_override.CustomPermission"
 }
 
 # Document Events
