@@ -15,3 +15,4 @@ class CustomLeaveApplication(LeaveApplication):
             name1 = self.name
 
             get_the_rule(employee_id=employee,date=posting_date,doctype=doctype1,ref_docname=name1)
+            msgprint("done")
