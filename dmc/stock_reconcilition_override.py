@@ -19,7 +19,7 @@ def getConv_factor_for_uom(barcode, items, doc):
 
         print(data)
         conversion_factor = data.get('conversion_factor')
-        item_code = data.get('item_code')[0].get('parent')
+        item_code = data.get('item_code')
         batch_id = data.get('batch_id')
         return {"barcode":barcode,"item_code":item_code,"conversion_factor": conversion_factor,"batch_id":batch_id}
 
