@@ -14,6 +14,7 @@ def getConv_factor_for_uom(barcode, items, doc):
         frappe.msgprint(f"Barcode {barcode} not found in barcode details.")
         return
     
+    print(data)
     conversion_factor = data.get('conversion_factor')[0].get('conversion_factor')
     item_code = data.get('item_code')[0].get('parent')
     batch_id = data.get('batch_id')

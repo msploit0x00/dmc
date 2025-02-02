@@ -82,8 +82,8 @@ def get_barcode_details(barcode):
     # For barcodes between 37-39 digits
     elif 37 < len(barcode) < 40:
         gtin = barcode[2:16]
-        raw_expiry_date = barcode[17:23]
-        batch_id = barcode[24:]  # This includes the 'B' character in batch IDs
+        raw_expiry_date = barcode[18:24]
+        batch_id = barcode[26:]  # This includes the 'B' character in batch IDs
         year = raw_expiry_date[:2]
         month = raw_expiry_date[2:4]
         day = raw_expiry_date[4:]
