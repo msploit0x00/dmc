@@ -14,8 +14,27 @@ def getConv_factor_for_uom(barcode, items, doc):
         frappe.msgprint(f"Barcode {barcode} not found in barcode details.")
         return
     
-    conversion_factor = data.get('conversion_factor')[0].get('conversion_factor')
-    item_code = data.get('item_code')[0].get('parent')
-    batch_id = data.get('batch_id')
-    return {"barcode":barcode,"item_code":item_code,"conversion_factor": conversion_factor,"batch_id":batch_id}
+    if "error" in data:
+        frappe.msgprint(data["error"])
+        return
+        
+    try:
+        conversion_factor = data.get('conversion_factor')
+        item_code = data.get('item_code')[0].get('parent') if data.get('item_code') else None
+        batch_id = data.get('batch_id')
+        
+        if not all([conversion_factor, item_code, batch_id]):
+            frappe.msgprint("Missing required barcode details")
+            return
+            
+        return {
+            "barcode": barcode,
+            "item_code": item_code,
+            "conversion_factor": conversion_factor,
+            "batch_id": batch_id
+        }
+    except Exception as e:
+        frappe.log_error(f"Error processing barcode {barcode}: {str(e)}")
+        frappe.msgprint("Error processing barcode details")
+        return None
   
