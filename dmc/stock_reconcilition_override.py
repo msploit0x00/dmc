@@ -4,9 +4,10 @@ from dmc.barcode_details import get_barcode_details
 
 @frappe.whitelist()
 def getConv_factor_for_uom(barcode, items, doc):
-    if not barcode:
-        return
-    
+    try:
+        if not barcode:
+            return
+        
     # Fetch barcode details
     data = get_barcode_details(barcode)
     print("=====================>",data)
