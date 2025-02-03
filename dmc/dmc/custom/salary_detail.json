@@ -18,7 +18,7 @@
    "docstatus": 0,
    "dt": "Salary Detail",
    "fetch_from": "salary_component.custom_exclude_from_salary_slip_print",
-   "fetch_if_empty": 0,
+   "fetch_if_empty": 1,
    "fieldname": "custom_exclude_from_salary_slip_print",
    "fieldtype": "Check",
    "hidden": 0,
