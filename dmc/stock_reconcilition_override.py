@@ -4,6 +4,7 @@ from dmc.barcode_details import get_barcode_details
 
 @frappe.whitelist()
 def getConv_factor_for_uom(barcode, items, doc):
+<<<<<<< HEAD
     try:
         if not barcode:
             return
@@ -19,7 +20,23 @@ def getConv_factor_for_uom(barcode, items, doc):
         frappe.msgprint(data["error"])
         return
         
+=======
+    if not barcode:
+        return
+    
+>>>>>>> 3a61581 (Fixing the error exception in the stock_reconcilition_override.py file)
     try:
+        # Fetch barcode details
+        data = get_barcode_details(barcode)
+        print("=====================>",data)
+        if not data:
+            frappe.msgprint(f"Barcode {barcode} not found in barcode details.")
+            return
+        
+        if "error" in data:
+            frappe.msgprint(data["error"])
+            return
+            
         conversion_factor = data.get('conversion_factor')
         item_code = data.get('item_code')[0].get('parent') if data.get('item_code') else None
         batch_id = data.get('batch_id')

@@ -1,104 +1,69 @@
 import frappe
-
-
-from dmc.get_item_code import get_item_code
-from dmc.get_item_code import get_barcode_uom
-from dmc.get_item_code import get_conversion_factor
-
-
+from dmc.get_item_code import get_item_code, get_barcode_uom, get_conversion_factor
 
 @frappe.whitelist(allow_guest=True)
 def get_barcode_details(barcode):
     if not barcode:
         return {"error": "Please pass a barcode"}
 
-    gtin = ""
-    batch_id = ""
-    formatted_date = ""
-    item_code = get_item_code(barcode)
-    barcode_uom = get_barcode_uom(barcode)
-    conversion_factor = get_conversion_factor(item_code[0].parent,barcode_uom[0].uom)
-
     def format_date(year, month, day):
         # Fix '00' day
         day = '01' if day == '00' else day
-        return f"{year}-{month}-{day}"
+        # Add '20' prefix to year to make it 4 digits
+        return f"20{year}-{month}-{day}"
 
-    # Check if barcode length is greater than or equal to 40
-    if len(barcode) >= 40:
-        sliced_barcode = barcode[:-4]
-        gtin = sliced_barcode[2:16]
-        batch_id = sliced_barcode[26:]
-        raw_expiry_date = sliced_barcode[18:24]
-        year = raw_expiry_date[:2]
-        month = raw_expiry_date[4:]
-        day = raw_expiry_date[2:4]
-        formatted_date = format_date(year, month, day)
-
-    # For exactly 37-digit barcodes
-    elif len(barcode) == 37:
-        sliced_barcode = barcode[:-4]
-        gtin = sliced_barcode[2:16]
-        batch_id = sliced_barcode[26:]
-        raw_expiry_date = sliced_barcode[18:24]
-        year = raw_expiry_date[:2]
-        month = raw_expiry_date[2:4]
-        day = raw_expiry_date[4:]
-        formatted_date = format_date(year, month, day)
-
-    # For exactly 30-digit barcodes
-    elif len(barcode) == 30:
-        gtin = barcode[2:15]  # Extract GTIN (index 2 to 11)
-        batch_id = barcode[-5:]  # Extract Batch ID (last 5 characters)
-        raw_expiry_date = barcode[17:23]  # Extract expiry date
-        year = raw_expiry_date[:2]
-        month = raw_expiry_date[2:4]
-        day = raw_expiry_date[4:]
-        formatted_date = format_date(year, month, day)
-
-    # For barcodes between 31-36 digits
-    elif 30 < len(barcode) < 37:
-        gtin = barcode[2:16]
+    try:
+        print(f"Processing barcode: {barcode}")  # Debug log
         
-        # Try different date positions based on barcode format
-        if barcode[17] == '2':  # Check position 17 first for year starting with 2
-            raw_expiry_date = barcode[17:23]
-            batch_id = barcode[23:]
-        elif barcode[18] == '2':  # Then check position 18
-            raw_expiry_date = barcode[18:24]
-            batch_id = barcode[24:]
-        else:  # Default case
-            raw_expiry_date = barcode[16:22]
-            batch_id = barcode[22:]
+        # Remove first two digits
+        barcode = barcode[2:]
+        print(f"After removing first two digits: {barcode}")  # Debug log
+        
+        # Find first occurrence of '17' to get GTIN
+        gtin_end = barcode.find('17')
+        if gtin_end == -1:
+            return {"error": "Invalid barcode format - missing '17' identifier"}
+        
+        gtin = barcode[:gtin_end]
+        print(f"Found GTIN: {gtin}")  # Debug log
+        
+        # Move past '17' to get date
+        date_start = gtin_end + 2
+        raw_expiry_date = barcode[date_start:date_start + 6]
+        print(f"Raw expiry date: {raw_expiry_date}")  # Debug log
+        
+        # Parse date components
+        year = raw_expiry_date[:2]
+        month = raw_expiry_date[2:4]
+        day = raw_expiry_date[4:]
+        formatted_date = format_date(year, month, day)
+        print(f"Formatted date: {formatted_date}")  # Debug log
+        
+        # Find '10' after date to get batch_id
+        batch_start = barcode.find('10', date_start)
+        if batch_start == -1:
+            return {"error": "Invalid barcode format - missing '10' identifier"}
             
-        year = raw_expiry_date[:2]
-        month = raw_expiry_date[2:4]
-        day = raw_expiry_date[4:]
-        formatted_date = format_date(year, month, day)
+        # Get batch_id (everything after '10')
+        batch_id = barcode[batch_start + 2:]
+        print(f"Batch ID: {batch_id}")  # Debug log
 
-    # For barcodes between 38-39 digits
-    elif 37 < len(barcode) < 40:
-        gtin = barcode[2:16]
-        batch_id = barcode[26:]
-        raw_expiry_date = barcode[18:24]
-        year = raw_expiry_date[:2]
-        month = raw_expiry_date[2:4]
-        day = raw_expiry_date[4:]
-        formatted_date = format_date(year, month, day)
+        item_code = get_item_code(barcode)
+        barcode_uom = get_barcode_uom(barcode)
+        conversion_factor = get_conversion_factor(item_code[0].parent, barcode_uom[0].uom)
 
-    # Invalid length
-    else:
-        return {"error": "Invalid barcode length"}
+        return {
+            "gtin": gtin,
+            "batch_id": batch_id,
+            "formatted_date": formatted_date,
+            "item_code": item_code,
+            "barcode_uom": barcode_uom,
+            "conversion_factor": conversion_factor
+        }
 
-    # Return the parsed details
-    return {
-        "gtin": gtin,
-        "batch_id": batch_id,
-        "formatted_date": formatted_date,
-        "item_code": item_code,
-        "barcode_uom": barcode_uom,
-        "conversion_factor": conversion_factor
-    }
+    except Exception as e:
+        return {"error": f"Error parsing barcode: {str(e)}"}
+
 
 
 
