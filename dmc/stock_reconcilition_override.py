@@ -8,16 +8,20 @@ def getConv_factor_for_uom(barcode, items, doc):
         if not barcode:
             return
 
-    # Fetch barcode details
-    data = get_barcode_details(barcode)
-    print("=====================>",data)
-    if not data:
-        frappe.msgprint(f"Barcode {barcode} not found in barcode details.")
-        return
+        # Fetch barcode details
+        data = get_barcode_details(barcode)
+        print("=====================>",data)
+        if not data:
+            frappe.msgprint(f"Barcode {barcode} not found in barcode details.")
+            return
 
-    if "error" in data:
-        frappe.msgprint(data["error"])
-        return
+        if "error" in data:
+            frappe.msgprint(data["error"])
+            return
+    except Exception as e:
+        frappe.log_error(f"Error fetching barcode details: {str(e)}")
+        frappe.msgprint("Error fetching barcode details")
+        return None
 
     try:
         conversion_factor = data.get('conversion_factor')
