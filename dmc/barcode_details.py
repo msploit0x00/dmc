@@ -24,11 +24,32 @@ def get_barcode_details(barcode):
         day = '01' if day == '00' else day
         return f"{year}-{month}-{day}"
 
+    def find_valid_date_marker(barcode_str):
+        # Find all occurrences of '17'
+        pos = -1
+        while True:
+            pos = barcode_str.find('17', pos + 1)
+            if pos == -1:  # No more '17' found
+                break
+            # Check if followed by 6 digits
+            if len(barcode_str) >= pos + 8:  # Need 8 chars: '17' + 6 digits
+                date_part = barcode_str[pos+2:pos+8]
+                if date_part.isdigit():
+                    # Basic date validation
+                    month = int(date_part[2:4])
+                    day = int(date_part[4:6])
+                    if 1 <= month <= 12 and 1 <= day <= 31:
+                        return pos
+        return -1
+
     # Check if barcode length is greater than or equal to 40
     if len(barcode) >= 40 or len(barcode) == 37:
         sliced_barcode = barcode[:-4]  # Remove last 4 digits
         # Find positions of markers
-        seventeen_pos = sliced_barcode.find('17')
+        seventeen_pos = find_valid_date_marker(sliced_barcode)
+        if seventeen_pos == -1:
+            return {"error": "Invalid date format in barcode"}
+        
         ten_pos = sliced_barcode.find('10', seventeen_pos)
         
         gtin = sliced_barcode[2:seventeen_pos]
@@ -43,7 +64,10 @@ def get_barcode_details(barcode):
     # For all other barcodes (30-36 digits)
     elif len(barcode) >= 30:
         # Find positions of markers
-        seventeen_pos = barcode.find('17')
+        seventeen_pos = find_valid_date_marker(barcode)
+        if seventeen_pos == -1:
+            return {"error": "Invalid date format in barcode"}
+            
         ten_pos = barcode.find('10', seventeen_pos)
         
         gtin = barcode[2:seventeen_pos]
