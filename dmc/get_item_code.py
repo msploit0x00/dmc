@@ -1,36 +1,46 @@
 import frappe
 
-@frappe.whitelist()
-def get_barcode_details(barcode):
-    # Get the item code from the barcode
-    item_code_data = frappe.get_all("Item Barcode", filters={'barcode': barcode}, fields=['parent'], limit=1)
+
+
+
+
+@frappe.whitelist(allow_guest=True)
+def get_item_code(barcode):
     
-    if not item_code_data:
-        return {"error": "No Item Code for this barcode found"}
+    data = frappe.get_all("Item Barcode", filters={'barcode': barcode},fields=['parent'])
+
+    if len(data) > 0:
+        return data
     
-    item_code = item_code_data[0].get('parent')
+    else:
+        return "No Item Code for this barcode found"
+
+
+
+
+@frappe.whitelist(allow_guest=True)
+def get_barcode_uom(barcode):
     
-    # Get the UOM from the barcode
-    uom_data = frappe.get_all("Item Barcode", filters={'barcode': barcode}, fields=['uom'], limit=1)
+    data = frappe.get_all("Item Barcode", filters={'barcode': barcode},fields=['uom'],limit=1)
+
+    if len(data) > 0:
+        return data
     
-    if not uom_data:
-        return {"error": "No UOM for this barcode found"}
-    
-    uom = uom_data[0].get('uom')
-    
-    # Get the conversion factor for the item and UOM
-    conversion_factor_data = frappe.get_all("UOM Conversion Detail", 
-                                            filters={'parent': item_code, 'uom': uom}, 
-                                            fields=['conversion_factor'], 
-                                            limit=1)
-    
-    if not conversion_factor_data:
-        return {"error": "No conversion factor found for this item and UOM"}
-    
-    conversion_factor = conversion_factor_data[0].get('conversion_factor')
-    
-    return {
-        "item_code": item_code,
-        "uom": uom,
-        "conversion_factor": conversion_factor
-    }
+    else:
+        return "No Item Code for this barcode found"
+
+
+
+
+@frappe.whitelist(allow_guest=True)
+def get_conversion_factor(item_code,uom):
+
+    data = frappe.get_all("UOM Conversion Detail", 
+    filters={'parent': item_code,'uom': uom},
+    fields=['conversion_factor'],
+    limit=1)
+
+    if len(data) > 0:
+        return data
+    else:
+        return "no data found"
