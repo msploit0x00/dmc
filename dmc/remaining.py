@@ -24,22 +24,23 @@ import json
 
 
 @frappe.whitelist(allow_guest=True)
-def set_remaining(rem,item_code,row_name):
-    
-    update = frappe.db.sql("""
-
-        UPDATE `tabQuotation Item`
-        SET custom_remaining = %s, item_code=%s
-        where name = %s
-    
-    
-    
-    
-    """,(rem,item_code,row_name))
-    frappe.db.commit()
-
-    print("UPDATE",update)
-    return "Updated Successfully"
+def set_remaining(rem, item_code, row_name):
+    try:
+        # Update the Item Group Map table instead of Quotation Item
+        update = frappe.db.sql("""
+            UPDATE `tabItem Group Map`
+            SET remainder = %s
+            WHERE name = %s
+        """, (rem, row_name))
+        
+        frappe.db.commit()
+        
+        print("UPDATE for row:", row_name, "remainder:", rem)
+        return {"status": "success", "message": "Updated Successfully"}
+    except Exception as e:
+        print("Error in set_remaining:", str(e))
+        frappe.log_error(frappe.get_traceback(), "Error in set_remaining")
+        return {"status": "error", "message": str(e)}
 
 
 
