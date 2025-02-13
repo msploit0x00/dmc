@@ -75,6 +75,10 @@ def get_barcode_details(barcode):
         lot_prefix = None
         lot = None
 
+        # Check for common suffixes that should be removed from lot number
+        common_suffixes = ['2001', '2002', '2004']
+        has_common_suffix = any(barcode_str.endswith(suffix) for suffix in common_suffixes)
+
         # Special case handling
         if barcode_str in special_cases_34:
             gtin = barcode_str[3:16]
@@ -83,13 +87,13 @@ def get_barcode_details(barcode):
             lot_prefix = barcode_str[16:18]
             lot = barcode_str[18:28]
         
-        # Handle barcodes with 2004/2001 suffix
-        elif barcode_str in special_cases_37:
+        # Handle barcodes with 2004/2001/2002 suffix
+        elif barcode_str in special_cases_37 or (barcode_length in [37, 38] and has_common_suffix):
             gtin = barcode_str[3:16]
             expire_prefix = barcode_str[16:18]
             expire_date = format_date(barcode_str[18:20], barcode_str[20:22], barcode_str[22:24])
             lot_prefix = barcode_str[24:26]
-            # Remove the 2004/2001 suffix for lot
+            # Remove the common suffix for lot
             lot = barcode_str[26:-4]
 
         # Special handling for barcodes of length 35
