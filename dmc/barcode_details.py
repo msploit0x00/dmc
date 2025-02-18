@@ -130,7 +130,7 @@ def get_barcode_details(barcode):
 
         ########MINA#####
 
-        elif barcode in special_cases_25:
+        elif barcode_str in special_cases_25:
             gtin = barcode_str[3:16]
             lot = barcode_str[18:25]
             expire_date = format_date("35", "01", "01")
