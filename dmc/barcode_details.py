@@ -134,6 +134,9 @@ def get_barcode_details(barcode):
             gtin = barcode_str[3:16]
             lot = barcode_str[18:25]
             expire_date = format_date("35", "01", "01")
+            package_prefix = barcode_str[:3]
+            expire_prefix = '17'
+            lot_prefix = '10'
 
 
 
