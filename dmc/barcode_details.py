@@ -121,10 +121,10 @@ def get_barcode_details(barcode):
 
         ########MINA#####
 
-        elif barcode_length == 25:
+        elif barcode_length == 26:
             gtin = barcode_str[3:16]
             lot = barcode_str[18:25]
-            expire_date = '2035-01-01'
+            expire_date = '35-01-01'
 
 
         else:
