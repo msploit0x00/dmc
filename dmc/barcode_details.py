@@ -67,6 +67,15 @@ def get_barcode_details(barcode):
             '01007630007233091726073110787012001'
         ]
 
+        special_cases_25=[
+                    '010088445058115521SG70005',
+                    '010088445058115521SG70015',
+                    '010088445058115521SG70002',
+                    '010088445045058121SC02365',
+                    '010088445050011810SCRT240405',
+                    '010088445043473421SG04680'
+        ]
+
         # Initialize variables
         package_prefix = barcode_str[:3]
         gtin = None
@@ -121,10 +130,11 @@ def get_barcode_details(barcode):
 
         ########MINA#####
 
-        elif barcode_length == 26:
+        elif barcode_str in special_cases_25:
             gtin = barcode_str[3:16]
             lot = barcode_str[18:25]
-            expire_date = '35-01-01'
+            expire_date = format_date("35", "01", "01")
+
 
 
         else:
