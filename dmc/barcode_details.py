@@ -118,6 +118,15 @@ def get_barcode_details(barcode):
             lot = barcode_str[26:35]
 
         # Standard length-based parsing
+
+        ########MINA#####
+
+        elif barcode_length == 25:
+            gtin = barcode_str[3:16]
+            lot = barcode_str[18:25]
+            expire_date = '2035-01-01'
+
+
         else:
             # Default GTIN parsing based on length
             if barcode_length in [34, 33, 31, 32, 36, 30]:
