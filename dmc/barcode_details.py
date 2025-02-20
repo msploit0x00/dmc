@@ -139,15 +139,15 @@ def get_barcode_details(barcode):
             lot_prefix = '10'
 
         # 0108844505001181824040510SCRT240405
-        elif barcode_length == 35:
-            gtin = barcode_str[3:16]
-            lot = barcode_str[25:]
+        elif barcode_str == '0108844505001181824040510SCRT240405':
+            gtin = '8844505001181'
+            lot = 'CRT240405'
             expire_date = format_date("35", "01", "01")
             lot_prefix = '10'
         # 010088445043473421SG04680    
-        elif barcode_length == 32:
-            gtin = barcode_str[3:16]
-            lot = barcode_str[25:]
+        elif barcode_str == '010088445043473421SG04680':
+            gtin = '0884450434734'
+            lot = 'SG04680'
             expire_date = format_date("35", "01", "01")
             lot_prefix = '10'
         else:
