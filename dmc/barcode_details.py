@@ -143,13 +143,13 @@ def get_barcode_details(barcode):
             gtin = '8844505001181'
             lot = 'CRT240405'
             expire_date = format_date("35", "01", "01")
-            lot_prefix = '10'
+            # lot_prefix = '10'
         # 010088445043473421SG04680    
         elif barcode_str == '010088445043473421SG04680':
             gtin = '0884450434734'
             lot = 'SG04680'
             expire_date = format_date("35", "01", "01")
-            lot_prefix = '10'
+            # lot_prefix = '10'
         else:
             # Default GTIN parsing based on length
             if barcode_length in [34, 33, 31, 32, 36, 30]:
