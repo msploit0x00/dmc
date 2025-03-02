@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-05 02:06:20.846301",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "gtin",
+  "type",
+  "uom"
+ ],
+ "fields": [
+  {
+   "fieldname": "gtin",
+   "fieldtype": "Data",
+   "label": "GTIN",
+   "no_copy": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "GTIN"
+  },
+  {
+   "default": "Unit",
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-02 14:31:37.218105",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Barcode GTIN",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
