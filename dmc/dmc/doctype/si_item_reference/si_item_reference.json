@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-14 21:48:07.913757",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "quantity",
+  "rate",
+  "total_amount_before_tax",
+  "total_amount_after_tax",
+  "total_tax_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate"
+  },
+  {
+   "fieldname": "total_amount_before_tax",
+   "fieldtype": "Currency",
+   "label": "Total Amount Before Tax"
+  },
+  {
+   "fieldname": "total_amount_after_tax",
+   "fieldtype": "Currency",
+   "label": "Total Amount After Tax"
+  },
+  {
+   "fieldname": "total_tax_amount",
+   "fieldtype": "Float",
+   "label": "Total Tax Amount"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-05 11:58:29.179450",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "SI Item Reference",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

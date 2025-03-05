@@ -1,0 +1,49 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-05 16:36:11.903559",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_fetf",
+  "product_id",
+  "product_name",
+  "total_quantity"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_fetf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "product_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product ID"
+  },
+  {
+   "fieldname": "product_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Product Name"
+  },
+  {
+   "fieldname": "total_quantity",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Total Quantity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-05 11:59:17.773928",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Item Reference",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

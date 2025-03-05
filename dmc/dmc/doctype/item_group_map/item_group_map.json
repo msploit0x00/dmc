@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-23 19:28:05.943756",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_group",
+  "quantity",
+  "order_quantity",
+  "remainder",
+  "delivery"
+ ],
+ "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Item Code",
+   "options": "Item Group"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "ignore_user_permissions": 1,
+   "label": "Quantity"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "order_quantity",
+   "fieldtype": "Float",
+   "label": "Order Quantity"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "remainder",
+   "fieldtype": "Float",
+   "ignore_user_permissions": 1,
+   "label": "Remaining"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "delivery",
+   "fieldtype": "Float",
+   "ignore_user_permissions": 1,
+   "label": "Deliverd"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-05 11:58:02.625938",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Item Group Map",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

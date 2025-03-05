@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{sales_order}-{item_code}-{########}",
+ "creation": "2024-11-24 20:32:01.600270",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sales_order",
+  "purchase_request",
+  "status",
+  "reserver",
+  "modified_by1",
+  "creation_date",
+  "column_break_ifqx",
+  "item_code",
+  "sales_order_item",
+  "held_quantity"
+ ],
+ "fields": [
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "purchase_request",
+   "fieldtype": "Link",
+   "label": "Purchase Request",
+   "options": "Material Request"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nReleased"
+  },
+  {
+   "fieldname": "reserver",
+   "fieldtype": "Link",
+   "label": "Reserver",
+   "options": "User"
+  },
+  {
+   "fieldname": "modified_by1",
+   "fieldtype": "Link",
+   "label": "Modified By",
+   "options": "User"
+  },
+  {
+   "fieldname": "creation_date",
+   "fieldtype": "Datetime",
+   "label": "Creation Date"
+  },
+  {
+   "fieldname": "column_break_ifqx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "sales_order_item",
+   "fieldtype": "Data",
+   "label": "Sales Order Item"
+  },
+  {
+   "fieldname": "held_quantity",
+   "fieldtype": "Float",
+   "label": "Held Quantity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-05 11:58:40.954885",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Stock Hold Entry",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
