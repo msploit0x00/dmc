@@ -4,6 +4,7 @@ import frappe
 from dmc.get_item_code import get_item_code
 from dmc.get_item_code import get_barcode_uom
 from dmc.get_item_code import get_conversion_factor
+from dmc.get_item_code import get_gtin_and_item_code
 
 
 
@@ -204,6 +205,17 @@ def get_barcode_details(barcode):
             return None
         if lot_prefix not in ['10', '21']:
             return None
+        
+
+        all_data = {
+            "gtin": gtin,
+            "batch_id": lot,
+            "formatted_date": expire_date,
+            "package_prefix": package_prefix,
+            "expire_prefix": expire_prefix,
+            "lot_prefix": lot_prefix
+        }
+
 
         return {
             "gtin": gtin,
@@ -226,7 +238,12 @@ def get_barcode_details(barcode):
 
     if len(item_code) == 0 and len(barcode_uom) == 0:
         frappe.msgprint("Please select Item")
-        return result
+        item_code_gtin = get_gtin_and_item_code(result.get("gtin"))
+        if item_code_gtin:
+            result2 = result2.update({
+            "item_code": item_code_gtin
+            })
+            return result2
 
     else:
         conversion_factor = get_conversion_factor(item_code[0].parent, barcode_uom[0].uom)
