@@ -17,7 +17,7 @@ def get_item_code(barcode):
         return barcode[3:16]
 
     else:
-        return "No Item Code for this barcode found"
+        return []
 
 
 
@@ -31,7 +31,7 @@ def get_barcode_uom(barcode):
         return data
     
     else:
-        return "No Item Code for this barcode found"
+        return []
 
 
 
@@ -47,7 +47,7 @@ def get_conversion_factor(item_code,uom):
     if len(data) > 0:
         return data
     else:
-        return "no data found"
+        return []
 
 
 

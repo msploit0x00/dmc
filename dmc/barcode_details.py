@@ -222,7 +222,20 @@ def get_barcode_details(barcode):
     # Get additional details
     item_code = get_item_code(barcode)
     barcode_uom = get_barcode_uom(barcode)
-    conversion_factor = get_conversion_factor(item_code[0].parent, barcode_uom[0].uom)
+
+
+    if len(item_code) == 0 and len(barcode_uom) == 0:
+        frappe.msgprint("Please select Item")
+        return result
+
+    else:
+        conversion_factor = get_conversion_factor(item_code[0].parent, barcode_uom[0].uom)
+
+    # if len(conversion_factor) == 0:
+    #     pass
+
+
+
 
     # Add additional details to result
     result.update({
