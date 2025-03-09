@@ -238,12 +238,13 @@ def get_barcode_details(barcode):
 
     if len(item_code) == 0 and len(barcode_uom) == 0:
         frappe.msgprint("Please select Item")
-        item_code_gtin = get_gtin_and_item_code(result.get("gtin"))
-        if item_code_gtin:
-            result2 = result2.update({
-            "item_code": item_code_gtin
-            })
-            return result2
+        # item_code_gtin = get_gtin_and_item_code(result.get("gtin"))
+        # result = result.update({
+        #     "item_code": item_code_gtin,
+        #     "barcode_uom": "Unit",
+        #     "conversion_factor": 1
+        # })
+        return result
 
     else:
         conversion_factor = get_conversion_factor(item_code[0].parent, barcode_uom[0].uom)
