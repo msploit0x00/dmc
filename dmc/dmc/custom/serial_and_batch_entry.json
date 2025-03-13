@@ -1,7 +1,7 @@
 {
  "custom_fields": [],
  "custom_perms": [],
- "doctype": "Sales Team",
+ "doctype": "Serial and Batch Entry",
  "links": [],
  "property_setters": [
   {
@@ -9,23 +9,23 @@
    "_comments": null,
    "_liked_by": null,
    "_user_tags": null,
-   "creation": "2024-12-30 14:12:18.235744",
+   "creation": "2025-03-12 13:07:19.551847",
    "default_value": null,
-   "doc_type": "Sales Team",
+   "doc_type": "Serial and Batch Entry",
    "docstatus": 0,
    "doctype_or_field": "DocField",
-   "field_name": "allocated_percentage",
+   "field_name": "delivered_qty",
    "idx": 0,
    "is_system_generated": 0,
-   "modified": "2025-03-10 16:15:33.929292",
-   "modified_by": "Administrator",
+   "modified": "2025-03-12 13:07:19.551847",
+   "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,
-   "name": "Sales Team-allocated_percentage-default",
+   "name": "Serial and Batch Entry-delivered_qty-precision",
    "owner": "mohamed.hosam@datasofteg.com",
-   "property": "default",
-   "property_type": "Text",
+   "property": "precision",
+   "property_type": "Select",
    "row_name": null,
-   "value": "100"
+   "value": "1"
   }
  ],
  "sync_on_migrate": 1
