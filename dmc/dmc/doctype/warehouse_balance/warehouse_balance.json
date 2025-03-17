@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-17 09:34:53.504915",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "filters_section",
+  "warehouse",
+  "from_date",
+  "to_date",
+  "column_break_jzsu",
+  "item",
+  "item_group",
+  "total_balance_quantity",
+  "items_table_section",
+  "items"
+ ],
+ "fields": [
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "total_balance_quantity",
+   "fieldtype": "Float",
+   "label": "Total Balance Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_jzsu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "label": "Filters"
+  },
+  {
+   "fieldname": "items_table_section",
+   "fieldtype": "Section Break",
+   "label": "Items Table "
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Warehouse Balance Item"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-17 09:49:05.912333",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Warehouse Balance",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
