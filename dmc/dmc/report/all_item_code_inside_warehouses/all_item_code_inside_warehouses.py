@@ -33,7 +33,8 @@ def get_columns(filters=None):
                 "fieldname": warehouse.name,
                 "label": _(warehouse.name),
                 "fieldtype": "Float",
-                "width": 120
+                "width": 120,
+                "precision": 1
             })
     
     return columns
@@ -50,10 +51,14 @@ def get_data(filters=None):
     data = []
     for item_group in item_groups:
         row = {"item_group": item_group.name}
+        
+        # Flag to check if the row has any non-zero values
+        has_non_zero_values = False
+        
         for warehouse in warehouses:
             conditions = ["item.item_group = %s", "sle.warehouse = %s"]
             values = [item_group.name, warehouse.name]
-
+            
             # Add date range filter if provided
             if from_date:
                 conditions.append("sle.posting_date >= %s")
@@ -61,15 +66,21 @@ def get_data(filters=None):
             if to_date:
                 conditions.append("sle.posting_date <= %s")
                 values.append(to_date)
-
+            
             actual_qty_sum = frappe.db.sql(f"""
                 SELECT SUM(sle.actual_qty) as total_qty
                 FROM `tabStock Ledger Entry` sle
                 JOIN `tabItem` item ON sle.item_code = item.name
                 WHERE {" AND ".join(conditions)}
-            """, values, as_dict=True)[0].total_qty or 0  # Ensure sum is never None
+            """, values, as_dict=True)[0].total_qty or 0
             
-            row[warehouse.name] = actual_qty_sum
-        data.append(row)
+            # Only add the warehouse value if it's not zero
+            if actual_qty_sum > 0:
+                row[warehouse.name] = actual_qty_sum
+                has_non_zero_values = True
+        
+        # Only append the row if it has at least one non-zero value
+        if has_non_zero_values:
+            data.append(row)
     
     return data
