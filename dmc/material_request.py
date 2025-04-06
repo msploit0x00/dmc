@@ -38,6 +38,7 @@ class CustomPurchaseRequest(MaterialRequest):
                         `tabDelivery Note` dn ON soi.parent = dn.name
                     WHERE 
                         soi.item_code = %s
+                        AND dn.docstatus = 1
                         AND dn.posting_date BETWEEN DATE_SUB(%s, INTERVAL 6 MONTH) AND %s
                     GROUP BY soi.item_code
                 """, (item_code, schedule_date, schedule_date), as_dict=True)
@@ -74,4 +75,5 @@ class CustomPurchaseRequest(MaterialRequest):
 
             except Exception as e:
                 frappe.logger().error(f"Error updating purchase request data for item {item_code}: {e}")
+                frappe.log_error(title="failed to get data", message=str(e))
                 frappe.msgprint(f"Error processing item: {item_code}. Please check the logs for more details.")
