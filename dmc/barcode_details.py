@@ -189,6 +189,8 @@ def get_barcode_details(barcode):
                 lot = barcode_str[34:42]
             elif barcode_length == 38:
                 lot = barcode_str[26:38]
+            elif barcode_length == 39:
+                lot = barcode_str[26:35]
             else:
                 lot = barcode_str[26:34]
 
