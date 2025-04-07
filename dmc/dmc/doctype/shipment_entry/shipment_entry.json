@@ -1,0 +1,84 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-07 13:48:20.460100",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "purchase_order",
+  "shipment_date",
+  "tracking_no",
+  "column_break_izub",
+  "shipping_company",
+  "expected_arrival_date",
+  "item_section",
+  "shipment_item"
+ ],
+ "fields": [
+  {
+   "fieldname": "purchase_order",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "Purchase Order"
+  },
+  {
+   "fieldname": "shipment_date",
+   "fieldtype": "Date",
+   "label": "Shipment Date"
+  },
+  {
+   "fieldname": "tracking_no",
+   "fieldtype": "Data",
+   "label": "Tracking No"
+  },
+  {
+   "fieldname": "column_break_izub",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shipping_company",
+   "fieldtype": "Data",
+   "label": "Shipping Company"
+  },
+  {
+   "fieldname": "expected_arrival_date",
+   "fieldtype": "Date",
+   "label": "Expected Arrival Date\t"
+  },
+  {
+   "fieldname": "item_section",
+   "fieldtype": "Section Break",
+   "label": "item"
+  },
+  {
+   "fieldname": "shipment_item",
+   "fieldtype": "Table",
+   "label": "Shipment Item",
+   "options": "Shipment Item"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-07 16:05:00.053238",
+ "modified_by": "Administrator",
+ "module": "Dmc",
+ "name": "Shipment Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
