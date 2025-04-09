@@ -77,6 +77,9 @@ def get_barcode_details(barcode):
                     '010088445043473421SG04680'
         ]
 
+
+        special_cases_38 = ['010694735856300617202702300110C18240A2']
+
         # Initialize variables
         package_prefix = barcode_str[:3]
         gtin = None
@@ -97,6 +100,15 @@ def get_barcode_details(barcode):
             lot_prefix = barcode_str[16:18]
             lot = barcode_str[18:28]
         
+        elif barcode_str in special_cases_38:
+            gtin = barcode_str[2:16]
+            lot = barcode_str[30:]
+            expire_prefix = barcode_str[16:18]
+            lot_prefix = barcode_str[26:30]
+            expire_date = '2027-02-28'
+
+            print(f"manga {expire_prefix}")
+            # frappe.msgprint("manga")########################################
         # Handle barcodes with 2004/2001/2002 suffix
         elif barcode_str in special_cases_37 or (barcode_length in [37, 38] and has_common_suffix):
             gtin = barcode_str[3:16]
@@ -203,9 +215,9 @@ def get_barcode_details(barcode):
         # Validate prefixes
         if package_prefix not in ['010', '011', '012']:
             return None
-        if expire_prefix not in ['17', '15', '11']:
+        if expire_prefix not in ['17', '15', '11','61']:
             return None
-        if lot_prefix not in ['10', '21']:
+        if lot_prefix not in ['10', '21','0110']:
             return None
         
 
@@ -231,7 +243,7 @@ def get_barcode_details(barcode):
     # Parse the barcode
     result = parse_barcode(barcode)
     if not result:
-        return {"error": "Invalid barcode format"}
+        return {"error": f"Invalid barcode format /n {result}"}
 
     # Get additional details
     item_code = get_item_code(barcode)
