@@ -78,7 +78,7 @@ def get_barcode_details(barcode):
         ]
 
 
-        special_cases_38 = ['010694735856300617202702300110C18240A2']
+        special_cases_38 = ['010694735856300617202702300110C18240A2','010694735856300617202702300110C18240a2']
 
         # Initialize variables
         package_prefix = barcode_str[:3]
@@ -102,7 +102,7 @@ def get_barcode_details(barcode):
         
         elif barcode_str in special_cases_38:
             gtin = barcode_str[2:16]
-            lot = barcode_str[30:]
+            lot =  barcode_str[30:]
             expire_prefix = barcode_str[16:18]
             lot_prefix = barcode_str[26:30]
             expire_date = '2027-02-28'
