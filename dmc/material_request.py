@@ -44,7 +44,7 @@ class CustomPurchaseRequest(MaterialRequest):
                 """, (item_code, schedule_date, schedule_date), as_dict=True)
                 print("sales",sales_data)
                 if not sales_data:
-                    frappe.msgprint(f"No sales data found for item: {item_code}")
+                    # frappe.msgprint(f"No sales data found for item: {item_code}")
                     item.custom_average_quantity_sold = 0
                     item.custom_total_quantity_sold = 0
                     item.custom_over_the_number_of_month = 0
