@@ -83,6 +83,8 @@ def get_barcode_details(barcode):
             '010694735856300617202702300110C18240A2',
             '010694735856300617202702300110C18240a2',
             '010694735856300617202702300110c18240a2']
+        
+        special_cases_manga = ['0108844504506591824050910Sc03234']
 
         # Initialize variables
         package_prefix = barcode_str[:3]
@@ -103,6 +105,13 @@ def get_barcode_details(barcode):
             expire_date = format_date(barcode_str[28:30], barcode_str[30:32], barcode_str[32:34])
             lot_prefix = barcode_str[16:18]
             lot = barcode_str[18:28]
+
+        elif barcode_str in special_cases_manga:
+            gtin = barcode_str[2:16]
+            lot = barcode_str[-7:]
+            expire_date = '2030-03-12'
+            lot_prefix= '10'
+            expire_prefix = '17'
         
         elif barcode_str in special_cases_38:
             gtin = barcode_str[2:16]
