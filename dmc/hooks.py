@@ -28,7 +28,12 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"CustomSerialNoBatchSelector" : "public/js/custom_serial_no_batch_selector.js"}
+doctype_js = {
+    # "CustomSerialNoBatchSelector" : "public/js/custom_serial_no_batch_selector.js"
+    "Sales Order": "public/js/sales_order_edit.js",
+
+}
+
 # doctype_js = {
 #     "Stock Reconciliation": "public/js/stock_reconcilition.override.js",
 # }
@@ -238,4 +243,3 @@ override_doctype_class = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
