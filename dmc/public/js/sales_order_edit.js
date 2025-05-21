@@ -1,12 +1,21 @@
+
+
+frappe.ui.form.on('Sales Team', {
+    sales_person(frm, cdt, cdn) {
+        sales_team_add_to_cost_center_allocation(frm, cdt, cdn);
+    }
+});
+
+
 frappe.ui.form.on('Sales Order', {
-	custom_sales_order_type(frm) {
-	  sales_order_type(frm);
-    //   handle_tax_logic_from_address(frm);
-	},
+    custom_sales_order_type(frm) {
+        sales_order_type(frm);
+        //   handle_tax_logic_from_address(frm);
+    },
 
-    custom_tax_status(frm){ toggle_taxes_table(frm)},
+    custom_tax_status(frm) { toggle_taxes_table(frm) },
 
-       customer_address(frm) {
+    customer_address(frm) {
         handle_tax_logic_from_address(frm);
     },
 })
@@ -14,7 +23,7 @@ frappe.ui.form.on('Sales Order', {
 frappe.ui.form.on('Sales Order Item', {
     rate(frm, cdt, cdn) {
         rate_validation(frm, cdt, cdn)
-        }
+    }
 });
 
 function sales_order_type(frm) {
@@ -53,22 +62,22 @@ function toggle_taxes_table(frm) {
         frm.set_df_property('total_taxes_and_charges', 'hidden', 1);
     } else {
         frm.set_df_property('total_taxes_and_charges', 'hidden', 0);
-                frm.set_df_property('taxes', 'hidden', 0);
-                
+        frm.set_df_property('taxes', 'hidden', 0);
+
 
     }
 
     if (!is_taxable) {
         frm.clear_table("taxes");
         frm.refresh_field("taxes");
- 
+
     }
 
-   
+
 
 }
 
- async function handle_tax_logic_from_address(frm) {
+async function handle_tax_logic_from_address(frm) {
     if (!frm.doc.customer_address) return;
 
     const address = await frappe.db.get_doc('Address', frm.doc.customer_address);
@@ -99,36 +108,56 @@ function toggle_taxes_table(frm) {
 
 
 
-function rate_validation(frm, cdt, cdn){
+function rate_validation(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
 
-        // Skip if no item or invalid rate
-        if (!row.item_code || row.rate === null || row.rate === undefined || row.rate === '') {
-            return;
-        }
+    // Skip if no item or invalid rate
+    if (!row.item_code || row.rate === null || row.rate === undefined || row.rate === '') {
+        return;
+    }
 
-        let rate_value = parseFloat(row.rate);
-        if (isNaN(rate_value)) return;
+    let rate_value = parseFloat(row.rate);
+    if (isNaN(rate_value)) return;
 
-        // OPTIONAL: Use Sales Order's price list if available
-        let price_list = frm.doc.selling_price_list || 'Standard Selling';
+    // OPTIONAL: Use Sales Order's price list if available
+    let price_list = frm.doc.selling_price_list || 'Standard Selling';
 
-        frappe.db.get_value('Item Price', {
-            item_code: row.item_code,
-            price_list: price_list
-        }, 'price_list_rate').then(r => {
-            if (r.message) {
-                let actual_price = parseFloat(r.message.price_list_rate);
-                console.log(`Item: ${row.item_code}, Price List Rate: ${actual_price}, Entered Rate: ${rate_value}`);
+    frappe.db.get_value('Item Price', {
+        item_code: row.item_code,
+        price_list: price_list
+    }, 'price_list_rate').then(r => {
+        if (r.message) {
+            let actual_price = parseFloat(r.message.price_list_rate);
+            console.log(`Item: ${row.item_code}, Price List Rate: ${actual_price}, Entered Rate: ${rate_value}`);
 
-                if (rate_value < actual_price) {
-                    frappe.msgprint(__('Rate can\'t be lower than the actual price ({0})', [actual_price]));
-                    // Optional: Revert to null or actual price
-                    frappe.model.set_value(cdt, cdn, 'rate', actual_price);
-                }
-            } else {
-                frappe.msgprint(__('No price found in Item Price for item {0} and price list {1}', [row.item_code, price_list]));
+            if (rate_value < actual_price) {
+                frappe.msgprint(__('Rate can\'t be lower than the actual price ({0})', [actual_price]));
+                // Optional: Revert to null or actual price
+                frappe.model.set_value(cdt, cdn, 'rate', actual_price);
             }
-        });
+        } else {
+            frappe.msgprint(__('No price found in Item Price for item {0} and price list {1}', [row.item_code, price_list]));
+        }
+    });
 }
 
+function sales_team_add_to_cost_center_allocation(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+    if (!row.sales_person) return;
+
+    console.log("Fetching cost_center_allocation for", row.sales_person);
+
+    frappe.call({
+        method: "dmc.api.get_cost_center_allocation_naming_series",
+        args: {
+            sales_person: row.sales_person
+        },
+        callback: function (r) {
+            if (r.message) {
+                console.log("Backend response:", r.message);
+                // ✅ Set field in the MAIN Sales Order form, not the row
+                frm.set_value('cost_center_allocation', r.message);
+            }
+        }
+    });
+}
