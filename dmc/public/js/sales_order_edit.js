@@ -5,6 +5,11 @@ frappe.ui.form.on('Sales Team', {
         sales_team_add_to_cost_center_allocation(frm, cdt, cdn);
     }
 });
+frappe.ui.form.on('Sales Team', {
+    sales_person(frm, cdt, cdn) {
+        sales_team_add_to_cost_center_allocation(frm, cdt, cdn);
+    }
+});
 
 
 frappe.ui.form.on('Sales Order', {
@@ -18,6 +23,20 @@ frappe.ui.form.on('Sales Order', {
     customer_address(frm) {
         handle_tax_logic_from_address(frm);
     },
+
+    setup: function (frm) {
+        // Only trigger on new (unsaved) forms
+        if (frm.is_new()) {
+            // Check if created from Partial Supply Order
+            const from_doctype = frappe.get_prev_route()[0];
+            const from_form = frappe.get_prev_route()[1];
+
+            if (from_doctype === 'Partial Supply Order' && from_form) {
+                // Set the custom field
+                frm.set_value('custom_sales_order_type', 'امر بيع - هيئة الشراء الموحد');
+            }
+        }
+    }
 })
 
 frappe.ui.form.on('Sales Order Item', {
@@ -49,6 +68,7 @@ function sales_order_type(frm) {
         frm.set_df_property('total_taxes_and_charges', 'hidden', 0);
     }
 }
+
 
 
 function toggle_taxes_table(frm) {

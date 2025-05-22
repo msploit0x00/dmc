@@ -31,6 +31,7 @@ app_license = "mit"
 doctype_js = {
     # "CustomSerialNoBatchSelector" : "public/js/custom_serial_no_batch_selector.js"
     "Sales Order": "public/js/sales_order_edit.js",
+    "Proforma Invoice": "public/js/proforma_invoice_edit.js"
 
 }
 
