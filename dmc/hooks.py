@@ -12,6 +12,7 @@ app_license = "mit"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/dmc/css/dmc.css"
 # app_include_js = "/assets/dmc/js/custom_serial_no_batch_selector.js"
+app_include_py = ["dmc.api"]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/dmc/css/dmc.css"
@@ -31,7 +32,8 @@ app_license = "mit"
 doctype_js = {
     # "CustomSerialNoBatchSelector" : "public/js/custom_serial_no_batch_selector.js"
     "Sales Order": "public/js/sales_order_edit.js",
-    "Proforma Invoice": "public/js/proforma_invoice_edit.js"
+    "Proforma Invoice": "public/js/proforma_invoice_edit.js",
+    "Sales Invoice": "public/js/sales_invoice_edit.js"
 
 }
 

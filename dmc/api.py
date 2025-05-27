@@ -1,8 +1,9 @@
+from num2words import num2words  # type: ignore
 import frappe
 from frappe import _
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_cost_center_allocation_naming_series(sales_person):
     employee = frappe.db.get_value("Sales Person", sales_person, "employee")
     if not employee:
@@ -55,3 +56,77 @@ def get_batch_and_gtin(item_code):
 #         "batch_no": batch[0].name,
 #         "custom_gtin": batch[0].custom_gtin
 #     }
+
+
+# @frappe.whitelist(allow_guest=True)
+# def number_to_arabic_words(n):
+#     units = ["", "واحد", "اثنان", "ثلاثة", "أربعة",
+#              "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"]
+#     teens = ["عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر",
+#              "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"]
+#     tens = ["", "", "عشرون", "ثلاثون", "أربعون",
+#             "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"]
+#     hundreds = ["", "مائة", "مئتان", "ثلاثمائة", "أربعمائة",
+#                 "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"]
+
+#     def convert_hundreds(num):
+#         h = num // 100
+#         t = (num % 100) // 10
+#         u = num % 10
+#         words = ""
+#         if h > 0:
+#             words += hundreds[h] + " "
+#         if t == 1:
+#             words += teens[u] + " "
+#         else:
+#             if t > 1:
+#                 words += tens[t] + " "
+#             if u > 0:
+#                 if t > 1:
+#                     words += "و " + units[u] + " "
+#                 else:
+#                     words += units[u] + " "
+#         return words.strip()
+
+#     if n == 0:
+#         return "صفر"
+
+#     parts = []
+#     if n >= 1000:
+#         thousands = n // 1000
+#         parts.append(convert_hundreds(thousands) + " ألف")
+#         n = n % 1000
+
+#     if n > 0:
+#         parts.append(convert_hundreds(n))
+
+#     return " و ".join(parts)
+
+
+# @frappe.whitelist(allow_guest=True)
+# def amount_to_words_arabic(amount):
+#     integer_part = int(amount)
+#     fraction_part = int(round((amount - integer_part) * 100))
+#     words = num2words(integer_part, lang='ar')
+#     if fraction_part > 0:
+#         words += " و " + num2words(fraction_part, lang='ar') + " فلس"
+#     return words
+
+
+# def get_context(context):
+#     doc = context.get("doc")
+#     if doc:
+#         context.amount_in_words = amount_to_words_arabic(doc.rounded_total)
+#     return context
+
+
+# my_app/api/money_utils.py
+
+
+@frappe.whitelist()
+def money_to_arabic_words(amount):
+    try:
+        amount = float(amount)
+        return num2words(amount, lang='ar') + " جنيه" " فقط لا غير"
+    except Exception as e:
+        return f"خطأ في التحويل: {str(e)}"

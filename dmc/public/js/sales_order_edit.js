@@ -18,7 +18,7 @@ frappe.ui.form.on('Sales Order', {
         //   handle_tax_logic_from_address(frm);
     },
 
-    custom_tax_status(frm) { toggle_taxes_table(frm) },
+    custom_delivery_note_status(frm) { toggle_taxes_table(frm) },
 
     customer_address(frm) {
         handle_tax_logic_from_address(frm);
@@ -56,14 +56,14 @@ function sales_order_type(frm) {
     }
 
     if (type === "أمر بيع -بيان") {
-        frm.set_df_property('custom_tax_status', 'hidden', 1);
+        // frm.set_df_property('custom_tax_status', 'hidden', 1);
         frm.set_df_property('taxes', 'hidden', 1);
         frm.set_df_property('total_taxes_and_charges', 'hidden', 1);
 
         frm.clear_table("taxes");
         frm.refresh_field("taxes");
     } else {
-        frm.set_df_property('custom_tax_status', 'hidden', 0);
+        // frm.set_df_property('custom_tax_status', 'hidden', 0);
         frm.set_df_property('taxes', 'hidden', 0);
         frm.set_df_property('total_taxes_and_charges', 'hidden', 0);
     }
@@ -72,16 +72,29 @@ function sales_order_type(frm) {
 
 
 function toggle_taxes_table(frm) {
-    const is_taxable = frm.doc.custom_tax_status === "Taxable";
+    const is_taxable = frm.doc.custom_delivery_note_status === "خاضع";
 
     frm.toggle_display("taxes", is_taxable);
-    if (frm.doc.custom_tax_status === "Non-Taxable") {
+    if (frm.doc.custom_delivery_note_status === "معفي") {
 
         frm.set_df_property('taxes', 'hidden', 1);
+        frm.set_df_property('tax_category', 'hidden', 1);
+        frm.set_df_property('shipping_rule', 'hidden', 1);
+        frm.set_df_property('incoterm', 'hidden', 1);
+        frm.set_df_property('taxes_and_charges', 'hidden', 1);
+
+
 
         frm.set_df_property('total_taxes_and_charges', 'hidden', 1);
     } else {
         frm.set_df_property('total_taxes_and_charges', 'hidden', 0);
+        frm.set_df_property('tax_category', 'hidden', 0);
+        frm.set_df_property('shipping_rule', 'hidden', 0);
+        frm.set_df_property('incoterm', 'hidden', 0);
+        frm.set_df_property('taxes_and_charges', 'hidden', 0);
+
+
+
         frm.set_df_property('taxes', 'hidden', 0);
 
 
@@ -106,7 +119,7 @@ async function handle_tax_logic_from_address(frm) {
         // معفي (Exempt)
         frm.toggle_display('taxes', false);
         frm.set_value('custom_delivery_note_status', 'معفي');
-        frm.set_value('custom_tax_status', 'Non-Taxable');
+        // frm.set_value('custom_tax_status', 'Non-Taxable');
 
         frm.clear_table('taxes');
         frm.refresh_field('taxes');
@@ -114,12 +127,12 @@ async function handle_tax_logic_from_address(frm) {
         // خاضع (Taxable)
         frm.toggle_display('taxes', true);
         frm.set_value('custom_delivery_note_status', 'خاضع');
-        frm.set_value('custom_tax_status', 'Taxable');
+        // frm.set_value('custom_tax_status', 'Taxable');
 
         if (!frm.doc.taxes || frm.doc.taxes.length === 0) {
             let row = frm.add_child('taxes');
             row.charge_type = 'On Net Total';
-            row.account_head = 'VAT - YourCompany'; // Replace with your actual account
+            // row.account_head = 'VAT - YourCompany'; // Replace with your actual account
             row.rate = 14; // Adjust as needed
             frm.refresh_field('taxes');
         }
