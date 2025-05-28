@@ -42,6 +42,7 @@
   "section_break1",
   "rate",
   "amount",
+  "tax_percentage",
   "item_tax_template",
   "custom_actual_tax",
   "total_amount_incl_tax",
@@ -915,11 +916,16 @@
    "fieldname": "custom_batch_number",
    "fieldtype": "Small Text",
    "label": "Batch Number"
+  },
+  {
+   "fieldname": "tax_percentage",
+   "fieldtype": "Percent",
+   "label": "Tax Percentage"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2024-10-02 10:24:23.201715",
+ "modified": "2025-04-23 13:14:08.829943",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Proforma Invoice Item",
