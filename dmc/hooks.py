@@ -134,7 +134,8 @@ override_doctype_class = {
     "Payment Entry": "dmc.payment_entry.CustomPaymentEntry",
     "Material Request": "dmc.material_request.CustomPurchaseRequest",
     "Permission": "dmc.permission_override.CustomPermission",
-    "Leave Application": "dmc.leave_application_override.CustomLeaveApplication"
+    "Leave Application": "dmc.leave_application_override.CustomLeaveApplication",
+    "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt"
 }
 
 # Document Events
@@ -182,7 +183,7 @@ doc_events = {
 # ------------------------------
 #
 # override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "dmc.event.get_events"
+#     "erpnext.stock.doctype.purchase_receipt.purchase_receipt.validate_with_previous_doc": "dmc.overrides.purchase_receipt.validate_with_previous_doc"
 # }
 #
 # each overriding function accepts a `data` argument;

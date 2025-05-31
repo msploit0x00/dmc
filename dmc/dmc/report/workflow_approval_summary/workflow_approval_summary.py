@@ -152,13 +152,13 @@ def execute(filters=None):
         conditions.append("reference_type = %(reference_type)s")
         values["reference_type"] = filters["reference_type"]
 
-    # if filters.get("from_date"):
-    #     conditions.append("DATE(action_timestamp) >= %(from_date)s")
-    #     values["from_date"] = filters["from_date"]
+    if filters.get("from_date"):
+        conditions.append("DATE(action_timestamp) >= %(from_date)s")
+        values["from_date"] = filters["from_date"]
 
-    # if filters.get("to_date"):
-    #     conditions.append("DATE(action_timestamp) <= %(to_date)s")
-    #     values["to_date"] = filters["to_date"]
+    if filters.get("to_date"):
+        conditions.append("DATE(action_timestamp) <= %(to_date)s")
+        values["to_date"] = filters["to_date"]
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
