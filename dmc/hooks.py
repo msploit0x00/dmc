@@ -33,7 +33,8 @@ doctype_js = {
     # "CustomSerialNoBatchSelector" : "public/js/custom_serial_no_batch_selector.js"
     "Sales Order": "public/js/sales_order_edit.js",
     "Proforma Invoice": "public/js/proforma_invoice_edit.js",
-    "Sales Invoice": "public/js/sales_invoice_edit.js"
+    "Sales Invoice": "public/js/sales_invoice_edit.js",
+    "Loan": "public/js/loan_edit.js"
 
 }
 
@@ -183,7 +184,7 @@ doc_events = {
 # ------------------------------
 #
 # override_whitelisted_methods = {
-#     "erpnext.stock.doctype.purchase_receipt.purchase_receipt.validate_with_previous_doc": "dmc.overrides.purchase_receipt.validate_with_previous_doc"
+#     "erpnext.stock.report.stock_ledger.stock_ledger.execute": "dmc.overrides.stock_ledger_override.execute"
 # }
 #
 # each overriding function accepts a `data` argument;
