@@ -144,15 +144,15 @@ override_doctype_class = {
 # Hook on document methods and events
 
 
-doc_events = {
-    "*": {
-        "on_update": "dmc.workflow_logger.log_workflow_action",
-        "on_load": "dmc.workflow_logger.log_workflow_action",
-        "on_submit": "dmc.workflow_logger.log_workflow_action",
-        # 		"on_cancel": "method",
-        # 		"on_trash": "method"
-    }
-}
+# doc_events = {
+#     "*": {
+#         "on_update": "dmc.workflow_logger.log_workflow_action",
+#         "on_load": "dmc.workflow_logger.log_workflow_action",
+#         "on_submit": "dmc.workflow_logger.log_workflow_action",
+#         # 		"on_cancel": "method",
+#         # 		"on_trash": "method"
+#     }
+# }
 
 # Scheduled Tasks
 # ---------------
