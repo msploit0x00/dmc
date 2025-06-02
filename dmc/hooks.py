@@ -34,7 +34,8 @@ doctype_js = {
     "Sales Order": "public/js/sales_order_edit.js",
     "Proforma Invoice": "public/js/proforma_invoice_edit.js",
     "Sales Invoice": "public/js/sales_invoice_edit.js",
-    "Loan": "public/js/loan_edit.js"
+    "Loan": "public/js/loan_edit.js",
+    "Bank Guarantee": "public/js/bank_guarantee_edit.js"
 
 }
 
