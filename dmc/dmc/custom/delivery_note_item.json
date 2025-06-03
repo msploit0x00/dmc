@@ -593,7 +593,7 @@
    "description": null,
    "docstatus": 0,
    "dt": "Delivery Note Item",
-   "fetch_from": "batch_no.custom_gtin",
+   "fetch_from": null,
    "fetch_if_empty": 0,
    "fieldname": "custom_gtin",
    "fieldtype": "Data",
