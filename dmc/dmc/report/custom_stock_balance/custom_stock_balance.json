@@ -1,21 +1,26 @@
 {
- "add_total_row": 1,
- "creation": "2014-10-10 17:58:11.577901",
- "disable_prepared_report": 0,
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2025-06-01 11:54:16.888043",
  "disabled": 0,
  "docstatus": 0,
  "doctype": "Report",
- "idx": 2,
+ "filters": [],
+ "idx": 3,
  "is_standard": "Yes",
- "modified": "2020-04-30 13:46:14.680354",
+ "letter_head": "footer",
+ "letterhead": null,
+ "modified": "2025-06-04 15:12:51.235643",
  "modified_by": "Administrator",
- "module": "Stock",
- "name": "Stock Balance",
+ "module": "Dmc",
+ "name": "Custom Stock Balance",
  "owner": "Administrator",
- "prepared_report": 1,
+ "prepared_report": 0,
  "query": "",
  "ref_doctype": "Stock Ledger Entry",
- "report_name": "Stock Balance",
+ "reference_report": "",
+ "report_name": "Custom Stock Balance",
  "report_type": "Script Report",
  "roles": [
   {
@@ -24,5 +29,6 @@
   {
    "role": "Accounts Manager"
   }
- ]
+ ],
+ "timeout": 0
 }
