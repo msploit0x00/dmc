@@ -59,6 +59,14 @@ function sales_order_type(frm) {
         // frm.set_df_property('custom_tax_status', 'hidden', 1);
         frm.set_df_property('taxes', 'hidden', 1);
         frm.set_df_property('total_taxes_and_charges', 'hidden', 1);
+        frm.set_df_property('taxes', 'hidden', 1);
+        frm.set_df_property('tax_category', 'hidden', 1);
+        frm.set_df_property('shipping_rule', 'hidden', 1);
+        frm.set_df_property('incoterm', 'hidden', 1);
+
+
+        frm.set_df_property('taxes_and_charges', 'hidden', 1);
+
 
         frm.clear_table("taxes");
         frm.refresh_field("taxes");
@@ -66,6 +74,13 @@ function sales_order_type(frm) {
         // frm.set_df_property('custom_tax_status', 'hidden', 0);
         frm.set_df_property('taxes', 'hidden', 0);
         frm.set_df_property('total_taxes_and_charges', 'hidden', 0);
+        frm.set_df_property('tax_category', 'hidden', 0);
+        frm.set_df_property('shipping_rule', 'hidden', 0);
+        frm.set_df_property('incoterm', 'hidden', 0);
+        frm.set_df_property('taxes_and_charges', 'hidden', 0);
+
+
+
     }
 }
 
