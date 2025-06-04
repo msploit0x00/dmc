@@ -9,9 +9,20 @@ frappe.ui.form.on('Purchase Receipt', {
 
         console.log("✅ Custom Purchase Receipt Client Script loaded");
     },
+    base_amount: function (frm) {
+        update_total_amount(frm)
+
+        // Add manual trigger button
+        // frm.add_custom_button("Recalculate Total Qty", () => {
+        //     update_total_qty(frm);
+        // });
+
+        console.log("✅ Custom Purchase Receipt Client Script loaded");
+    },
 
     items_on_form_rendered: function (frm) {
         update_total_qty(frm);
+        update_total_amount(frm)
     },
 
 
@@ -26,23 +37,25 @@ frappe.ui.form.on('Purchase Receipt', {
     //     console.log("✅ Before Save Custom Purchase Receipt Client Script loaded");
     // },
 
-    after_save: function (frm, cdt, cdn) {
-        fetchingValueOfStockRateUom(frm, cdt, cdn)
+    // after_save: function (frm, cdt, cdn) {
+    //     fetchingValueOfStockRateUom(frm, cdt, cdn)
 
 
 
-    },
+    // },
 });
 
 frappe.ui.form.on('Purchase Receipt Item', {
     received_stock_qty: function (frm, cdt, cdn) {
         update_total_qty(frm);
+
     },
     qty: function (frm, cdt, cdn) {
         update_total_qty(frm);
     },
     items_remove: function (frm) {
         update_total_qty(frm);
+        update_total_amount(frm)
     },
 
     uom: function (frm, cdt, cdn) {
@@ -65,6 +78,16 @@ function update_total_qty(frm) {
 
 }
 
+
+function update_total_amount(frm) {
+    let total = 0;
+    (frm.doc.items || []).forEach(item => {
+        total += flt(item.base_amount);
+    });
+    frm.set_value("base_total", total);
+    frm.refresh_field("base_total");
+
+}
 
 
 
