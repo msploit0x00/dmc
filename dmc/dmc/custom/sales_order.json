@@ -742,7 +742,7 @@
    "label": "Sales Order Type",
    "length": 0,
    "link_filters": null,
-   "mandatory_depends_on": "eval:doc.customer === \"1204010001\"",
+   "mandatory_depends_on": "// eval:doc.customer === \"1204010001\"",
    "modified": "2025-02-10 14:32:05.644631",
    "modified_by": "mohamed.hosam@datasofteg.com",
    "module": null,

@@ -450,7 +450,7 @@ class StockBalanceReport:
                 {
                     "label": _("Balance Qty"),
                     "fieldname": "bal_qty",
-                    "fieldtype": "Float",
+                    "fieldtype": "Int",
                     "width": 100,
                     "convertible": "qty",
                 },

@@ -130,3 +130,37 @@ def money_to_arabic_words(amount):
         return num2words(amount, lang='ar') + " جنيه" " فقط لا غير"
     except Exception as e:
         return f"خطأ في التحويل: {str(e)}"
+
+
+# @frappe.whitelist()
+# def set_custom_sales_order_type(doc, method):
+#     if doc.custom_supply_order:
+#         supply_order = frappe.get_doc("Supply order", doc.custom_supply_order)
+#         if getattr(supply_order, "custom_supply_order_type", None) == "Partial Supply Order":
+#             doc.custom_sales_order_type = "أمر بيع - هيئة الشراء الموحد"
+
+
+# @frappe.whitelist()
+# def get_supply_order_type(supply_order_name):
+#     return frappe.db.get_value("Supply order", supply_order_name, "custom_supply_order_type")
+
+
+# def set_missing_values(source, target):
+#     if customer:
+#         target.customer = customer.name
+#         target.customer_name = customer.customer_name
+#     if source.referral_sales_partner:
+#         target.sales_partner = source.referral_sales_partner
+#         target.commission_rate = frappe.get_value(
+#             "Sales Partner", source.referral_sales_partner, "commission_rate"
+#         )
+
+#     # Set custom_sales_order_type if custom_sub_number exists
+#     if hasattr(source, 'custom_sub_number') and source.custom_sub_number:
+#         target.custom_sub_number = source.custom_sub_number
+#         target.custom_sales_order_type = 'أمر بيع - هيئة الشراء الموحد'
+
+#     target.flags.ignore_permissions = ignore_permissions
+#     target.delivery_date = nowdate()
+#     target.run_method("set_missing_values")
+#     target.run_method("calculate_taxes_and_totals")

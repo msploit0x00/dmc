@@ -261,7 +261,7 @@ def get_columns(filters):
             {
                 "label": _("Balance Qty"),
                 "fieldname": "qty_after_transaction",
-                "fieldtype": "Float",
+                "fieldtype": "Int",
                 "width": 100,
                 "convertible": "qty",
             },

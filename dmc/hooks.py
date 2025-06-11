@@ -36,7 +36,8 @@ doctype_js = {
     "Sales Invoice": "public/js/sales_invoice_edit.js",
     "Loan": "public/js/loan_edit.js",
     "Bank Guarantee": "public/js/bank_guarantee_edit.js",
-    "Purchase Receipt": "public/js/purchase_receipt_edit.js"
+    "Purchase Receipt": "public/js/purchase_receipt_edit.js",
+    "Delivery Note": "public/js/delivery_note_edit.js"
 
 }
 
@@ -144,8 +145,6 @@ override_doctype_class = {
 # Document Events
 # ---------------
 # Hook on document methods and events
-
-
 # doc_events = {
 #     "*": {
 #         "on_update": "dmc.workflow_logger.log_workflow_action",
