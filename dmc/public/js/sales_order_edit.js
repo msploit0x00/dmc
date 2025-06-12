@@ -15,14 +15,14 @@ frappe.ui.form.on('Sales Team', {
 frappe.ui.form.on('Sales Order', {
 
     custom_sales_order_type(frm) {
-        sales_order_type(frm);
+        sales_order_type_onchange(frm);
         //   handle_tax_logic_from_address(frm);
     },
     after_save(frm) {
-        sales_order_type(frm);
-        handle_tax_logic_from_address(frm);
+        sales_order_type_aftersave(frm);
+        // handle_tax_logic_from_address(frm);
 
-        toggle_taxes_table(frm);
+        // toggle_taxes_table(frm);
     },
 
     custom_delivery_note_status(frm) { toggle_taxes_table(frm) },
@@ -111,45 +111,41 @@ frappe.ui.form.on('Sales Order Item', {
     }
 });
 
-function sales_order_type(frm) {
+function sales_order_type_onchange(frm) {
     const type = frm.doc.custom_sales_order_type;
 
+    // Only set customer based on type
     if (type === "امر بيع - هيئة الشراء الموحد") {
         frm.set_value("customer", "1204010001");
-
     } else {
         frm.set_value("customer", "");
     }
 
-    if (type === "أمر بيع -بيان") {
+    // Apply visibility logic
+    apply_tax_visibility_logic(frm, type);
+}
 
-        // frm.set_df_property('custom_tax_status', 'hidden', 1);
-        frm.set_df_property('taxes', 'hidden', 1);
-        frm.set_df_property('total_taxes_and_charges', 'hidden', 1);
-        frm.set_df_property('taxes', 'hidden', 1);
-        frm.set_df_property('tax_category', 'hidden', 1);
-        frm.set_df_property('shipping_rule', 'hidden', 1);
-        frm.set_df_property('incoterm', 'hidden', 1);
+function sales_order_type_aftersave(frm) {
+    const type = frm.doc.custom_sales_order_type;
+    apply_tax_visibility_logic(frm, type);
+}
 
+function apply_tax_visibility_logic(frm, type) {
+    const hideTaxFields = (type === "أمر بيع -بيان");
 
-        frm.set_df_property('taxes_and_charges', 'hidden', 1);
+    frm.set_df_property('taxes', 'hidden', hideTaxFields);
+    frm.set_df_property('total_taxes_and_charges', 'hidden', hideTaxFields);
+    frm.set_df_property('tax_category', 'hidden', hideTaxFields);
+    frm.set_df_property('shipping_rule', 'hidden', hideTaxFields);
+    frm.set_df_property('incoterm', 'hidden', hideTaxFields);
+    frm.set_df_property('taxes_and_charges', 'hidden', hideTaxFields);
 
-
+    if (hideTaxFields) {
         frm.clear_table("taxes");
         frm.refresh_field("taxes");
-    } else {
-        // frm.set_df_property('custom_tax_status', 'hidden', 0);
-        frm.set_df_property('taxes', 'hidden', 0);
-        frm.set_df_property('total_taxes_and_charges', 'hidden', 0);
-        frm.set_df_property('tax_category', 'hidden', 0);
-        frm.set_df_property('shipping_rule', 'hidden', 0);
-        frm.set_df_property('incoterm', 'hidden', 0);
-        frm.set_df_property('taxes_and_charges', 'hidden', 0);
-
-
-
     }
 }
+
 
 
 
