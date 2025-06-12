@@ -13,6 +13,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         self.update_total_qty()
         self.fetch_stock_rate_uom()
         self.update_total_amount()
+        self.fetch_base_amount()
 
     def update_total_qty(self):
         total = sum(flt(d.received_stock_qty) for d in self.items)
@@ -53,3 +54,35 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 except Exception as e:
                     frappe.log_error(frappe.get_traceback(),
                                      "Error in fetch_stock_rate_uom")
+
+    def fetch_base_amount(self):
+        """
+        This function loops through items in the Purchase Receipt,
+        fetches the matching item from linked Purchase Invoice,
+        and sets the base_amount accordingly.
+        """
+        if not self.items:
+            frappe.msgprint("No items found in the table.")
+            return
+
+        for item in self.items:
+            if item.purchase_invoice:
+                try:
+                    purchase_invoice = frappe.get_doc(
+                        "Purchase Invoice", item.purchase_invoice)
+                    if purchase_invoice.items:
+                        # Find the matching item by item_code
+                        matched_item = next(
+                            (pi_item for pi_item in purchase_invoice.items if pi_item.item_code == item.item_code), None)
+
+                        if matched_item:
+                            item.base_amount = matched_item.base_amount
+                            # Update total if needed
+                            self.base_total = sum(
+                                item.base_amount for item in self.items)
+                except frappe.DoesNotExistError:
+                    frappe.msgprint(
+                        f"Purchase Invoice {item.purchase_invoice} not found.")
+                except Exception as e:
+                    frappe.log_error(frappe.get_traceback(),
+                                     "Error in fetch_base_amount")
