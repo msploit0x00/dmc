@@ -13,9 +13,16 @@ frappe.ui.form.on('Sales Team', {
 
 
 frappe.ui.form.on('Sales Order', {
+
     custom_sales_order_type(frm) {
         sales_order_type(frm);
         //   handle_tax_logic_from_address(frm);
+    },
+    after_save(frm) {
+        sales_order_type(frm);
+        handle_tax_logic_from_address(frm);
+
+        toggle_taxes_table(frm);
     },
 
     custom_delivery_note_status(frm) { toggle_taxes_table(frm) },
@@ -115,6 +122,7 @@ function sales_order_type(frm) {
     }
 
     if (type === "أمر بيع -بيان") {
+
         // frm.set_df_property('custom_tax_status', 'hidden', 1);
         frm.set_df_property('taxes', 'hidden', 1);
         frm.set_df_property('total_taxes_and_charges', 'hidden', 1);
