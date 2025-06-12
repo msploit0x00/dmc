@@ -1,6 +1,7 @@
 from erpnext.stock.doctype.purchase_receipt.purchase_receipt import PurchaseReceipt
 from frappe.utils import flt
 import frappe
+from frappe import _
 
 
 class CustomPurchaseReceipt(PurchaseReceipt):
@@ -14,6 +15,8 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         self.fetch_stock_rate_uom()
         self.update_total_amount()
         self.fetch_base_amount()
+        self.set_base_amount_from_invoice()
+        self.fetch_invoice_data_for_items()
 
     def update_total_qty(self):
         total = sum(flt(d.received_stock_qty) for d in self.items)
@@ -86,3 +89,69 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 except Exception as e:
                     frappe.log_error(frappe.get_traceback(),
                                      "Error in fetch_base_amount")
+
+    def set_base_amount_from_invoice(self):
+        # Only run if custom_purchase_invoice_name is set
+        if not getattr(self, 'custom_purchase_invoice_name', None):
+            return
+
+        try:
+            pinv = frappe.get_doc('Purchase Invoice',
+                                  self.custom_purchase_invoice_name)
+        except frappe.DoesNotExistError:
+            frappe.msgprint(_("Purchase Invoice {0} not found.").format(
+                self.custom_purchase_invoice_name))
+            return
+
+        # Map item_code to Purchase Invoice Item
+        pinv_map = {item.item_code: item for item in pinv.items}
+
+        for item in self.items:
+            matched = pinv_map.get(item.item_code)
+            if matched:
+                item.base_rate = matched.base_rate
+                item.base_amount = matched.base_amount
+                item.stock_uom_rate = matched.stock_uom_rate
+                item.net_rate = matched.net_rate
+                item.net_amount = matched.net_amount
+                item.base_net_rate = matched.base_net_rate
+                item.base_net_amount = matched.base_net_amount
+
+        # Force recalculation of totals
+        self.calculate_taxes_and_totals()
+
+    def fetch_invoice_data_for_items(self):
+        """
+        For each item in the Purchase Receipt, fetch matching data from the selected Purchase Invoice
+        and update the item's fields. Then update total amount and total quantity.
+        """
+        if not getattr(self, 'custom_purchase_invoice_name', None):
+            frappe.msgprint(_("Please select a Purchase Invoice first."))
+            return
+
+        try:
+            pinv = frappe.get_doc('Purchase Invoice',
+                                  self.custom_purchase_invoice_name)
+        except frappe.DoesNotExistError:
+            frappe.msgprint(_("Purchase Invoice {0} not found.").format(
+                self.custom_purchase_invoice_name))
+            return
+
+        if not pinv.items or not self.items:
+            return
+
+        for item in self.items:
+            matched = next(
+                (pi_item for pi_item in pinv.items if pi_item.item_code == item.item_code), None)
+            if matched:
+                item.base_rate = matched.base_rate
+                item.base_amount = matched.base_amount
+                item.stock_uom_rate = matched.stock_uom_rate
+                item.net_rate = matched.net_rate
+                item.net_amount = matched.net_amount
+                item.base_net_rate = matched.base_net_rate
+                item.base_net_amount = matched.base_net_amount
+
+        # Now update totals
+        self.update_total_amount()
+        self.update_total_qty()

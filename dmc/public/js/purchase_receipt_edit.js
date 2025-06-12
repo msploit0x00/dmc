@@ -2,7 +2,11 @@ frappe.ui.form.on('Purchase Receipt', {
     // validate(frm) {
     //     fetchBaseAmountFromInvoice(frm);
     // },
-
+    // onload: function (frm) {
+    //     setTimeout(function () {
+    //         fetch_invoice_data_for_items(frm);
+    //     }, 500); // 500ms delay
+    // },
     received_stock_qty: function (frm) {
         update_total_qty(frm);
 
@@ -14,7 +18,7 @@ frappe.ui.form.on('Purchase Receipt', {
         console.log("✅ Custom Purchase Receipt Client Script loaded");
     },
     base_amount: function (frm) {
-        update_total_amount(frm)
+        // update_total_amount(frm)
 
         // Add manual trigger button
         // frm.add_custom_button("Recalculate Total Qty", () => {
@@ -26,18 +30,13 @@ frappe.ui.form.on('Purchase Receipt', {
 
     items_on_form_rendered: function (frm) {
         update_total_qty(frm);
-        update_total_amount(frm)
+        // update_total_amount(frm)
     },
 
     scan_barcode: function (frm) {
-        // Wait for the item row to be added
-        setTimeout(() => {
-            let last_item = frm.doc.items && frm.doc.items[frm.doc.items.length - 1];
-            if (last_item && frm.doc.custom_purchase_order_name) {
-                frappe.model.set_value(last_item.doctype, last_item.name, 'purchase_order', frm.doc.custom_purchase_order_name);
-            }
-
-        }, 300);
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500); // 500ms delay
     },
 
     // You might also want to catch any manual row addition
@@ -50,9 +49,9 @@ frappe.ui.form.on('Purchase Receipt', {
 
     refresh: function (frm) {
         // Add custom button if needed
-        frm.add_custom_button(__('Fetch Base Amount'), function () {
-            fetchBaseAmount(frm);
-        });
+        // frm.add_custom_button(__('Fetch Base Amount'), function () {
+        //     fetchBaseAmount(frm);
+        // });
     }
 
     // before_save: function (frm) {
@@ -65,13 +64,16 @@ frappe.ui.form.on('Purchase Receipt', {
 
     //     console.log("✅ Before Save Custom Purchase Receipt Client Script loaded");
     // },
+    ,
+    after_save: function (frm, cdt, cdn) {
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500);
 
-    // after_save: function (frm, cdt, cdn) {
-    //     fetchingValueOfStockRateUom(frm, cdt, cdn)
 
 
 
-    // },
+    },
 });
 
 frappe.ui.form.on('Purchase Receipt Item', {
@@ -80,40 +82,57 @@ frappe.ui.form.on('Purchase Receipt Item', {
         update_total_qty(frm);
 
     },
-    qty: function (frm, cdt, cdn) {
-        update_total_qty(frm);
-    },
-    items_add: function (frm) {
-        fetchBaseAmount(frm, cdt, cdn);
+
+    items_add: function (frm, cdt, cdn) {
+        // fetchBaseAmount(frm, cdt, cdn);
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500);
+
 
     },
     items_remove: function (frm) {
         update_total_qty(frm);
-        update_total_amount(frm)
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500);
+
+        // update_total_amount(frm)
+
     },
 
     uom: function (frm, cdt, cdn) {
         fetchingValueOfStockRateUom(frm, cdt, cdn)
         // fetchBaseAmountFromInvoice(frm, cdt, cdn);
         fetchBaseAmount(frm, cdt, cdn);
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500);
 
 
     },
     qty: function (frm, cdt, cdn) {
         fetchingValueOfStockRateUom(frm, cdt, cdn)
         fetchBaseAmount(frm, cdt, cdn);
+        update_total_qty(frm,);
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500);
+
 
 
     },
 
-    purchase_invoice: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-        if (row.purchase_invoice) {
-            fetchBaseAmount(frm, cdt, cdn);
-        }
-    },
+    // purchase_invoice: function (frm, cdt, cdn) {
+    //     let row = locals[cdt][cdn];
+    //     if (row.purchase_invoice) {
+    //         fetchBaseAmount(frm, cdt, cdn);
+    //     }
+    // },
 
-
+    item_code: function (frm, cdt, cdn) {
+        fetch_invoice_data_for_items(frm);
+    }
 
 });
 
@@ -223,5 +242,30 @@ function fetchBaseAmount(frm, cdt, cdn) {
             }
         });
     }, 1000);
+}
+
+function fetch_invoice_data_for_items(frm) {
+    if (!frm.doc.custom_purchase_invoice_name) {
+        frappe.msgprint(__('Please select a Purchase Invoice first.'));
+        return;
+    }
+    frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
+        if (pinv && pinv.items && pinv.items.length) {
+            frm.doc.items.forEach(item => {
+                let matched = pinv.items.find(pi_item => pi_item.item_code === item.item_code);
+                if (matched) {
+                    frappe.model.set_value(item.doctype, item.name, 'base_rate', matched.base_rate);
+                    frappe.model.set_value(item.doctype, item.name, 'base_amount', matched.base_amount);
+                    frappe.model.set_value(item.doctype, item.name, 'stock_uom_rate', matched.stock_uom_rate);
+                    frappe.model.set_value(item.doctype, item.name, 'net_rate', matched.net_rate);
+                    frappe.model.set_value(item.doctype, item.name, 'net_amount', matched.net_amount);
+                    frappe.model.set_value(item.doctype, item.name, 'base_net_rate', matched.base_net_rate);
+                    frappe.model.set_value(item.doctype, item.name, 'base_net_amount', matched.base_net_amount);
+                }
+            });
+        }
+        update_total_amount(frm)
+        update_total_qty(frm)
+    });
 }
 

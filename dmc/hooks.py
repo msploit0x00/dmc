@@ -145,6 +145,8 @@ override_doctype_class = {
 # Document Events
 # ---------------
 # Hook on document methods and events
+
+
 # doc_events = {
 #     "*": {
 #         "on_update": "dmc.workflow_logger.log_workflow_action",
