@@ -1,5 +1,5 @@
 from erpnext.stock.doctype.purchase_receipt.purchase_receipt import PurchaseReceipt
-from frappe.utils import flt
+from frappe.utils import flt, money_in_words
 import frappe
 from frappe import _
 
@@ -11,12 +11,23 @@ class CustomPurchaseReceipt(PurchaseReceipt):
 
     def validate(self):
         super().validate()
-        self.update_total_qty()
-        self.fetch_stock_rate_uom()
-        self.update_total_amount()
-        self.fetch_base_amount()
-        self.set_base_amount_from_invoice()
         self.fetch_invoice_data_for_items()
+        self.update_total_qty()
+        self.update_total_amount()
+        # Set base_grand_total and base_rounded_total based on base_total
+        self.base_grand_total = self.base_total
+        self.base_rounded_total = round(self.base_total)
+        self.base_tax_withholding_net_total = 0
+
+        # Set base_in_words
+        currency = getattr(self, "company_currency", None) or getattr(
+            self, "currency", None) or "EGP"
+        self.base_in_words = money_in_words(self.base_rounded_total, currency)
+
+    def after_save(self):
+        # Clear the field after saving and persist to DB
+        self.base_tax_withholding_net_total = 0
+        self.db_set('base_tax_withholding_net_total', 0)
 
     def update_total_qty(self):
         total = sum(flt(d.received_stock_qty) for d in self.items)
@@ -123,10 +134,9 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     def fetch_invoice_data_for_items(self):
         """
         For each item in the Purchase Receipt, fetch matching data from the selected Purchase Invoice
-        and update the item's fields. Then update total amount and total quantity.
+        and update the item's fields.
         """
         if not getattr(self, 'custom_purchase_invoice_name', None):
-            frappe.msgprint(_("Please select a Purchase Invoice first."))
             return
 
         try:
@@ -151,7 +161,3 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 item.net_amount = matched.net_amount
                 item.base_net_rate = matched.base_net_rate
                 item.base_net_amount = matched.base_net_amount
-
-        # Now update totals
-        self.update_total_amount()
-        self.update_total_qty()

@@ -70,9 +70,9 @@ frappe.ui.form.on('Purchase Receipt', {
             fetch_invoice_data_for_items(frm);
         }, 500);
 
-
-
-
+        // Clear the field after saving
+        frm.set_value('base_tax_withholding_net_total', 0);
+        frm.refresh_field('base_tax_withholding_net_total');
     },
 });
 
