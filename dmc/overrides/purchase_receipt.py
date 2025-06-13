@@ -10,19 +10,53 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         pass
 
     def validate(self):
-        super().validate()
-        self.fetch_invoice_data_for_items()
-        self.update_total_qty()
-        self.update_total_amount()
-        # Set base_grand_total and base_rounded_total based on base_total
-        self.base_grand_total = self.base_total
-        self.base_rounded_total = round(self.base_total)
-        self.base_tax_withholding_net_total = 0
+        if self.custom_purchase_invoice_name:
+            try:
+                pinv = frappe.get_doc('Purchase Invoice',
+                                      self.custom_purchase_invoice_name)
 
-        # Set base_in_words
-        currency = getattr(self, "company_currency", None) or getattr(
-            self, "currency", None) or "EGP"
-        self.base_in_words = money_in_words(self.base_rounded_total, currency)
+                # Copy taxes
+                self.taxes = []
+                for tax in pinv.taxes:
+                    self.append('taxes', tax.as_dict(copy=True))
+
+                # Copy items
+                for item in self.items:
+                    pi_item = next(
+                        (x for x in pinv.items if x.item_code == item.item_code), None)
+                    if pi_item:
+                        original_qty = item.qty
+                        original_uom = item.uom
+                        for key, value in pi_item.as_dict().items():
+                            if key not in ['qty', 'uom', 'name', 'doctype', 'parent', 'parentfield', 'parenttype']:
+                                setattr(item, key, value)
+                        item.qty = original_qty
+                        item.uom = original_uom
+
+                # Copy all totals
+                for field in [
+                    'total', 'net_total', 'base_total', 'base_net_total',
+                    'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
+                ]:
+                    setattr(self, field, getattr(pinv, field))
+
+                self.base_tax_withholding_net_total = 0
+                currency = getattr(self, "company_currency", None) or getattr(
+                    self, "currency", None) or "EGP"
+                self.base_in_words = money_in_words(
+                    self.base_rounded_total, currency)
+
+            except Exception as e:
+                frappe.log_error(
+                    f"Error updating from purchase invoice: {str(e)}", "Purchase Receipt Update Error")
+
+        # Always update total_qty from items
+        self.total_qty = sum(flt(item.qty) for item in self.items)
+
+    def on_submit(self):
+        self.validate()
+        self.total_qty = sum(flt(item.qty) for item in self.items)
+        self.db_set('base_tax_withholding_net_total', 0)
 
     def after_save(self):
         # Clear the field after saving and persist to DB
