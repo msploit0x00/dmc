@@ -27,11 +27,13 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     if pi_item:
                         original_qty = item.qty
                         original_uom = item.uom
+                        original_warehouse = item.warehouse
                         for key, value in pi_item.as_dict().items():
-                            if key not in ['qty', 'uom', 'name', 'doctype', 'parent', 'parentfield', 'parenttype']:
+                            if key not in ['qty', 'uom', 'warehouse', 'name', 'doctype', 'parent', 'parentfield', 'parenttype']:
                                 setattr(item, key, value)
                         item.qty = original_qty
                         item.uom = original_uom
+                        item.warehouse = original_warehouse
 
                 # Copy all totals
                 for field in [
