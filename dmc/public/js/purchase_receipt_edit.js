@@ -41,6 +41,12 @@ frappe.ui.form.on('Purchase Receipt', {
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
             update_purchase_order_and_purchase_invoice_fields(frm);
+            // --- Fix: recalculate received_stock_qty for all items after barcode scan ---
+            (frm.doc.items || []).forEach(item => {
+                if (item.qty && item.conversion_factor) {
+                    frappe.model.set_value(item.doctype, item.name, 'received_stock_qty', flt(item.qty) * flt(item.conversion_factor));
+                }
+            });
         }, 500); // 500ms delay
     },
 
@@ -91,19 +97,24 @@ frappe.ui.form.on('Purchase Receipt Item', {
     },
 
     uom: function (frm, cdt, cdn) {
-        fetchBaseAmountFromInvoiceOnly(frm, cdt, cdn);
-        fetchingValueOfStockRateUom(frm, cdt, cdn);
-        fetchBaseAmount(frm, cdt, cdn);
+        // Only update received_stock_qty, then fetch invoice data
+        let row = locals[cdt][cdn];
+        if (row.qty && row.conversion_factor) {
+            frappe.model.set_value(cdt, cdn, 'received_stock_qty', flt(row.qty) * flt(row.conversion_factor));
+        }
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
     },
 
     qty: function (frm, cdt, cdn) {
-        fetchBaseAmountFromInvoiceOnly(frm, cdt, cdn);
-        fetchingValueOfStockRateUom(frm, cdt, cdn);
-        fetchBaseAmount(frm, cdt, cdn);
+        // Only update received_stock_qty, then fetch invoice data
+        let row = locals[cdt][cdn];
+        if (row.qty && row.conversion_factor) {
+            frappe.model.set_value(cdt, cdn, 'received_stock_qty', flt(row.qty) * flt(row.conversion_factor));
+        }
         update_total_qty(frm);
+        frappe.model.set_value(cdt, cdn, 'batch_no', null);
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
@@ -119,24 +130,26 @@ frappe.ui.form.on('Purchase Receipt Item', {
 });
 
 function update_total_qty(frm) {
+    // Only update if not submitted
+    if (frm.doc.docstatus === 1) return;
     let total = 0;
     (frm.doc.items || []).forEach(item => {
         total += flt(item.received_stock_qty);
     });
     frm.set_value("total_qty", total);
     frm.refresh_field("total_qty");
-
 }
 
 
 function update_total_amount(frm) {
+    // Only update if not submitted
+    if (frm.doc.docstatus === 1) return;
     let total = 0;
     (frm.doc.items || []).forEach(item => {
         total += flt(item.base_amount);
     });
     frm.set_value("base_total", total);
     frm.refresh_field("base_total");
-
 }
 
 

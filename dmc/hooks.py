@@ -1,3 +1,6 @@
+from dmc.monkey_patches import apply_monkey_patches
+apply_monkey_patches()
+
 app_name = "dmc"
 app_title = "Dmc"
 app_publisher = "mina"
@@ -139,7 +142,8 @@ override_doctype_class = {
     "Material Request": "dmc.material_request.CustomPurchaseRequest",
     "Permission": "dmc.permission_override.CustomPermission",
     "Leave Application": "dmc.leave_application_override.CustomLeaveApplication",
-    "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt"
+    "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt",
+    "Serial and Batch Bundle": "dmc.overrides.serial_batch_bundle.CustomSerialandBatchBundle"
 }
 
 # Document Events

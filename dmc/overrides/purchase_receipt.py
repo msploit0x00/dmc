@@ -6,19 +6,19 @@ from frappe import _
 
 class CustomPurchaseReceipt(PurchaseReceipt):
     def validate_with_previous_doc(self):
+        # Disabled all core validations in this method as per user request
         pass
 
     def validate(self):
+        super().validate()
         if self.custom_purchase_invoice_name:
             try:
                 pinv = frappe.get_doc('Purchase Invoice',
                                       self.custom_purchase_invoice_name)
-
                 # Copy taxes
                 self.taxes = []
                 for tax in pinv.taxes:
                     self.append('taxes', tax.as_dict(copy=True))
-
                 # Copy items
                 for item in self.items:
                     pi_item = next(
@@ -28,56 +28,119 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                         original_uom = item.uom
                         original_warehouse = item.warehouse
                         for key, value in pi_item.as_dict().items():
-                            if key not in ['qty', 'uom', 'warehouse', 'name', 'doctype', 'parent', 'parentfield', 'parenttype']:
+                            if key not in ['qty', 'uom', 'warehouse', 'batch_no', 'name', 'doctype', 'parent', 'parentfield', 'parenttype', 'received_stock_qty']:
                                 setattr(item, key, value)
                         item.qty = original_qty
                         item.uom = original_uom
                         item.warehouse = original_warehouse
-
+                        # Always set received_stock_qty to invoice qty
+                        item.received_stock_qty = pi_item.qty
                 # Copy all totals
                 for field in [
                     'total', 'net_total', 'base_total', 'base_net_total',
                     'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
                 ]:
                     setattr(self, field, getattr(pinv, field))
-
                 self.base_tax_withholding_net_total = 0
                 currency = getattr(self, "company_currency", None) or getattr(
                     self, "currency", None) or "EGP"
                 self.base_in_words = money_in_words(
                     self.base_rounded_total, currency)
-
+                # Set in_words from invoice
+                if hasattr(pinv, 'in_words') and pinv.in_words:
+                    self.in_words = pinv.in_words
             except Exception as e:
                 frappe.log_error(
                     f"Error updating from purchase invoice: {str(e)}", "Purchase Receipt Update Error")
-
+        else:
+            # Only recalculate if no invoice
+            self.calculate_taxes_and_totals()
+            self.set_rounded_total()
+            self.set_in_words()
         # Always update total_qty from items using received_stock_qty
         self.total_qty = sum(flt(item.received_stock_qty)
                              for item in self.items)
         self.db_set('total_qty', self.total_qty)
+        # --- Guard: Ensure received_stock_qty is always correct for all items ---
+        for item in self.items:
+            if not item.received_stock_qty or item.received_stock_qty == 0:
+                if item.qty and item.conversion_factor:
+                    item.received_stock_qty = flt(
+                        item.qty) * flt(item.conversion_factor)
 
-        # Calculate totals if not set from purchase invoice
-        if not self.custom_purchase_invoice_name:
+    def on_submit(self):
+        super().on_submit()
+        if self.custom_purchase_invoice_name:
+            try:
+                pinv = frappe.get_doc('Purchase Invoice',
+                                      self.custom_purchase_invoice_name)
+                pinv_map = {item.item_code: item for item in pinv.items}
+                for item in self.items:
+                    matched = pinv_map.get(item.item_code)
+                    if matched:
+                        item.received_stock_qty = matched.qty
+                # Copy all totals from invoice
+                for field in [
+                    'total', 'net_total', 'base_total', 'base_net_total',
+                    'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
+                ]:
+                    setattr(self, field, getattr(pinv, field))
+                self.base_tax_withholding_net_total = 0
+                currency = getattr(self, "company_currency", None) or getattr(
+                    self, "currency", None) or "EGP"
+                self.base_in_words = money_in_words(
+                    self.base_rounded_total, currency)
+                if hasattr(pinv, 'in_words') and pinv.in_words:
+                    self.in_words = pinv.in_words
+                self.total_qty = sum(flt(item.received_stock_qty)
+                                     for item in self.items)
+                self.db_set('total_qty', self.total_qty)
+                self.db_set('base_tax_withholding_net_total', 0)
+            except Exception as e:
+                frappe.log_error(
+                    f"Error in on_submit: {str(e)}", "Purchase Receipt Submit Error")
+        else:
             self.calculate_taxes_and_totals()
             self.set_rounded_total()
             self.set_in_words()
-
-    def on_submit(self):
-        self.validate()
-        # Update total_qty using received_stock_qty
-        self.total_qty = sum(flt(item.received_stock_qty)
-                             for item in self.items)
-        self.db_set('total_qty', self.total_qty)
-        self.db_set('base_tax_withholding_net_total', 0)
+            self.total_qty = sum(flt(item.received_stock_qty)
+                                 for item in self.items)
+            self.db_set('total_qty', self.total_qty)
+            self.db_set('base_tax_withholding_net_total', 0)
 
     def after_save(self):
-        # Update total_qty using received_stock_qty
-        self.total_qty = sum(flt(item.received_stock_qty)
-                             for item in self.items)
-        self.db_set('total_qty', self.total_qty)
-        # Clear the field after saving and persist to DB
-        self.base_tax_withholding_net_total = 0
-        self.db_set('base_tax_withholding_net_total', 0)
+        super().after_save()
+        if self.custom_purchase_invoice_name:
+            try:
+                pinv = frappe.get_doc('Purchase Invoice',
+                                      self.custom_purchase_invoice_name)
+                for field in [
+                    'total', 'net_total', 'base_total', 'base_net_total',
+                    'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
+                ]:
+                    setattr(self, field, getattr(pinv, field))
+                self.base_tax_withholding_net_total = 0
+                currency = getattr(self, "company_currency", None) or getattr(
+                    self, "currency", None) or "EGP"
+                self.base_in_words = money_in_words(
+                    self.base_rounded_total, currency)
+                if hasattr(pinv, 'in_words') and pinv.in_words:
+                    self.in_words = pinv.in_words
+                self.total_qty = sum(flt(item.received_stock_qty)
+                                     for item in self.items)
+                self.db_set('total_qty', self.total_qty)
+                self.db_set('base_tax_withholding_net_total', 0)
+            except Exception as e:
+                frappe.log_error(
+                    f"Error in after_save: {str(e)}", "Purchase Receipt After Save Error")
+        else:
+            self.calculate_taxes_and_totals()
+            self.set_rounded_total()
+            self.set_in_words()
+            self.total_qty = sum(flt(item.received_stock_qty)
+                                 for item in self.items)
+            self.db_set('total_qty', self.total_qty)
+            self.db_set('base_tax_withholding_net_total', 0)
 
     def update_total_qty(self):
         total = sum(flt(d.received_stock_qty) for d in self.items)
@@ -103,10 +166,43 @@ class CustomPurchaseReceipt(PurchaseReceipt):
 
     def set_in_words(self):
         """Set amount in words"""
-        if self.grand_total:
-            self.in_words = money_in_words(self.rounded_total, self.currency)
+        # Try to fetch from linked Purchase Invoice if available
+        if getattr(self, 'custom_purchase_invoice_name', None):
+            try:
+                pinv = frappe.get_doc('Purchase Invoice',
+                                      self.custom_purchase_invoice_name)
+                if hasattr(pinv, 'in_words') and pinv.in_words:
+                    self.in_words = pinv.in_words
+                else:
+                    # fallback to rounded_total or grand_total
+                    if self.rounded_total:
+                        self.in_words = money_in_words(
+                            self.rounded_total, self.currency)
+                    elif self.grand_total:
+                        self.in_words = money_in_words(
+                            self.grand_total, self.currency)
+            except Exception:
+                # fallback to rounded_total or grand_total
+                if self.rounded_total:
+                    self.in_words = money_in_words(
+                        self.rounded_total, self.currency)
+                elif self.grand_total:
+                    self.in_words = money_in_words(
+                        self.grand_total, self.currency)
+        else:
+            if self.rounded_total:
+                self.in_words = money_in_words(
+                    self.rounded_total, self.currency)
+            elif self.grand_total:
+                self.in_words = money_in_words(self.grand_total, self.currency)
+
+        # Always set base_in_words as before
+        if self.base_rounded_total:
             self.base_in_words = money_in_words(
                 self.base_rounded_total, self.company_currency)
+        elif self.base_grand_total:
+            self.base_in_words = money_in_words(
+                self.base_grand_total, self.company_currency)
 
     def fetch_stock_rate_uom(self):
         """
