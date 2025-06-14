@@ -6,7 +6,6 @@ from frappe import _
 
 class CustomPurchaseReceipt(PurchaseReceipt):
     def validate_with_previous_doc(self):
-
         pass
 
     def validate(self):
@@ -52,15 +51,30 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 frappe.log_error(
                     f"Error updating from purchase invoice: {str(e)}", "Purchase Receipt Update Error")
 
-        # Always update total_qty from items
-        self.total_qty = sum(flt(item.qty) for item in self.items)
+        # Always update total_qty from items using received_stock_qty
+        self.total_qty = sum(flt(item.received_stock_qty)
+                             for item in self.items)
+        self.db_set('total_qty', self.total_qty)
+
+        # Calculate totals if not set from purchase invoice
+        if not self.custom_purchase_invoice_name:
+            self.calculate_taxes_and_totals()
+            self.set_rounded_total()
+            self.set_in_words()
 
     def on_submit(self):
         self.validate()
-        self.total_qty = sum(flt(item.qty) for item in self.items)
+        # Update total_qty using received_stock_qty
+        self.total_qty = sum(flt(item.received_stock_qty)
+                             for item in self.items)
+        self.db_set('total_qty', self.total_qty)
         self.db_set('base_tax_withholding_net_total', 0)
 
     def after_save(self):
+        # Update total_qty using received_stock_qty
+        self.total_qty = sum(flt(item.received_stock_qty)
+                             for item in self.items)
+        self.db_set('total_qty', self.total_qty)
         # Clear the field after saving and persist to DB
         self.base_tax_withholding_net_total = 0
         self.db_set('base_tax_withholding_net_total', 0)
@@ -68,10 +82,31 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     def update_total_qty(self):
         total = sum(flt(d.received_stock_qty) for d in self.items)
         self.total_qty = total
+        self.db_set('total_qty', total)
 
     def update_total_amount(self):
         total = sum(flt(d.base_amount) for d in self.items)
         self.base_total = total
+        self.db_set('base_total', total)
+
+    def set_rounded_total(self):
+        """Calculate and set rounded total"""
+        if not self.disable_rounded_total:
+            self.rounding_adjustment = flt(
+                self.grand_total - self.rounded_total, self.precision("rounding_adjustment"))
+            self.rounded_total = flt(
+                self.grand_total, self.precision("rounded_total"))
+            self.base_rounding_adjustment = flt(
+                self.base_grand_total - self.base_rounded_total, self.precision("base_rounding_adjustment"))
+            self.base_rounded_total = flt(
+                self.base_grand_total, self.precision("base_rounded_total"))
+
+    def set_in_words(self):
+        """Set amount in words"""
+        if self.grand_total:
+            self.in_words = money_in_words(self.rounded_total, self.currency)
+            self.base_in_words = money_in_words(
+                self.base_rounded_total, self.company_currency)
 
     def fetch_stock_rate_uom(self):
         """

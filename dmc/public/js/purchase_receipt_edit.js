@@ -72,66 +72,50 @@ frappe.ui.form.on('Purchase Receipt', {
 });
 
 frappe.ui.form.on('Purchase Receipt Item', {
-
     received_stock_qty: function (frm, cdt, cdn) {
         update_total_qty(frm);
-
     },
 
     items_add: function (frm, cdt, cdn) {
-        // fetchBaseAmount(frm, cdt, cdn);
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
-
             update_purchase_order_and_purchase_invoice_fields(frm);
-
         }, 500);
-
-
     },
+
     items_remove: function (frm) {
         update_total_qty(frm);
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
-
-        // update_total_amount(frm)
-
     },
 
     uom: function (frm, cdt, cdn) {
-        fetchingValueOfStockRateUom(frm, cdt, cdn)
-        // fetchBaseAmountFromInvoice(frm, cdt, cdn);
+        fetchBaseAmountFromInvoiceOnly(frm, cdt, cdn);
+        fetchingValueOfStockRateUom(frm, cdt, cdn);
         fetchBaseAmount(frm, cdt, cdn);
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
-
-
     },
+
     qty: function (frm, cdt, cdn) {
-        fetchingValueOfStockRateUom(frm, cdt, cdn)
+        fetchBaseAmountFromInvoiceOnly(frm, cdt, cdn);
+        fetchingValueOfStockRateUom(frm, cdt, cdn);
         fetchBaseAmount(frm, cdt, cdn);
-        update_total_qty(frm,);
+        update_total_qty(frm);
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
-
-
-
     },
 
-    // purchase_invoice: function (frm, cdt, cdn) {
-    //     let row = locals[cdt][cdn];
-    //     if (row.purchase_invoice) {
-    //         fetchBaseAmount(frm, cdt, cdn);
-    //     }
-    // },
+    base_rate: function (frm, cdt, cdn) {
+        // No local calculation for base_amount here
+    },
 
     item_code: function (frm, cdt, cdn) {
         fetch_invoice_data_for_items(frm);
     }
-
 });
 
 function update_total_qty(frm) {
@@ -186,29 +170,20 @@ function fetchingValueOfStockRateUom(frm, cdt, cdn) {
 
 }
 
-// function fetchBaseAmountFromInvoice(frm, cdt, cdn) {
-//     if (!frm.doc.items || frm.doc.items.length === 0) {
-//         frappe.msgprint(__("No items found in the table."));
-//         return;
-//     }
-
-//     setTimeout(() => {
-//         frm.doc.items.forEach(item => {
-//             if (item.purchase_invoice) {
-//                 frappe.db.get_doc("Purchase Invoice", item.purchase_invoice).then(purchase_invoice => {
-//                     console.log("📄 Fetched Purchase Invoice:", purchase_invoice);
-//                     if (purchase_invoice && purchase_invoice.items) {
-//                         let matched_item = purchase_invoice.items.find(pi_item => pi_item.item_code === item.item_code);
-
-//                         if (matched_item) {
-//                             frappe.model.set_value(item.doctype, item.name, "base_amount", matched_item.base_amount);
-//                         }
-//                     }
-//                 });
-//             }
-//         });
-//     }, 1000);
-// }
+function fetchBaseAmountFromInvoiceOnly(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    if (!frm.doc.custom_purchase_invoice_name || !row.item_code) return;
+    frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
+        if (pinv && pinv.items) {
+            let matched_item = pinv.items.find(pi_item => pi_item.item_code === row.item_code);
+            if (matched_item) {
+                frappe.model.set_value(cdt, cdn, 'base_amount', matched_item.base_amount);
+            } else {
+                frappe.msgprint(__('No matching item in the selected Purchase Invoice for item: ' + row.item_code));
+            }
+        }
+    });
+}
 
 function fetchBaseAmount(frm, cdt, cdn) {
     if (!frm.doc.items || frm.doc.items.length === 0) {
