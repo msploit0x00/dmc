@@ -18,6 +18,15 @@ frappe.ui.form.on('Sales Order', {
         sales_order_type_onchange(frm);
         //   handle_tax_logic_from_address(frm);
     },
+    onload(frm) {
+        if (frm.doc.custom_sub_number) {
+            setTimeout(function () {
+                frm.set_value('custom_sales_order_type', 'امر بيع - هيئة الشراء الموحد');
+                frm.set_df_property('custom_sales_order_type', 'read_only', 1);
+                frm.set_df_property('customer', 'read_only', 1);
+            }, 400);
+        }
+    },
     after_save(frm) {
         sales_order_type_aftersave(frm);
         // handle_tax_logic_from_address(frm);
