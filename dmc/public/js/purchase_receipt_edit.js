@@ -69,16 +69,6 @@ frappe.ui.form.on('Purchase Receipt', {
 
     //     console.log("✅ Before Save Custom Purchase Receipt Client Script loaded");
     // },
-    ,
-    after_save: function (frm, cdt, cdn) {
-        setTimeout(function () {
-            fetch_invoice_data_for_items(frm);
-        }, 500);
-
-        // Clear the field after saving
-        frm.set_value('base_tax_withholding_net_total', 0);
-        frm.refresh_field('base_tax_withholding_net_total');
-    },
 });
 
 frappe.ui.form.on('Purchase Receipt Item', {
@@ -257,6 +247,7 @@ function fetch_invoice_data_for_items(frm) {
         frappe.msgprint(__('Please select a Purchase Invoice first.'));
         return;
     }
+    console.log("Trying to fetch Purchase Invoice:", frm.doc.custom_purchase_invoice_name);
     frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
         if (pinv && pinv.items && pinv.items.length) {
             frm.doc.items.forEach(item => {
