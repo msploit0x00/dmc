@@ -33,14 +33,14 @@ app_include_py = ["dmc.api"]
 
 # include js in doctype views
 doctype_js = {
-    # "CustomSerialNoBatchSelector" : "public/js/custom_serial_no_batch_selector.js"
     "Sales Order": "public/js/sales_order_edit.js",
     "Proforma Invoice": "public/js/proforma_invoice_edit.js",
     "Sales Invoice": "public/js/sales_invoice_edit.js",
     "Loan": "public/js/loan_edit.js",
     "Bank Guarantee": "public/js/bank_guarantee_edit.js",
     "Purchase Receipt": "public/js/purchase_receipt_edit.js",
-    "Delivery Note": "public/js/delivery_note_edit.js"
+    "Delivery Note": "public/js/delivery_note_edit.js",
+    # "Employee Checkin": "public/js/employee_checkin_edit.js"
 
 }
 
@@ -143,7 +143,8 @@ override_doctype_class = {
     "Permission": "dmc.permission_override.CustomPermission",
     "Leave Application": "dmc.leave_application_override.CustomLeaveApplication",
     "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt",
-    "Serial and Batch Bundle": "dmc.overrides.serial_batch_bundle.CustomSerialandBatchBundle"
+    "Serial and Batch Bundle": "dmc.overrides.serial_batch_bundle.CustomSerialandBatchBundle",
+    "Employee Checkin": "dmc.overrides.employee_checkin_override.CustomEmployeeCheckin"
 }
 
 # Document Events
