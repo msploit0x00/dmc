@@ -144,7 +144,7 @@ override_doctype_class = {
     "Leave Application": "dmc.leave_application_override.CustomLeaveApplication",
     "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt",
     "Serial and Batch Bundle": "dmc.overrides.serial_batch_bundle.CustomSerialandBatchBundle",
-    "Employee Checkin": "dmc.overrides.employee_checkin_override.CustomEmployeeCheckin"
+    # "Employee Checkin": "dmc.overrides.employee_checkin_override.CustomEmployeeCheckin"
 }
 
 # Document Events
