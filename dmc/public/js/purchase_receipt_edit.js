@@ -63,6 +63,10 @@ frappe.ui.form.on('Purchase Receipt', {
         // frm.add_custom_button(__('Fetch Base Amount'), function () {
         //     fetchBaseAmount(frm);
         // });
+        // Make form read-only after submit
+        if (frm.doc.docstatus === 1) {
+            frm.set_read_only();
+        }
     }
 
     // before_save: function (frm) {
@@ -132,10 +136,17 @@ frappe.ui.form.on('Purchase Receipt Item', {
 function update_total_qty(frm) {
     // Only update if not submitted
     if (frm.doc.docstatus === 1) return;
+    let all_unit = (frm.doc.items || []).every(item => item.uom === "Unit");
     let total = 0;
-    (frm.doc.items || []).forEach(item => {
-        total += flt(item.received_stock_qty);
-    });
+    if (all_unit) {
+        (frm.doc.items || []).forEach(item => {
+            total += flt(item.qty);
+        });
+    } else {
+        (frm.doc.items || []).forEach(item => {
+            total += flt(item.received_stock_qty);
+        });
+    }
     frm.set_value("total_qty", total);
     frm.refresh_field("total_qty");
 }
