@@ -58,8 +58,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             self.set_rounded_total()
             self.set_in_words()
         # Always update total_qty from items using received_stock_qty
-        self.total_qty = sum(flt(item.received_stock_qty)
-                             for item in self.items)
+        self.total_qty = self.calculate_total_qty()
         self.db_set('total_qty', self.total_qty)
         # --- Guard: Ensure received_stock_qty is always correct for all items ---
         for item in self.items:
@@ -92,8 +91,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     self.base_rounded_total, currency)
                 if hasattr(pinv, 'in_words') and pinv.in_words:
                     self.in_words = pinv.in_words
-                self.total_qty = sum(flt(item.received_stock_qty)
-                                     for item in self.items)
+                self.total_qty = self.calculate_total_qty()
                 self.db_set('total_qty', self.total_qty)
                 self.db_set('base_tax_withholding_net_total', 0)
             except Exception as e:
@@ -103,8 +101,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             self.calculate_taxes_and_totals()
             self.set_rounded_total()
             self.set_in_words()
-            self.total_qty = sum(flt(item.received_stock_qty)
-                                 for item in self.items)
+            self.total_qty = self.calculate_total_qty()
             self.db_set('total_qty', self.total_qty)
             self.db_set('base_tax_withholding_net_total', 0)
 
@@ -126,8 +123,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     self.base_rounded_total, currency)
                 if hasattr(pinv, 'in_words') and pinv.in_words:
                     self.in_words = pinv.in_words
-                self.total_qty = sum(flt(item.received_stock_qty)
-                                     for item in self.items)
+                self.total_qty = self.calculate_total_qty()
                 self.db_set('total_qty', self.total_qty)
                 self.db_set('base_tax_withholding_net_total', 0)
             except Exception as e:
@@ -137,13 +133,12 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             self.calculate_taxes_and_totals()
             self.set_rounded_total()
             self.set_in_words()
-            self.total_qty = sum(flt(item.received_stock_qty)
-                                 for item in self.items)
+            self.total_qty = self.calculate_total_qty()
             self.db_set('total_qty', self.total_qty)
             self.db_set('base_tax_withholding_net_total', 0)
 
     def update_total_qty(self):
-        total = sum(flt(d.received_stock_qty) for d in self.items)
+        total = self.calculate_total_qty()
         self.total_qty = total
         self.db_set('total_qty', total)
 
@@ -328,3 +323,11 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 item.net_amount = matched.net_amount
                 item.base_net_rate = matched.base_net_rate
                 item.base_net_amount = matched.base_net_amount
+
+    def calculate_total_qty(self):
+        """Mimic the frontend logic for total_qty calculation: if all UOMs are 'Unit', sum qty, else sum received_stock_qty."""
+        all_unit = all(item.uom == "Unit" for item in self.items)
+        if all_unit:
+            return sum(flt(item.qty) for item in self.items)
+        else:
+            return sum(flt(item.received_stock_qty) for item in self.items)

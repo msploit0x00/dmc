@@ -134,8 +134,7 @@ frappe.ui.form.on('Purchase Receipt Item', {
 });
 
 function update_total_qty(frm) {
-    // Only update if not submitted
-    if (frm.doc.docstatus === 1) return;
+    // Always update, even if submitted, to match backend logic
     let all_unit = (frm.doc.items || []).every(item => item.uom === "Unit");
     let total = 0;
     if (all_unit) {
