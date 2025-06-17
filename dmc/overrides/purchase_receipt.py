@@ -12,32 +12,18 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     def validate(self):
         super().validate()
         if self.custom_purchase_invoice_name:
+            self.fetch_invoice_data_for_items()
+            # Copy taxes and totals as before
             try:
                 pinv = frappe.get_doc('Purchase Invoice',
                                       self.custom_purchase_invoice_name)
-                # Copy taxes
                 self.taxes = []
                 for tax in pinv.taxes:
                     self.append('taxes', tax.as_dict(copy=True))
-                # Copy items
-                for item in self.items:
-                    pi_item = next(
-                        (x for x in pinv.items if x.item_code == item.item_code), None)
-                    if pi_item:
-                        original_qty = item.qty
-                        original_uom = item.uom
-                        original_warehouse = item.warehouse
-                        for key, value in pi_item.as_dict().items():
-                            if key not in ['qty', 'uom', 'warehouse', 'batch_no', 'name', 'doctype', 'parent', 'parentfield', 'parenttype', 'received_stock_qty']:
-                                setattr(item, key, value)
-                        item.qty = original_qty
-                        item.uom = original_uom
-                        item.warehouse = original_warehouse
-                        # Always set received_stock_qty to invoice qty
-                        item.received_stock_qty = pi_item.qty
-                # Copy all totals
+                # Set all totals from invoice
                 for field in [
-                    'total', 'net_total', 'base_total', 'base_net_total',
+                    'base_total', 'base_rounded_total', 'base_grand_total',
+                    'grand_total', 'rounded_total', 'total', 'net_total', 'base_net_total',
                     'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
                 ]:
                     setattr(self, field, getattr(pinv, field))
@@ -46,21 +32,17 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     self, "currency", None) or "EGP"
                 self.base_in_words = money_in_words(
                     self.base_rounded_total, currency)
-                # Set in_words from invoice
                 if hasattr(pinv, 'in_words') and pinv.in_words:
                     self.in_words = pinv.in_words
             except Exception as e:
                 frappe.log_error(
                     f"Error updating from purchase invoice: {str(e)}", "Purchase Receipt Update Error")
         else:
-            # Only recalculate if no invoice
             self.calculate_taxes_and_totals()
             self.set_rounded_total()
             self.set_in_words()
-        # Always update total_qty from items using received_stock_qty
         self.total_qty = self.calculate_total_qty()
         self.db_set('total_qty', self.total_qty)
-        # --- Guard: Ensure received_stock_qty is always correct for all items ---
         for item in self.items:
             if not item.received_stock_qty or item.received_stock_qty == 0:
                 if item.qty and item.conversion_factor:
@@ -70,17 +52,14 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     def on_submit(self):
         super().on_submit()
         if self.custom_purchase_invoice_name:
+            self.fetch_invoice_data_for_items()
             try:
                 pinv = frappe.get_doc('Purchase Invoice',
                                       self.custom_purchase_invoice_name)
-                pinv_map = {item.item_code: item for item in pinv.items}
-                for item in self.items:
-                    matched = pinv_map.get(item.item_code)
-                    if matched:
-                        item.received_stock_qty = matched.qty
-                # Copy all totals from invoice
+                # Set all totals from invoice
                 for field in [
-                    'total', 'net_total', 'base_total', 'base_net_total',
+                    'base_total', 'base_rounded_total', 'base_grand_total',
+                    'grand_total', 'rounded_total', 'total', 'net_total', 'base_net_total',
                     'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
                 ]:
                     setattr(self, field, getattr(pinv, field))
@@ -108,11 +87,14 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     def after_save(self):
         super().after_save()
         if self.custom_purchase_invoice_name:
+            self.fetch_invoice_data_for_items()
             try:
                 pinv = frappe.get_doc('Purchase Invoice',
                                       self.custom_purchase_invoice_name)
+                # Set all totals from invoice
                 for field in [
-                    'total', 'net_total', 'base_total', 'base_net_total',
+                    'base_total', 'base_rounded_total', 'base_grand_total',
+                    'grand_total', 'rounded_total', 'total', 'net_total', 'base_net_total',
                     'grand_total', 'rounded_total', 'base_grand_total', 'base_rounded_total'
                 ]:
                     setattr(self, field, getattr(pinv, field))
@@ -296,7 +278,8 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     def fetch_invoice_data_for_items(self):
         """
         For each item in the Purchase Receipt, fetch matching data from the selected Purchase Invoice
-        and update the item's fields.
+        and update the item's fields. For UOM 'Unit', set base_amount = base_rate * qty, and set all price fields from invoice.
+        Do NOT set received_stock_qty from invoice; always keep it from the receipt.
         """
         if not getattr(self, 'custom_purchase_invoice_name', None):
             return
@@ -316,13 +299,21 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             matched = next(
                 (pi_item for pi_item in pinv.items if pi_item.item_code == item.item_code), None)
             if matched:
+                # Set all price fields from invoice
                 item.base_rate = matched.base_rate
-                item.base_amount = matched.base_amount
+                item.price_list_rate = getattr(matched, 'price_list_rate', 0)
+                item.base_price_list_rate = getattr(
+                    matched, 'base_price_list_rate', 0)
+                if getattr(item, 'uom', None) == 'Unit':
+                    item.base_amount = matched.base_rate * item.qty
+                else:
+                    item.base_amount = matched.base_amount
                 item.stock_uom_rate = matched.stock_uom_rate
                 item.net_rate = matched.net_rate
                 item.net_amount = matched.net_amount
                 item.base_net_rate = matched.base_net_rate
                 item.base_net_amount = matched.base_net_amount
+        # Do NOT set received_stock_qty from invoice. Only set if empty/zero elsewhere as fallback.
 
     def calculate_total_qty(self):
         """Mimic the frontend logic for total_qty calculation: if all UOMs are 'Unit', sum qty, else sum received_stock_qty."""
