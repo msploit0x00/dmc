@@ -141,7 +141,6 @@ override_doctype_class = {
     "Payment Entry": "dmc.payment_entry.CustomPaymentEntry",
     "Material Request": "dmc.material_request.CustomPurchaseRequest",
     "Permission": "dmc.permission_override.CustomPermission",
-    "Leave Application": "dmc.leave_application_override.CustomLeaveApplication",
     "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt",
     "Serial and Batch Bundle": "dmc.overrides.serial_batch_bundle.CustomSerialandBatchBundle",
     # "Employee Checkin": "dmc.overrides.employee_checkin_override.CustomEmployeeCheckin"
