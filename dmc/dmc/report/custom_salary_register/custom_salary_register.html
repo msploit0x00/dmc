@@ -1,0 +1,72 @@
+{% extends "templates/print_format.html" %}
+
+{% block title %}
+<h1>Custom Salary Register</h1>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xs-12">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>Salary Slip ID</th>
+                        <th>Employee</th>
+                        <th>Employee Name</th>
+                        <th>Date of Joining</th>
+                        <th>Branch</th>
+                        <th>Department</th>
+                        <th>Designation</th>
+                        <th>Company</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Leave Without Pay</th>
+                        <th>Absent Days</th>
+                        <th>Payment Days</th>
+                        <th>Basic</th>
+                        <th>Commission</th>
+                        <th>Car Allowance</th>
+                        <th>Transportation Allowance</th>
+                        <th>Phone Allowance</th>
+                        <th>Total Salary</th>
+                        <th>Gross Pay</th>
+                        <th>Total Deduction</th>
+                        <th>Net Pay</th>
+                        <th>Currency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        <td>{{ row.salary_slip_id }}</td>
+                        <td>{{ row.employee }}</td>
+                        <td>{{ row.employee_name }}</td>
+                        <td>{{ row.data_of_joining }}</td>
+                        <td>{{ row.branch }}</td>
+                        <td>{{ row.department }}</td>
+                        <td>{{ row.designation }}</td>
+                        <td>{{ row.company }}</td>
+                        <td>{{ row.start_date }}</td>
+                        <td>{{ row.end_date }}</td>
+                        <td>{{ row.leave_without_pay }}</td>
+                        <td>{{ row.absent_days }}</td>
+                        <td>{{ row.payment_days }}</td>
+                        <td>{{ row.basic }}</td>
+                        <td>{{ row.commission }}</td>
+                        <td>{{ row.car_allowance }}</td>
+                        <td>{{ row.transportation_allowance }}</td>
+                        <td>{{ row.phone_allowance }}</td>
+                        <td>{{ row.total_salary }}</td>
+                        <td>{{ row.gross_pay }}</td>
+                        <td>{{ row.total_deduction }}</td>
+                        <td>{{ row.net_pay }}</td>
+                        <td>{{ row.currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 
