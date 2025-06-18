@@ -34,6 +34,10 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     self.base_rounded_total, currency)
                 if hasattr(pinv, 'in_words') and pinv.in_words:
                     self.in_words = pinv.in_words
+                if getattr(pinv, "custom_is_landed_cost", 0):
+                    self.custom_shipment_order_name = getattr(
+                        pinv, "custom_shipment_name_ref", None)
+
             except Exception as e:
                 frappe.log_error(
                     f"Error updating from purchase invoice: {str(e)}", "Purchase Receipt Update Error")
@@ -73,6 +77,9 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 self.total_qty = self.calculate_total_qty()
                 self.db_set('total_qty', self.total_qty)
                 self.db_set('base_tax_withholding_net_total', 0)
+                if getattr(pinv, "custom_is_landed_cost", 0):
+                    self.custom_shipment_order_name = getattr(
+                        pinv, "custom_shipment_name_ref", None)
             except Exception as e:
                 frappe.log_error(
                     f"Error in on_submit: {str(e)}", "Purchase Receipt Submit Error")
@@ -108,6 +115,9 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 self.total_qty = self.calculate_total_qty()
                 self.db_set('total_qty', self.total_qty)
                 self.db_set('base_tax_withholding_net_total', 0)
+                if getattr(pinv, "custom_is_landed_cost", 0):
+                    self.custom_shipment_order_name = getattr(
+                        pinv, "custom_shipment_name_ref", None)
             except Exception as e:
                 frappe.log_error(
                     f"Error in after_save: {str(e)}", "Purchase Receipt After Save Error")

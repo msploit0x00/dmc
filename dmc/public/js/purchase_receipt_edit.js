@@ -180,6 +180,26 @@ frappe.ui.form.on('Purchase Receipt', {
 
     //     console.log("✅ Before Save Custom Purchase Receipt Client Script loaded");
     // },
+
+    // custom_purchase_invoice_name: function (frm) {
+    //     if (frm.doc.custom_purchase_invoice_name) {
+    //         frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
+    //             if (pinv && pinv.custom_is_landed_cost) {
+    //                 frm.set_value('custom_shipment_order_name', pinv.custom_shipment_name_ref || '');
+    //             }
+    //         });
+    //     }
+    // },
+
+    onload: function (frm) {
+        if (frm.doc.custom_purchase_invoice_name) {
+            frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
+                if (pinv && pinv.custom_is_landed_cost) {
+                    frm.set_value('custom_shipment_order_name', pinv.custom_shipment_name_ref || '');
+                }
+            });
+        }
+    },
 });
 
 frappe.ui.form.on('Purchase Receipt Item', {
