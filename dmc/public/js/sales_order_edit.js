@@ -1,5 +1,3 @@
-
-
 frappe.ui.form.on('Sales Team', {
     sales_person(frm, cdt, cdn) {
         sales_team_add_to_cost_center_allocation(frm, cdt, cdn);
@@ -118,6 +116,7 @@ frappe.ui.form.on('Sales Order Item', {
     rate(frm, cdt, cdn) {
         rate_validation(frm, cdt, cdn)
     }
+
 });
 
 function sales_order_type_onchange(frm) {
@@ -128,6 +127,13 @@ function sales_order_type_onchange(frm) {
         frm.set_value("customer", "1204010001");
     } else {
         frm.set_value("customer", "");
+    }
+
+    // Set Delivery Note Type based on Sales Order Type
+    if (type === "أمر بيع -بيان") {
+        frm.set_value("custom_delivery_note_type", "اذن صرف مبيعات نقدى");
+    } else {
+        frm.set_value("custom_delivery_note_type", "اذن صرف مبيعات أجلة");
     }
 
     // Apply visibility logic
