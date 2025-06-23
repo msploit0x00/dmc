@@ -105,6 +105,7 @@ frappe.ui.form.on('Purchase Receipt', {
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_net_rate', matched_item.base_net_rate);
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_net_amount', matched_item.base_net_amount);
                                         }
+                                        frappe.model.set_value(newRow.doctype, newRow.name, 'purchase_invoice_item', matched_item.name);
                                         return;
                                     }
                                 }
@@ -243,6 +244,7 @@ frappe.ui.form.on('Purchase Receipt Item', {
                         frappe.model.set_value(cdt, cdn, 'net_amount', matched_item.net_amount);
                         frappe.model.set_value(cdt, cdn, 'base_net_rate', matched_item.base_net_rate);
                         frappe.model.set_value(cdt, cdn, 'base_net_amount', matched_item.base_net_amount);
+                        frappe.model.set_value(cdt, cdn, 'purchase_invoice_item', matched_item.name);
                         return;
                     }
                 }
@@ -275,6 +277,7 @@ frappe.ui.form.on('Purchase Receipt Item', {
                         frappe.model.set_value(cdt, cdn, 'net_amount', matched_item.net_amount);
                         frappe.model.set_value(cdt, cdn, 'base_net_rate', matched_item.base_net_rate);
                         frappe.model.set_value(cdt, cdn, 'base_net_amount', matched_item.base_net_amount);
+                        frappe.model.set_value(cdt, cdn, 'purchase_invoice_item', matched_item.name);
                         return;
                     }
                 }
@@ -432,6 +435,7 @@ function fetch_invoice_data_for_items(frm) {
                     frappe.model.set_value(item.doctype, item.name, 'net_amount', matched.net_amount);
                     frappe.model.set_value(item.doctype, item.name, 'base_net_rate', matched.base_net_rate);
                     frappe.model.set_value(item.doctype, item.name, 'base_net_amount', matched.base_net_amount);
+                    frappe.model.set_value(item.doctype, item.name, 'purchase_invoice_item', matched.name);
                 }
             });
             // Set all totals from invoice

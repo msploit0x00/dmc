@@ -281,6 +281,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 item.net_amount = matched.net_amount
                 item.base_net_rate = matched.base_net_rate
                 item.base_net_amount = matched.base_net_amount
+                item.purchase_invoice_item = matched.name
 
         # Force recalculation of totals
         self.calculate_taxes_and_totals()
@@ -323,6 +324,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 item.net_amount = matched.net_amount
                 item.base_net_rate = matched.base_net_rate
                 item.base_net_amount = matched.base_net_amount
+                item.purchase_invoice_item = matched.name
         # Do NOT set received_stock_qty from invoice. Only set if empty/zero elsewhere as fallback.
 
     def calculate_total_qty(self):
