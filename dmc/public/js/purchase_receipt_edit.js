@@ -85,7 +85,12 @@ frappe.ui.form.on('Purchase Receipt', {
                         if (uom && frm.doc.custom_purchase_invoice_name) {
                             frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
                                 if (pinv && pinv.items) {
-                                    let matched_item = pinv.items.find(pi_item => pi_item.item_code === itemCode);
+                                    // Match by item_code, qty, and batch_no if available
+                                    let matched_item = pinv.items.find(pi_item =>
+                                        pi_item.item_code === itemCode &&
+                                        pi_item.qty === qty &&
+                                        (pi_item.batch_no ? pi_item.batch_no === batchNo : true)
+                                    );
                                     if (matched_item) {
                                         frappe.model.set_value(newRow.doctype, newRow.name, 'base_rate', matched_item.base_rate);
                                         frappe.model.set_value(newRow.doctype, newRow.name, 'price_list_rate', matched_item.price_list_rate || 0);
