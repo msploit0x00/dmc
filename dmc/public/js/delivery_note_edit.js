@@ -1,6 +1,5 @@
 // frappe.ui.form.on('Delivery Note', {
 //     validate: function (frm) {
-<<<<<<< HEAD
 //         const refMap = {};
 
 //         // Build a map of item_code to ref qty (from Ref table)
@@ -30,7 +29,6 @@
 //         }
 //     }
 // });
-=======
 //         // For each row in Ref, sum matching items in Delivery Note Items
 //         (frm.doc.custom_ref || []).forEach(ref => {
 //             // Find all items that match this ref row
@@ -67,4 +65,3 @@
 //     });
 //     frm.refresh_field('custom_ref');
 // }
->>>>>>> 3d5e565 (Removing delivery note validation)
