@@ -310,15 +310,16 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             matched = next(
                 (pi_item for pi_item in pinv.items if pi_item.item_code == item.item_code), None)
             if matched:
-                # Set all price fields from invoice
                 item.base_rate = matched.base_rate
                 item.price_list_rate = getattr(matched, 'price_list_rate', 0)
                 item.base_price_list_rate = getattr(
                     matched, 'base_price_list_rate', 0)
                 if getattr(item, 'uom', None) == 'Unit':
-                    item.base_amount = matched.base_rate * item.qty
+                    item.base_amount = (
+                        matched.base_rate or 0) * (item.qty or 0)
                 else:
-                    item.base_amount = matched.base_amount
+                    item.base_amount = (
+                        matched.base_rate or 0) * (item.stock_qty or 0)
                 item.stock_uom_rate = matched.stock_uom_rate
                 item.net_rate = matched.net_rate
                 item.net_amount = matched.net_amount
