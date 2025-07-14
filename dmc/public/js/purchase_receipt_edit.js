@@ -106,7 +106,7 @@ frappe.ui.form.on('Purchase Receipt', {
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_net_rate', matched_item.base_net_rate);
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_net_amount', matched_item.base_net_amount);
                                         } else {
-                                            frappe.model.set_value(newRow.doctype, newRow.name, 'base_amount', (matched_item.base_amount || 0) * (newRow.stock_qty || 0));
+                                            frappe.model.set_value(newRow.doctype, newRow.name, 'base_amount', (matched_item.base_rate || 0) * (newRow.stock_qty || 0));
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'stock_uom_rate', matched_item.stock_uom_rate);
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'net_rate', matched_item.net_rate);
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'net_amount', matched_item.net_amount);
@@ -114,6 +114,8 @@ frappe.ui.form.on('Purchase Receipt', {
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_net_amount', matched_item.base_net_amount);
                                         }
                                         frappe.model.set_value(newRow.doctype, newRow.name, 'purchase_invoice_item', matched_item.name);
+
+                                        console.log("scan barcode")
                                         return;
                                     }
                                 }
@@ -125,7 +127,7 @@ frappe.ui.form.on('Purchase Receipt', {
                         fetch_invoice_data_for_items(frm);
                         update_total_amount(frm);
                         update_total_qty(frm);
-
+                        console.log("scan barcode 2")
                         frm.refresh_field('items');
                         frm.set_value('scan_barcode', '');
                         frappe.show_alert({
@@ -262,6 +264,7 @@ frappe.ui.form.on('Purchase Receipt Item', {
             });
         }
         update_base_amount(frm, cdt, cdn);
+        console.log("UOM box uom trigger")
 
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
@@ -298,6 +301,8 @@ frappe.ui.form.on('Purchase Receipt Item', {
         }
         update_total_qty(frm);
         update_base_amount(frm, cdt, cdn);
+        console.log("UOM box qty trigger")
+
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
@@ -326,8 +331,12 @@ function update_base_amount(frm, cdt, cdn) {
     var row = locals[cdt][cdn];
     if (row.uom == "Unit") {
         frappe.model.set_value(cdt, cdn, 'base_amount', (row.base_rate || 0) * (row.qty || 0));
+        console.log("Update base amount uom unit")
+
     } else {
         frappe.model.set_value(cdt, cdn, 'base_amount', (row.base_rate || 0) * (row.stock_qty || 0));
+        console.log("Update base amount uom box")
+
     }
 }
 
@@ -449,8 +458,12 @@ function fetch_invoice_data_for_items(frm) {
                     frappe.model.set_value(item.doctype, item.name, 'base_price_list_rate', matched.base_price_list_rate || 0);
                     if (item.uom === 'Unit') {
                         frappe.model.set_value(item.doctype, item.name, 'base_amount', (matched.base_rate || 0) * (item.qty || 0));
+                        console.log("UOM unit fetch invoice data")
+
                     } else {
                         frappe.model.set_value(item.doctype, item.name, 'base_amount', (matched.base_rate || 0) * (item.stock_qty || 0));
+                        console.log("UOM box fetch invoice data")
+
                     }
                     frappe.model.set_value(item.doctype, item.name, 'stock_uom_rate', matched.stock_uom_rate);
                     frappe.model.set_value(item.doctype, item.name, 'net_rate', matched.net_rate);
