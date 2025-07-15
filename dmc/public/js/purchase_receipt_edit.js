@@ -309,38 +309,38 @@ frappe.ui.form.on('Purchase Receipt Item', {
             fetch_invoice_data_for_items(frm);
         }, 500);
     },
-    conversion_factor: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-        if (row.uom && frm.doc.custom_purchase_invoice_name) {
-            frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
-                if (pinv && pinv.items) {
-                    let matched_item = pinv.items.find(pi_item => pi_item.item_code === row.item_code);
-                    if (matched_item) {
-                        frappe.model.set_value(cdt, cdn, 'base_rate', matched_item.base_rate);
-                        frappe.model.set_value(cdt, cdn, 'price_list_rate', matched_item.price_list_rate || 0);
-                        frappe.model.set_value(cdt, cdn, 'base_price_list_rate', matched_item.base_price_list_rate || 0);
-                        if (row.uom === 'Unit') {
-                            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
-                        } else {
-                            frappe.model.set_value(cdt, cdn, 'received_stock_qty', matched_item.qty * (row.conversion_factor || 1));
-                        }
-                        frappe.model.set_value(cdt, cdn, 'stock_uom_rate', matched_item.stock_uom_rate);
-                        frappe.model.set_value(cdt, cdn, 'net_rate', matched_item.net_rate);
-                        frappe.model.set_value(cdt, cdn, 'net_amount', matched_item.net_amount);
-                        frappe.model.set_value(cdt, cdn, 'base_net_rate', matched_item.base_net_rate);
-                        frappe.model.set_value(cdt, cdn, 'base_net_amount', matched_item.base_net_amount);
-                        frappe.model.set_value(cdt, cdn, 'purchase_invoice_item', matched_item.name);
-                    }
-                }
-            });
-        }
-        // Always update stock_qty after all other logic
-        frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
-        update_base_amount(frm, cdt, cdn);
-        setTimeout(function () {
-            fetch_invoice_data_for_items(frm);
-        }, 500);
-    },
+    // conversion_factor: function (frm, cdt, cdn) {
+    //     let row = locals[cdt][cdn];
+    //     if (row.uom && frm.doc.custom_purchase_invoice_name) {
+    //         frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
+    //             if (pinv && pinv.items) {
+    //                 let matched_item = pinv.items.find(pi_item => pi_item.item_code === row.item_code);
+    //                 if (matched_item) {
+    //                     frappe.model.set_value(cdt, cdn, 'base_rate', matched_item.base_rate);
+    //                     frappe.model.set_value(cdt, cdn, 'price_list_rate', matched_item.price_list_rate || 0);
+    //                     frappe.model.set_value(cdt, cdn, 'base_price_list_rate', matched_item.base_price_list_rate || 0);
+    //                     if (row.uom === 'Unit') {
+    //                         frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
+    //                     } else {
+    //                         frappe.model.set_value(cdt, cdn, 'received_stock_qty', matched_item.qty * (row.conversion_factor || 1));
+    //                     }
+    //                     frappe.model.set_value(cdt, cdn, 'stock_uom_rate', matched_item.stock_uom_rate);
+    //                     frappe.model.set_value(cdt, cdn, 'net_rate', matched_item.net_rate);
+    //                     frappe.model.set_value(cdt, cdn, 'net_amount', matched_item.net_amount);
+    //                     frappe.model.set_value(cdt, cdn, 'base_net_rate', matched_item.base_net_rate);
+    //                     frappe.model.set_value(cdt, cdn, 'base_net_amount', matched_item.base_net_amount);
+    //                     frappe.model.set_value(cdt, cdn, 'purchase_invoice_item', matched_item.name);
+    //                 }
+    //             }
+    //         });
+    //     }
+    //     // Always update stock_qty after all other logic
+    //     frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
+    //     update_base_amount(frm, cdt, cdn);
+    //     setTimeout(function () {
+    //         fetch_invoice_data_for_items(frm);
+    //     }, 500);
+    // },
 
     base_rate: function (frm, cdt, cdn) {
         // No local calculation for base_amount here
