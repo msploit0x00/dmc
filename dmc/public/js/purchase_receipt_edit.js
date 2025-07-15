@@ -107,6 +107,9 @@ frappe.ui.form.on('Purchase Receipt', {
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_net_amount', matched_item.base_net_amount);
                                         } else {
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'base_amount', (matched_item.base_rate || 0) * (newRow.stock_qty || 0));
+                                            console.log(matched_item.base_rate, "Scan barcode base rate")
+                                            console.log(newRow.stock_qty, "Scan barcode stock_qty")
+                                            console.log((matched_item.base_rate || 0) * (newRow.stock_qty || 0))
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'stock_uom_rate', matched_item.stock_uom_rate);
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'net_rate', matched_item.net_rate);
                                             frappe.model.set_value(newRow.doctype, newRow.name, 'net_amount', matched_item.net_amount);
@@ -264,6 +267,9 @@ frappe.ui.form.on('Purchase Receipt Item', {
             });
         }
         update_base_amount(frm, cdt, cdn);
+        // console.log(matched_item.base_rate, "UOM base rate")
+        // console.log(newRow.stock_qty, "UOM stock_qty")
+        // console.log((matched_item.base_rate || 0) * (row.stock_qty || 0))
         console.log("UOM box uom trigger")
 
         setTimeout(function () {
@@ -282,10 +288,8 @@ frappe.ui.form.on('Purchase Receipt Item', {
                         frappe.model.set_value(cdt, cdn, 'price_list_rate', matched_item.price_list_rate || 0);
                         frappe.model.set_value(cdt, cdn, 'base_price_list_rate', matched_item.base_price_list_rate || 0);
                         if (row.uom === 'Unit') {
-                            // frappe.model.set_value(cdt, cdn, 'base_amount', matched_item.base_rate * row.qty);
                             frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
                         } else {
-                            // frappe.model.set_value(cdt, cdn, 'base_amount', matched_item.base_rate * row.stock_qty);
                             frappe.model.set_value(cdt, cdn, 'received_stock_qty', matched_item.qty * (row.conversion_factor || 1));
                         }
                         frappe.model.set_value(cdt, cdn, 'stock_uom_rate', matched_item.stock_uom_rate);
@@ -294,15 +298,45 @@ frappe.ui.form.on('Purchase Receipt Item', {
                         frappe.model.set_value(cdt, cdn, 'base_net_rate', matched_item.base_net_rate);
                         frappe.model.set_value(cdt, cdn, 'base_net_amount', matched_item.base_net_amount);
                         frappe.model.set_value(cdt, cdn, 'purchase_invoice_item', matched_item.name);
-                        return;
                     }
                 }
             });
         }
-        update_total_qty(frm);
+        // Always update stock_qty after all other logic
+        frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
         update_base_amount(frm, cdt, cdn);
-        console.log("UOM box qty trigger")
-
+        setTimeout(function () {
+            fetch_invoice_data_for_items(frm);
+        }, 500);
+    },
+    conversion_factor: function (frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (row.uom && frm.doc.custom_purchase_invoice_name) {
+            frappe.db.get_doc('Purchase Invoice', frm.doc.custom_purchase_invoice_name).then(pinv => {
+                if (pinv && pinv.items) {
+                    let matched_item = pinv.items.find(pi_item => pi_item.item_code === row.item_code);
+                    if (matched_item) {
+                        frappe.model.set_value(cdt, cdn, 'base_rate', matched_item.base_rate);
+                        frappe.model.set_value(cdt, cdn, 'price_list_rate', matched_item.price_list_rate || 0);
+                        frappe.model.set_value(cdt, cdn, 'base_price_list_rate', matched_item.base_price_list_rate || 0);
+                        if (row.uom === 'Unit') {
+                            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
+                        } else {
+                            frappe.model.set_value(cdt, cdn, 'received_stock_qty', matched_item.qty * (row.conversion_factor || 1));
+                        }
+                        frappe.model.set_value(cdt, cdn, 'stock_uom_rate', matched_item.stock_uom_rate);
+                        frappe.model.set_value(cdt, cdn, 'net_rate', matched_item.net_rate);
+                        frappe.model.set_value(cdt, cdn, 'net_amount', matched_item.net_amount);
+                        frappe.model.set_value(cdt, cdn, 'base_net_rate', matched_item.base_net_rate);
+                        frappe.model.set_value(cdt, cdn, 'base_net_amount', matched_item.base_net_amount);
+                        frappe.model.set_value(cdt, cdn, 'purchase_invoice_item', matched_item.name);
+                    }
+                }
+            });
+        }
+        // Always update stock_qty after all other logic
+        frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
+        update_base_amount(frm, cdt, cdn);
         setTimeout(function () {
             fetch_invoice_data_for_items(frm);
         }, 500);
@@ -336,6 +370,9 @@ function update_base_amount(frm, cdt, cdn) {
     } else {
         frappe.model.set_value(cdt, cdn, 'base_amount', (row.base_rate || 0) * (row.stock_qty || 0));
         console.log("Update base amount uom box")
+        console.log(row.base_rate, "Update base amountbase rate")
+        console.log(row.stock_qty, "Update base amount stock_qty")
+        console.log((row.base_rate || 0) * (row.stock_qty || 0))
 
     }
 }
@@ -463,6 +500,9 @@ function fetch_invoice_data_for_items(frm) {
                     } else {
                         frappe.model.set_value(item.doctype, item.name, 'base_amount', (matched.base_rate || 0) * (item.stock_qty || 0));
                         console.log("UOM box fetch invoice data")
+                        console.log(matched.base_rate, "Fetch invoice data base rate")
+                        console.log(item.stock_qty, "Fetch invoice data stock_qty")
+                        console.log((matched.base_rate || 0) * (item.stock_qty || 0))
 
                     }
                     frappe.model.set_value(item.doctype, item.name, 'stock_uom_rate', matched.stock_uom_rate);
