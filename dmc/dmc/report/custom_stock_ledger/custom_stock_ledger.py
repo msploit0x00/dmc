@@ -61,47 +61,37 @@ def execute(filters=None):
 
     for sle in sl_entries:
         item_detail = item_details[sle.item_code]
-
         sle.update(item_detail)
         if bundle_info := bundle_details.get(sle.serial_and_batch_bundle):
             data.extend(get_segregated_bundle_entries(
                 sle, bundle_info, batch_balance_dict, filters))
             continue
-
         if filters.get("batch_no") or inventory_dimension_filters_applied:
             actual_qty += flt(sle.actual_qty, precision)
             stock_value += sle.stock_value_difference
             if sle.batch_no:
                 if not batch_balance_dict.get(sle.batch_no):
                     batch_balance_dict[sle.batch_no] = [0, 0]
-
                 batch_balance_dict[sle.batch_no][0] += sle.actual_qty
-
             if filters.get("segregate_serial_batch_bundle"):
                 actual_qty = batch_balance_dict[sle.batch_no][0]
-
             if sle.voucher_type == "Stock Reconciliation" and not sle.actual_qty:
                 actual_qty = sle.qty_after_transaction
                 stock_value = sle.stock_value
-
             sle.update({"qty_after_transaction": actual_qty,
                        "stock_value": stock_value})
-
-        sle.update({"in_qty": max(sle.actual_qty, 0),
-                   "out_qty": min(sle.actual_qty, 0)})
-
-        if sle.serial_no:
-            update_available_serial_nos(available_serial_nos, sle)
-
-        if sle.actual_qty:
-            sle["in_out_rate"] = flt(
-                sle.stock_value_difference / sle.actual_qty, precision)
-
-        elif sle.voucher_type == "Stock Reconciliation":
-            sle["in_out_rate"] = sle.valuation_rate
-
+        # Custom override for Purchase Receipt
+        if sle.voucher_type == "Purchase Receipt":
+            sle["stock_value_difference"] = flt(
+                sle["actual_qty"]) * flt(sle["incoming_rate"])
+            sle["in_out_rate"] = sle["valuation_rate"]
+        else:
+            if sle.actual_qty:
+                sle["in_out_rate"] = flt(
+                    sle.stock_value_difference / sle.actual_qty, precision)
+            elif sle.voucher_type == "Stock Reconciliation":
+                sle["in_out_rate"] = sle.valuation_rate
         data.append(sle)
-
         if include_uom:
             conversion_factors.append(item_detail.conversion_factor)
 
