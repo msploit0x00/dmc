@@ -143,6 +143,7 @@ override_doctype_class = {
     "Permission": "dmc.permission_override.CustomPermission",
     "Purchase Receipt": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt",
     "Serial and Batch Bundle": "dmc.overrides.serial_batch_bundle.CustomSerialandBatchBundle",
+    "Delivery Note": "dmc.overrides.delivery_note_override.CustomDeliveryNote",
     # "Employee Checkin": "dmc.overrides.employee_checkin_override.CustomEmployeeCheckin"
 }
 
