@@ -9,6 +9,17 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         # Disabled all core validations in this method as per user request
         pass
 
+    def limits_crossed_error(self, args, item, qty_or_amount):
+        pass
+
+    def validate_actual_qty(self, sn_doc):
+        """Disable actual qty validation for serial/batch items"""
+        pass
+
+    def validate_with_previous_doc(self):
+        """Disable Purchase Order quantity validation"""
+        pass
+
     def validate(self):
         super().validate()
         if self.custom_purchase_invoice_name:
@@ -90,6 +101,88 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             self.total_qty = self.calculate_total_qty()
             self.db_set('total_qty', self.total_qty)
             self.db_set('base_tax_withholding_net_total', 0)
+
+    def update_stock_ledger(self, allow_negative_stock=False, via_landed_cost_voucher=False):
+
+        from frappe.utils import flt
+
+        # Call the original method first - this creates all SLEs normally
+        super().update_stock_ledger(allow_negative_stock, via_landed_cost_voucher)
+
+        # Then update the rates with our Purchase Receipt base rates
+        try:
+            sle_list = frappe.get_all(
+                "Stock Ledger Entry",
+                filters={
+                    "voucher_type": "Purchase Receipt",
+                    "voucher_no": self.name,
+                    "is_cancelled": 0
+                },
+                fields=["name", "item_code", "batch_no",
+                        "actual_qty", "warehouse"]
+            )
+
+            for sle in sle_list:
+                filters = {"parent": self.name, "item_code": sle.item_code}
+                if sle.batch_no:
+                    filters["batch_no"] = sle.batch_no
+
+                pr_base_rate = frappe.db.get_value(
+                    "Purchase Receipt Item", filters, "base_rate")
+
+                if pr_base_rate:
+                    stock_value_diff = flt(sle.actual_qty) * flt(pr_base_rate)
+
+                    frappe.db.set_value("Stock Ledger Entry", sle.name, {
+                        "incoming_rate": pr_base_rate,
+                        "valuation_rate": pr_base_rate,
+                        "stock_value_difference": stock_value_diff
+                    })
+
+                    # Update bin valuation rate too
+                    bin_name = frappe.get_value("Bin",
+                                                {"item_code": sle.item_code, "warehouse": sle.warehouse}, "name")
+                    if bin_name:
+                        frappe.db.set_value(
+                            "Bin", bin_name, "valuation_rate", pr_base_rate)
+
+            frappe.db.commit()
+
+        except Exception as e:
+            frappe.log_error(f"Error in custom update_stock_ledger: {str(e)}",
+                             "Purchase Receipt Custom Stock Ledger Error")
+
+    def get_sl_entries(self, d, args):
+        """
+        Override to set custom rates at the source before SLE creation
+        """
+        # Get the standard SLE entry
+        sle = super().get_sl_entries(d, args)
+
+        try:
+            # Override rates for Purchase Receipt
+            filters = {"parent": self.name, "item_code": d.item_code}
+            if hasattr(d, 'batch_no') and d.batch_no:
+                filters["batch_no"] = d.batch_no
+
+            pr_base_rate = frappe.db.get_value(
+                "Purchase Receipt Item", filters, "base_rate")
+
+            if pr_base_rate:
+                sle.update({
+                    "incoming_rate": pr_base_rate,
+                    "valuation_rate": pr_base_rate,
+                })
+
+                if sle.get("actual_qty"):
+                    sle["stock_value_difference"] = flt(
+                        sle["actual_qty"]) * flt(pr_base_rate)
+
+        except Exception as e:
+            frappe.log_error(f"Error in custom get_sl_entries: {str(e)}",
+                             "Purchase Receipt Custom SLE Error")
+
+        return sle
 
     def after_save(self):
         super().after_save()
