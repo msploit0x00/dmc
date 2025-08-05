@@ -32,8 +32,6 @@ def custom_make_sl_entries(sl_entries, *args, **kwargs):
 
 
 def apply_monkey_patches():
-    print("🚀 Monkey patching in progress...")
-    frappe.log_error("Monkey patching in progress", "Patch Status")
 
     from erpnext.stock.serial_batch_bundle import SerialBatchBundle
     global original_get_incoming_rate

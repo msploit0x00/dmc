@@ -1,6 +1,3 @@
-from dmc.monkey_patches import apply_monkey_patches
-apply_monkey_patches()
-
 app_name = "dmc"
 app_title = "Dmc"
 app_publisher = "mina"
@@ -30,7 +27,6 @@ app_include_py = ["dmc.api"]
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
-
 # include js in doctype views
 doctype_js = {
     "Sales Order": "public/js/sales_order_edit.js",
