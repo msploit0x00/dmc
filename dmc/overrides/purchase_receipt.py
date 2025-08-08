@@ -75,135 +75,135 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         self.set_in_words()
         self.total_qty = self.calculate_total_qty()
 
-    def make_item_gl_entries(self, gl_entries, warehouse_account=None):
-        """Override to handle None purchase_invoice_item values"""
-        from erpnext.stock.utils import get_incoming_rate
-        from erpnext.accounts.utils import get_account_currency
+    # def make_item_gl_entries(self, gl_entries, warehouse_account=None):
+    #     """Override to handle None purchase_invoice_item values"""
+    #     from erpnext.stock.utils import get_incoming_rate
+    #     from erpnext.accounts.utils import get_account_currency
 
-        stock_rbnb = self.get_company_default("stock_received_but_not_billed")
-        # landed_cost_entries = get_item_account_wise_additional_cost(self.name)
-        # expenses_included_in_valuation = self.get_company_default(
-        #     "expenses_included_in_valuation")
+    #     stock_rbnb = self.get_company_default("stock_received_but_not_billed")
+    #     # landed_cost_entries = get_item_account_wise_additional_cost(self.name)
+    #     # expenses_included_in_valuation = self.get_company_default(
+    #     #     "expenses_included_in_valuation")
 
-        # Build net_rate_map safely, filtering out None values
-        net_rate_map = {}
-        if self.get("purchase_invoice"):
-            for pi_item in frappe.get_all("Purchase Invoice Item",
-                                          filters={
-                                              "parent": self.purchase_invoice},
-                                          fields=["name", "net_rate"]):
-                net_rate_map[pi_item.name] = pi_item.net_rate
+    #     # Build net_rate_map safely, filtering out None values
+    #     net_rate_map = {}
+    #     if self.get("purchase_invoice"):
+    #         for pi_item in frappe.get_all("Purchase Invoice Item",
+    #                                       filters={
+    #                                           "parent": self.purchase_invoice},
+    #                                       fields=["name", "net_rate"]):
+    #             net_rate_map[pi_item.name] = pi_item.net_rate
 
-        def make_stock_received_but_not_billed_entry(item):
-            # Check if purchase_invoice_item exists and is in the map
-            if (item.purchase_invoice_item and
-                item.purchase_invoice_item in net_rate_map and
-                    item.net_rate == net_rate_map[item.purchase_invoice_item]):
-                return 0
+    #     def make_stock_received_but_not_billed_entry(item):
+    #         # Check if purchase_invoice_item exists and is in the map
+    #         if (item.purchase_invoice_item and
+    #             item.purchase_invoice_item in net_rate_map and
+    #                 item.net_rate == net_rate_map[item.purchase_invoice_item]):
+    #             return 0
 
-            account_currency = get_account_currency(stock_rbnb)
+    #         account_currency = get_account_currency(stock_rbnb)
 
-            # Use safe precision handling - just use flt with default 2 decimal places
-            credit_amount = (
-                flt(item.base_net_amount, 2)
-                if account_currency == self.company_currency
-                else flt(item.net_amount, 2)
-            )
+    #         # Use safe precision handling - just use flt with default 2 decimal places
+    #         credit_amount = (
+    #             flt(item.base_net_amount, 2)
+    #             if account_currency == self.company_currency
+    #             else flt(item.net_amount, 2)
+    #         )
 
-            if credit_amount:
-                gl_entries.append(
-                    self.get_gl_dict(
-                        {
-                            "account": stock_rbnb,
-                            "against": warehouse_account[item.warehouse]["account"],
-                            "credit": credit_amount,
-                            "credit_in_account_currency": credit_amount,
-                            "cost_center": item.cost_center,
-                            "project": item.project or self.project,
-                            "voucher_detail_no": item.name,
-                        },
-                        account_currency,
-                        item=item,
-                    )
-                )
-            return credit_amount
+    #         if credit_amount:
+    #             gl_entries.append(
+    #                 self.get_gl_dict(
+    #                     {
+    #                         "account": stock_rbnb,
+    #                         "against": warehouse_account[item.warehouse]["account"],
+    #                         "credit": credit_amount,
+    #                         "credit_in_account_currency": credit_amount,
+    #                         "cost_center": item.cost_center,
+    #                         "project": item.project or self.project,
+    #                         "voucher_detail_no": item.name,
+    #                     },
+    #                     account_currency,
+    #                     item=item,
+    #                 )
+    #             )
+    #         return credit_amount
 
-        warehouse_with_no_account = []
-        stock_items = self.get_stock_items()
+    #     warehouse_with_no_account = []
+    #     stock_items = self.get_stock_items()
 
-        for item in self.get("items"):
-            if flt(item.base_net_amount):
-                if warehouse_account.get(item.warehouse):
-                    stock_value_diff = get_incoming_rate(
-                        {
-                            "item_code": item.item_code,
-                            "warehouse": item.warehouse,
-                            "posting_date": self.posting_date,
-                            "posting_time": self.posting_time,
-                            "qty": item.stock_qty,
-                            "serial_and_batch_bundle": item.get("serial_and_batch_bundle"),
-                        },
-                        raise_error_if_no_rate=False,
-                    )
+    #     for item in self.get("items"):
+    #         if flt(item.base_net_amount):
+    #             if warehouse_account.get(item.warehouse):
+    #                 stock_value_diff = get_incoming_rate(
+    #                     {
+    #                         "item_code": item.item_code,
+    #                         "warehouse": item.warehouse,
+    #                         "posting_date": self.posting_date,
+    #                         "posting_time": self.posting_time,
+    #                         "qty": item.stock_qty,
+    #                         "serial_and_batch_bundle": item.get("serial_and_batch_bundle"),
+    #                     },
+    #                     raise_error_if_no_rate=False,
+    #                 )
 
-                    if stock_value_diff:
-                        stock_value_diff *= item.stock_qty
+    #                 if stock_value_diff:
+    #                     stock_value_diff *= item.stock_qty
 
-                    warehouse_account_name = warehouse_account[item.warehouse]["account"]
-                    warehouse_account_currency = warehouse_account[item.warehouse]["account_currency"]
-                    supplier_warehouse_account = warehouse_account.get(
-                        self.supplier_warehouse, {}).get("account")
-                    supplier_warehouse_account_currency = warehouse_account.get(
-                        self.supplier_warehouse, {}).get("account_currency")
+    #                 warehouse_account_name = warehouse_account[item.warehouse]["account"]
+    #                 warehouse_account_currency = warehouse_account[item.warehouse]["account_currency"]
+    #                 supplier_warehouse_account = warehouse_account.get(
+    #                     self.supplier_warehouse, {}).get("account")
+    #                 supplier_warehouse_account_currency = warehouse_account.get(
+    #                     self.supplier_warehouse, {}).get("account_currency")
 
-                    # Check if update_stock is available, fallback to True if not
-                    update_stock = getattr(self, 'update_stock', True)
+    #                 # Check if update_stock is available, fallback to True if not
+    #                 update_stock = getattr(self, 'update_stock', True)
 
-                    if update_stock and item.valuation_rate:
-                        gl_entries.append(
-                            self.get_gl_dict(
-                                {
-                                    "account": warehouse_account_name,
-                                    "against": supplier_warehouse_account or stock_rbnb,
-                                    "cost_center": item.cost_center,
-                                    "project": item.project or self.project,
-                                    "remarks": self.get("remarks") or _("Accounting Entry for Stock"),
-                                    "debit": stock_value_diff,
-                                    "voucher_detail_no": item.name,
-                                },
-                                warehouse_account_currency,
-                                item=item,
-                            )
-                        )
+    #                 if update_stock and item.valuation_rate:
+    #                     gl_entries.append(
+    #                         self.get_gl_dict(
+    #                             {
+    #                                 "account": warehouse_account_name,
+    #                                 "against": supplier_warehouse_account or stock_rbnb,
+    #                                 "cost_center": item.cost_center,
+    #                                 "project": item.project or self.project,
+    #                                 "remarks": self.get("remarks") or _("Accounting Entry for Stock"),
+    #                                 "debit": stock_value_diff,
+    #                                 "voucher_detail_no": item.name,
+    #                             },
+    #                             warehouse_account_currency,
+    #                             item=item,
+    #                         )
+    #                     )
 
-                        outgoing_amount = make_stock_received_but_not_billed_entry(
-                            item)
+    #                     outgoing_amount = make_stock_received_but_not_billed_entry(
+    #                         item)
 
-                        if not outgoing_amount and stock_value_diff and not self.is_internal_transfer():
-                            gl_entries.append(
-                                self.get_gl_dict(
-                                    {
-                                        "account": stock_rbnb,
-                                        "against": warehouse_account_name,
-                                        "cost_center": item.cost_center,
-                                        "project": item.project or self.project,
-                                        "remarks": self.get("remarks") or _("Accounting Entry for Stock"),
-                                        "credit": flt(stock_value_diff, 2),
-                                        "voucher_detail_no": item.name,
-                                    },
-                                    item=item,
-                                )
-                            )
+    #                     if not outgoing_amount and stock_value_diff and not self.is_internal_transfer():
+    #                         gl_entries.append(
+    #                             self.get_gl_dict(
+    #                                 {
+    #                                     "account": stock_rbnb,
+    #                                     "against": warehouse_account_name,
+    #                                     "cost_center": item.cost_center,
+    #                                     "project": item.project or self.project,
+    #                                     "remarks": self.get("remarks") or _("Accounting Entry for Stock"),
+    #                                     "credit": flt(stock_value_diff, 2),
+    #                                     "voucher_detail_no": item.name,
+    #                                 },
+    #                                 item=item,
+    #                             )
+    #                         )
 
-                elif item.item_code in stock_items:
-                    warehouse_with_no_account.append(item.warehouse)
+    #             elif item.item_code in stock_items:
+    #                 warehouse_with_no_account.append(item.warehouse)
 
-        if warehouse_with_no_account:
-            frappe.msgprint(
-                _("No accounting entries for the following warehouses {0}").format(
-                    warehouse_with_no_account),
-                title=_("Missing Account"),
-            )
+    #     if warehouse_with_no_account:
+    #         frappe.msgprint(
+    #             _("No accounting entries for the following warehouses {0}").format(
+    #                 warehouse_with_no_account),
+    #             title=_("Missing Account"),
+    #         )
 
     def get_sl_entries(self, d, args):
         """
