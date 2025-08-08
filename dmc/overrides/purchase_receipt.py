@@ -81,9 +81,9 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         from erpnext.accounts.utils import get_account_currency
 
         stock_rbnb = self.get_company_default("stock_received_but_not_billed")
-        landed_cost_entries = get_item_account_wise_additional_cost(self.name)
-        expenses_included_in_valuation = self.get_company_default(
-            "expenses_included_in_valuation")
+        # landed_cost_entries = get_item_account_wise_additional_cost(self.name)
+        # expenses_included_in_valuation = self.get_company_default(
+        #     "expenses_included_in_valuation")
 
         # Build net_rate_map safely, filtering out None values
         net_rate_map = {}
@@ -288,27 +288,27 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             return sum(flt(item.received_stock_qty) for item in self.items)
 
 
-def get_item_account_wise_additional_cost(purchase_document):
-    """Get item account wise additional cost from landed cost voucher"""
-    # For now, return empty dict to prevent errors
-    # This can be implemented properly once the Landed Cost Voucher structure is confirmed
-    try:
-        # Return empty dict - no landed costs applied
-        item_account_wise_cost = {}
+# def get_item_account_wise_additional_cost(purchase_document):
+#     """Get item account wise additional cost from landed cost voucher"""
+#     # For now, return empty dict to prevent errors
+#     # This can be implemented properly once the Landed Cost Voucher structure is confirmed
+#     try:
+#         # Return empty dict - no landed costs applied
+#         item_account_wise_cost = {}
 
-        # Log that landed cost processing is disabled (only log once per session)
-        if not frappe.cache().get_value("landed_cost_log_" + purchase_document):
-            frappe.log_error(f"Landed cost processing disabled for PR {purchase_document}",
-                             "Purchase Receipt Landed Cost Disabled")
-            frappe.cache().set_value("landed_cost_log_" +
-                                     purchase_document, True, expires_in_sec=3600)
+#         # Log that landed cost processing is disabled (only log once per session)
+#         if not frappe.cache().get_value("landed_cost_log_" + purchase_document):
+#             frappe.log_error(f"Landed cost processing disabled for PR {purchase_document}",
+#                              "Purchase Receipt Landed Cost Disabled")
+#             frappe.cache().set_value("landed_cost_log_" +
+#                                      purchase_document, True, expires_in_sec=3600)
 
-        return item_account_wise_cost
+#         return item_account_wise_cost
 
-    except Exception as e:
-        frappe.log_error(f"Error in get_item_account_wise_additional_cost for {purchase_document}: {str(e)}",
-                         "Purchase Receipt Landed Cost Error")
-        return {}
+#     except Exception as e:
+#         frappe.log_error(f"Error in get_item_account_wise_additional_cost for {purchase_document}: {str(e)}",
+#                          "Purchase Receipt Landed Cost Error")
+#         return {}
 # from erpnext.stock.doctype.purchase_receipt.purchase_receipt import PurchaseReceipt
 # from frappe.utils import flt, money_in_words
 # import frappe
