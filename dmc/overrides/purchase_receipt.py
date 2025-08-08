@@ -17,13 +17,15 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         pass
 
     def before_save(self):
-
         # Calculate base_amount for each item - Always use qty * base_rate
         for item in self.items:
             item.base_amount = flt(item.qty) * flt(item.base_rate)
 
     def validate(self):
         super().validate()
+
+        # Fix purchase invoice item references
+        self.fix_purchase_invoice_item_references()
 
         # Calculate and set total_qty
         self.total_qty = self.calculate_total_qty()
@@ -35,6 +37,35 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     item.received_stock_qty = flt(
                         item.qty) * flt(item.conversion_factor)
 
+    def fix_purchase_invoice_item_references(self):
+        """Fix None purchase_invoice_item references by linking to correct PI items"""
+        if not self.get("purchase_invoice"):
+            return
+
+        # Get Purchase Invoice Items
+        pi_items = frappe.get_all("Purchase Invoice Item",
+                                  filters={"parent": self.purchase_invoice},
+                                  fields=["name", "item_code", "batch_no"])
+
+        # Create a mapping of item_code + batch_no to PI item name
+        pi_item_map = {}
+        for pi_item in pi_items:
+            key = f"{pi_item.item_code}_{pi_item.batch_no or ''}"
+            pi_item_map[key] = pi_item.name
+
+        # Update PR items with correct PI item references
+        for pr_item in self.items:
+            if not pr_item.purchase_invoice_item:
+                key = f"{pr_item.item_code}_{pr_item.batch_no or ''}"
+                if key in pi_item_map:
+                    pr_item.purchase_invoice_item = pi_item_map[key]
+                    # Update in database if document is saved
+                    if not pr_item.get("__islocal"):
+                        frappe.db.set_value("Purchase Receipt Item",
+                                            pr_item.name,
+                                            "purchase_invoice_item",
+                                            pi_item_map[key])
+
     def on_submit(self):
         super().on_submit()
 
@@ -44,92 +75,163 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         self.set_in_words()
         self.total_qty = self.calculate_total_qty()
 
-    def update_stock_ledger(self, allow_negative_stock=False, via_landed_cost_voucher=False):
-        from frappe.utils import flt
+    def make_item_gl_entries(self, gl_entries, warehouse_account=None):
+        """Override to handle None purchase_invoice_item values"""
+        from erpnext.stock.utils import get_incoming_rate
+        from erpnext.accounts.utils import get_account_currency
 
-        # Call the original method first - this creates all SLEs normally
-        super().update_stock_ledger(allow_negative_stock, via_landed_cost_voucher)
+        stock_rbnb = self.get_company_default("stock_received_but_not_billed")
+        landed_cost_entries = get_item_account_wise_additional_cost(self.name)
+        expenses_included_in_valuation = self.get_company_default(
+            "expenses_included_in_valuation")
 
-        # Then update the rates with our Purchase Receipt base rates
-        try:
-            sle_list = frappe.get_all(
-                "Stock Ledger Entry",
-                filters={
-                    "voucher_type": "Purchase Receipt",
-                    "voucher_no": self.name,
-                    "is_cancelled": 0
-                },
-                fields=["name", "item_code", "batch_no",
-                        "actual_qty", "warehouse"]
+        # Build net_rate_map safely, filtering out None values
+        net_rate_map = {}
+        if self.get("purchase_invoice"):
+            for pi_item in frappe.get_all("Purchase Invoice Item",
+                                          filters={
+                                              "parent": self.purchase_invoice},
+                                          fields=["name", "net_rate"]):
+                net_rate_map[pi_item.name] = pi_item.net_rate
+
+        def make_stock_received_but_not_billed_entry(item):
+            # Check if purchase_invoice_item exists and is in the map
+            if (item.purchase_invoice_item and
+                item.purchase_invoice_item in net_rate_map and
+                    item.net_rate == net_rate_map[item.purchase_invoice_item]):
+                return 0
+
+            account_currency = get_account_currency(stock_rbnb)
+            credit_amount = (
+                flt(item.base_net_amount, self.precision("base_net_amount"))
+                if account_currency == self.company_currency
+                else flt(item.net_amount, self.precision("net_amount"))
             )
 
-            for sle in sle_list:
-                filters = {"parent": self.name, "item_code": sle.item_code}
-                if sle.batch_no:
-                    filters["batch_no"] = sle.batch_no
+            if credit_amount:
+                gl_entries.append(
+                    self.get_gl_dict(
+                        {
+                            "account": stock_rbnb,
+                            "against": warehouse_account[item.warehouse]["account"],
+                            "credit": credit_amount,
+                            "credit_in_account_currency": credit_amount,
+                            "cost_center": item.cost_center,
+                            "project": item.project or self.project,
+                            "voucher_detail_no": item.name,
+                        },
+                        account_currency,
+                        item=item,
+                    )
+                )
+            return credit_amount
 
-                # Get Purchase Receipt Item details
-                pr_item = frappe.db.get_value("Purchase Receipt Item", filters,
-                                              ["base_rate", "qty", "stock_qty", "conversion_factor"], as_dict=True)
+        warehouse_with_no_account = []
+        stock_items = self.get_stock_items()
 
-                if pr_item:
-                    # Calculate per-unit rate for stock ledger
-                    # If UOM conversion exists, convert base_rate to per-unit rate
-                    if pr_item.conversion_factor and pr_item.conversion_factor > 0:
-                        per_unit_rate = flt(
-                            pr_item.base_rate) / flt(pr_item.conversion_factor)
-                    else:
-                        per_unit_rate = flt(pr_item.base_rate)
+        for item in self.get("items"):
+            if flt(item.base_net_amount):
+                if warehouse_account.get(item.warehouse):
+                    stock_value_diff = get_incoming_rate(
+                        {
+                            "item_code": item.item_code,
+                            "warehouse": item.warehouse,
+                            "posting_date": self.posting_date,
+                            "posting_time": self.posting_time,
+                            "qty": item.stock_qty,
+                            "serial_and_batch_bundle": item.get("serial_and_batch_bundle"),
+                        },
+                        raise_error_if_no_rate=False,
+                    )
 
-                    stock_value_diff = flt(sle.actual_qty) * per_unit_rate
+                    if stock_value_diff:
+                        stock_value_diff *= item.stock_qty
 
-                    frappe.db.set_value("Stock Ledger Entry", sle.name, {
-                        "incoming_rate": per_unit_rate,
-                        "valuation_rate": per_unit_rate,
-                        "stock_value_difference": stock_value_diff
-                    })
+                    warehouse_account_name = warehouse_account[item.warehouse]["account"]
+                    warehouse_account_currency = warehouse_account[item.warehouse]["account_currency"]
+                    supplier_warehouse_account = warehouse_account.get(
+                        self.supplier_warehouse, {}).get("account")
+                    supplier_warehouse_account_currency = warehouse_account.get(
+                        self.supplier_warehouse, {}).get("account_currency")
 
-                    # Update bin valuation rate too
-                    bin_name = frappe.get_value("Bin",
-                                                {"item_code": sle.item_code, "warehouse": sle.warehouse}, "name")
-                    if bin_name:
-                        frappe.db.set_value(
-                            "Bin", bin_name, "valuation_rate", per_unit_rate)
+                    if self.update_stock and item.valuation_rate:
+                        gl_entries.append(
+                            self.get_gl_dict(
+                                {
+                                    "account": warehouse_account_name,
+                                    "against": supplier_warehouse_account or stock_rbnb,
+                                    "cost_center": item.cost_center,
+                                    "project": item.project or self.project,
+                                    "remarks": self.get("remarks") or _("Accounting Entry for Stock"),
+                                    "debit": stock_value_diff,
+                                    "voucher_detail_no": item.name,
+                                },
+                                warehouse_account_currency,
+                                item=item,
+                            )
+                        )
 
-            frappe.db.commit()
+                        outgoing_amount = make_stock_received_but_not_billed_entry(
+                            item)
 
-        except Exception as e:
-            frappe.log_error(f"Error in custom update_stock_ledger: {str(e)}",
-                             "Purchase Receipt Custom Stock Ledger Error")
+                        if not outgoing_amount and stock_value_diff and not self.is_internal_transfer():
+                            gl_entries.append(
+                                self.get_gl_dict(
+                                    {
+                                        "account": stock_rbnb,
+                                        "against": warehouse_account_name,
+                                        "cost_center": item.cost_center,
+                                        "project": item.project or self.project,
+                                        "remarks": self.get("remarks") or _("Accounting Entry for Stock"),
+                                        "credit": flt(stock_value_diff, self.precision("base_net_amount")),
+                                        "voucher_detail_no": item.name,
+                                    },
+                                    item=item,
+                                )
+                            )
+
+                elif item.item_code in stock_items:
+                    warehouse_with_no_account.append(item.warehouse)
+
+        if warehouse_with_no_account:
+            frappe.msgprint(
+                _("No accounting entries for the following warehouses {0}").format(
+                    warehouse_with_no_account),
+                title=_("Missing Account"),
+            )
 
     def get_sl_entries(self, d, args):
         """
-        Override to set custom rates at the source before SLE creation
+        Override to set custom rates PROPERLY at the source before SLE creation
         """
-        # Get the standard SLE entry
+        # Get the standard SLE entry first
         sle = super().get_sl_entries(d, args)
 
         try:
-            # Override rates for Purchase Receipt
-            filters = {"parent": self.name, "item_code": d.item_code}
-            if hasattr(d, 'batch_no') and d.batch_no:
-                filters["batch_no"] = d.batch_no
+            # Calculate the correct per-unit rate based on Purchase Receipt item data
+            if d.conversion_factor and d.conversion_factor > 0:
+                # For UOM conversions: base_rate is per UOM unit, need per stock_uom unit
+                per_unit_rate = flt(d.base_rate) / flt(d.conversion_factor)
+            else:
+                # No conversion, base_rate is already per stock unit
+                per_unit_rate = flt(d.base_rate)
 
-            pr_base_rate = frappe.db.get_value(
-                "Purchase Receipt Item", filters, "base_rate")
+            # Override the SLE rates BEFORE it's created
+            sle.update({
+                "incoming_rate": per_unit_rate,
+                "valuation_rate": per_unit_rate,
+            })
 
-            if pr_base_rate:
-                sle.update({
-                    "incoming_rate": pr_base_rate,
-                    "valuation_rate": pr_base_rate,
-                })
+            # Calculate stock value difference based on actual quantity and our rate
+            if sle.get("actual_qty"):
+                sle["stock_value_difference"] = flt(
+                    sle["actual_qty"]) * per_unit_rate
 
-                if sle.get("actual_qty"):
-                    sle["stock_value_difference"] = flt(
-                        sle["actual_qty"]) * flt(pr_base_rate)
+            print(
+                f"DEBUG: Item {d.item_code} - Base Rate: {d.base_rate}, Conversion: {d.conversion_factor}, Per Unit Rate: {per_unit_rate}")
 
         except Exception as e:
-            frappe.log_error(f"Error in custom get_sl_entries: {str(e)}",
+            frappe.log_error(f"Error in custom get_sl_entries for item {d.item_code}: {str(e)}",
                              "Purchase Receipt Custom SLE Error")
 
         return sle
@@ -138,12 +240,6 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         super().after_save()
         self.set_rounded_total()
         self.set_in_words()
-
-    # def update_total_qty(self):
-    #     """Update total_qty and save to database"""
-    #     total = self.calculate_total_qty()
-    #     self.total_qty = total
-    #     self.db_set('total_qty', total)
 
     def update_total_amount(self):
         """Update base_total and save to database"""
@@ -184,6 +280,26 @@ class CustomPurchaseReceipt(PurchaseReceipt):
             return 0
         else:
             return sum(flt(item.received_stock_qty) for item in self.items)
+
+
+def get_item_account_wise_additional_cost(purchase_document):
+    """Get item account wise additional cost from landed cost voucher"""
+    landed_cost_vouchers = frappe.get_all("Landed Cost Voucher",
+                                          filters={
+                                              "purchase_receipt": purchase_document},
+                                          fields=["name"])
+
+    item_account_wise_cost = {}
+    for lcv in landed_cost_vouchers:
+        lcv_doc = frappe.get_doc("Landed Cost Voucher", lcv.name)
+        for item in lcv_doc.get("items"):
+            item_account_wise_cost.setdefault(item.item_code, {})
+            item_account_wise_cost[item.item_code].setdefault(
+                item.expense_account, 0)
+            item_account_wise_cost[item.item_code][item.expense_account] += flt(
+                item.amount)
+
+    return item_account_wise_cost
 # from erpnext.stock.doctype.purchase_receipt.purchase_receipt import PurchaseReceipt
 # from frappe.utils import flt, money_in_words
 # import frappe
