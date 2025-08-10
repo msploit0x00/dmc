@@ -4,6 +4,7 @@ frappe.ui.form.on('Purchase Receipt', {
         console.log("✅ Custom Purchase Receipt Client Script loaded");
     },
 
+
     base_amount: function (frm) {
         update_total_amount(frm);
         console.log("✅ Custom Purchase Receipt Client Script loaded");
@@ -30,7 +31,6 @@ frappe.ui.form.on('Purchase Receipt', {
                     const itemCode = response.message.item_code[0]['parent'];
                     const expiryDate = response.message.formatted_date;
                     const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
-                    const baseRate = response.message.base_rate[0]['base_rate'];
 
                     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
                         const itemName = r.item_name;
@@ -46,8 +46,7 @@ frappe.ui.form.on('Purchase Receipt', {
                             custom_expiry_date: expiryDate,
                             barcode: barcode,
                             received_stock_qty: qty * conversionRate,
-                            stock_qty: qty * conversionRate,
-                            base_rate: baseRate,
+                            stock_qty: qty * conversionRate
                         });
 
                         // Set warehouse from PO if available, else use default warehouse
@@ -125,22 +124,17 @@ frappe.ui.form.on('Purchase Receipt', {
 frappe.ui.form.on('Purchase Receipt Item', {
     received_stock_qty: function (frm, cdt, cdn) {
         update_total_qty(frm);
-        update_base_amount(frm, cdt, cdn);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
-
-    // base_amount: function (frm, cdt, cdn) {
-    // },
 
     items_add: function (frm, cdt, cdn) {
         setTimeout(function () {
             update_purchase_order_and_purchase_invoice_fields(frm);
-            update_total_amount(frm);
         }, 500);
     },
 
     items_remove: function (frm) {
         update_total_qty(frm);
-        update_total_amount(frm);
     },
 
     stock_qty: function (frm, cdt, cdn) {
@@ -150,23 +144,14 @@ frappe.ui.form.on('Purchase Receipt Item', {
     qty: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
         // Always update stock_qty after qty change
-        setTimeout(() => {
-            update_base_amount(frm, cdt, cdn);
-            update_total_qty(frm);
-            update_total_amount(frm);
-
-
-        }, 200);
         frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
+        update_base_amount(frm, cdt, cdn); // This will calculate base_amount
+        update_total_qty(frm);
+
     },
 
     base_rate: function (frm, cdt, cdn) {
-        update_base_amount(frm, cdt, cdn);
-    },
-
-    base_amount: function (frm, cdt, cdn) {
-        // Trigger total update when base_amount changes
-        update_total_amount(frm);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 
     uom: function (frm, cdt, cdn) {
@@ -175,7 +160,7 @@ frappe.ui.form.on('Purchase Receipt Item', {
         if (row.uom === 'Unit') {
             frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
         }
-        update_base_amount(frm, cdt, cdn);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 
     conversion_factor: function (frm, cdt, cdn) {
@@ -185,36 +170,19 @@ frappe.ui.form.on('Purchase Receipt Item', {
         if (row.uom === 'Unit') {
             frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
         }
-        update_base_amount(frm, cdt, cdn);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 });
 
-// UPDATED update_base_amount function - UOM-based calculation
+// FIXED update_base_amount function - Always use qty * base_rate
 function update_base_amount(frm, cdt, cdn) {
     var row = locals[cdt][cdn];
-    let base_amount = 0;
+    // Always use qty * base_rate regardless of UOM
+    frappe.model.set_value(cdt, cdn, 'base_amount', (row.base_rate || 0) * (row.qty || 0));
+    console.log("Update base amount - UOM:", row.uom, "Qty:", row.qty, "Base Rate:", row.base_rate, "Base Amount:", (row.base_rate || 0) * (row.qty || 0));
 
-    // UOM-based calculation logic
-    if (row.uom === 'Unit') {
-        // For Unit UOM: base_amount = qty * base_rate
-        base_amount = (row.qty || 0) * (row.base_rate || 0);
-    } else if (row.uom === 'Box' || row.uom === 'Carton') {
-        // For Box/Carton UOM: base_amount = stock_qty * base_rate
-        base_amount = (row.stock_qty || 0) * (row.base_rate || 0);
-    } else {
-        // Default fallback for other UOMs: use qty * base_rate
-        base_amount = (row.qty || 0) * (row.base_rate || 0);
-    }
-
-    setTimeout(() => {
-        frappe.model.set_value(cdt, cdn, 'base_amount', base_amount);
-        console.log("Update base amount - UOM:", row.uom, "Qty:", row.qty, "Stock Qty:", row.stock_qty, "Base Rate:", row.base_rate, "Base Amount:", base_amount);
-
-        // Update total amount immediately after setting base_amount
-        setTimeout(() => {
-            update_total_amount(frm);
-        }, 100);
-    }, 100);
+    // Update total amount after changing base_amount
+    update_total_amount(frm);
 }
 
 function update_total_qty(frm) {
@@ -229,19 +197,14 @@ function update_total_qty(frm) {
 }
 
 function update_total_amount(frm) {
-    // if (frm.doc.custom_purchase_invoice_name) return; // Invoice present, totals come from invoice
-    // if (frm.doc.docstatus === 1) return;
-
+    if (frm.doc.custom_purchase_invoice_name) return; // Invoice present, totals come from invoice
+    if (frm.doc.docstatus === 1) return;
     let total = 0;
     (frm.doc.items || []).forEach(item => {
-        // Use the already calculated base_amount from the form
-        total += flt(item.base_amount || 0);
+        total += flt(item.base_amount);
     });
-
     frm.set_value("base_total", total);
     frm.refresh_field("base_total");
-    console.log("Total Amount Calculation:", total);
-
 }
 
 function update_purchase_order_and_purchase_invoice_fields(frm) {
