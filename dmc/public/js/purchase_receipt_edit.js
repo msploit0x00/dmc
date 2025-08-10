@@ -31,6 +31,7 @@ frappe.ui.form.on('Purchase Receipt', {
                     const itemCode = response.message.item_code[0]['parent'];
                     const expiryDate = response.message.formatted_date;
                     const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
+                    const baseRate = response.message.base_rate[0]['base_rate'];
 
                     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
                         const itemName = r.item_name;
@@ -46,7 +47,9 @@ frappe.ui.form.on('Purchase Receipt', {
                             custom_expiry_date: expiryDate,
                             barcode: barcode,
                             received_stock_qty: qty * conversionRate,
-                            stock_qty: qty * conversionRate
+                            stock_qty: qty * conversionRate,
+                            base_rate: baseRate,
+
                         });
 
                         // Set warehouse from PO if available, else use default warehouse
