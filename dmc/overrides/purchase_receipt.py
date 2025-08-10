@@ -17,18 +17,9 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         pass
 
     def before_save(self):
-        # Calculate base_amount for each item based on UOM
+        # Calculate base_amount for each item - Always use qty * base_rate
         for item in self.items:
-            # UOM-based calculation logic
-            if item.uom == 'Unit':
-                # For Unit UOM: base_amount = qty * base_rate
-                item.base_amount = flt(item.qty) * flt(item.base_rate)
-            elif item.uom in ['Box', 'Carton']:
-                # For Box/Carton UOM: base_amount = stock_qty * base_rate
-                item.base_amount = flt(item.stock_qty) * flt(item.base_rate)
-            else:
-                # Default fallback for other UOMs: use qty * base_rate
-                item.base_amount = flt(item.qty) * flt(item.base_rate)
+            item.base_amount = flt(item.qty) * flt(item.base_rate)
 
             # Fix purchase_invoice_item field to prevent KeyError
             if item.purchase_invoice and not item.purchase_invoice_item:
@@ -60,9 +51,6 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         # Calculate and set total_qty
         self.total_qty = self.calculate_total_qty()
 
-        # Calculate and set base_total using UOM logic
-        self.update_total_amount()
-
         # Set received_stock_qty if not set
         for item in self.items:
             if not item.received_stock_qty or item.received_stock_qty == 0:
@@ -87,22 +75,13 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         sle = super().get_sl_entries(d, args)
 
         try:
-            # Calculate the correct per-unit rate based on Purchase Receipt item data and UOM
-            if d.uom == 'Unit':
-                # For Unit UOM, base_rate is already per unit
-                per_unit_rate = flt(d.base_rate)
-            elif d.uom in ['Box', 'Carton']:
-                # For Box/Carton UOM, need to convert to per stock unit rate
-                if d.conversion_factor and d.conversion_factor > 0:
-                    per_unit_rate = flt(d.base_rate) / flt(d.conversion_factor)
-                else:
-                    per_unit_rate = flt(d.base_rate)
+            # Calculate the correct per-unit rate based on Purchase Receipt item data
+            if d.conversion_factor and d.conversion_factor > 0:
+                # For UOM conversions: base_rate is per UOM unit, need per stock_uom unit
+                per_unit_rate = flt(d.base_rate) / flt(d.conversion_factor)
             else:
-                # Default: calculate per-unit rate using conversion factor
-                if d.conversion_factor and d.conversion_factor > 0:
-                    per_unit_rate = flt(d.base_rate) / flt(d.conversion_factor)
-                else:
-                    per_unit_rate = flt(d.base_rate)
+                # No conversion, base_rate is already per stock unit
+                per_unit_rate = flt(d.base_rate)
 
             # Override the SLE rates BEFORE it's created
             sle.update({
@@ -116,7 +95,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                     sle["actual_qty"]) * per_unit_rate
 
             print(
-                f"DEBUG: Item {d.item_code} - UOM: {d.uom}, Base Rate: {d.base_rate}, Conversion: {d.conversion_factor}, Per Unit Rate: {per_unit_rate}")
+                f"DEBUG: Item {d.item_code} - Base Rate: {d.base_rate}, Conversion: {d.conversion_factor}, Per Unit Rate: {per_unit_rate}")
 
         except Exception as e:
             frappe.log_error(f"Error in custom get_sl_entries for item {d.item_code}: {str(e)}",
@@ -130,22 +109,8 @@ class CustomPurchaseReceipt(PurchaseReceipt):
         self.set_in_words()
 
     def update_total_amount(self):
-        """Update base_total based on UOM logic and save to database"""
-        total = 0
-        for d in self.items:
-            # Calculate base_amount based on UOM logic
-            if d.uom == 'Unit':
-                # For Unit UOM: base_amount = qty * base_rate
-                base_amount = flt(d.qty) * flt(d.base_rate)
-            elif d.uom in ['Box', 'Carton']:
-                # For Box/Carton UOM: base_amount = stock_qty * base_rate
-                base_amount = flt(d.stock_qty) * flt(d.base_rate)
-            else:
-                # Default fallback for other UOMs: use qty * base_rate
-                base_amount = flt(d.qty) * flt(d.base_rate)
-
-            total += base_amount
-
+        """Update base_total and save to database"""
+        total = sum(flt(d.base_amount) for d in self.items)
         self.base_total = total
         self.db_set('base_total', total)
 
