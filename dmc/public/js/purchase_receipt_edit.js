@@ -4,6 +4,7 @@ frappe.ui.form.on('Purchase Receipt', {
         console.log("✅ Custom Purchase Receipt Client Script loaded");
     },
 
+
     base_amount: function (frm) {
         update_total_amount(frm);
         console.log("✅ Custom Purchase Receipt Client Script loaded");
@@ -34,16 +35,6 @@ frappe.ui.form.on('Purchase Receipt', {
                     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
                         const itemName = r.item_name;
 
-                        // Calculate stock quantities based on UOM
-                        let stockQty, receivedStockQty;
-                        if (uom === 'Unit') {
-                            stockQty = qty;
-                            receivedStockQty = qty;
-                        } else {
-                            stockQty = qty * conversionRate;
-                            receivedStockQty = qty * conversionRate;
-                        }
-
                         // Always add a new row for each scan
                         let newRow = frm.add_child('items', {
                             item_code: itemCode,
@@ -54,8 +45,8 @@ frappe.ui.form.on('Purchase Receipt', {
                             batch_no: batchNo,
                             custom_expiry_date: expiryDate,
                             barcode: barcode,
-                            received_stock_qty: receivedStockQty,
-                            stock_qty: stockQty
+                            received_stock_qty: qty * conversionRate,
+                            stock_qty: qty * conversionRate
                         });
 
                         // Set warehouse from PO if available, else use default warehouse
@@ -133,7 +124,7 @@ frappe.ui.form.on('Purchase Receipt', {
 frappe.ui.form.on('Purchase Receipt Item', {
     received_stock_qty: function (frm, cdt, cdn) {
         update_total_qty(frm);
-        update_base_amount(frm, cdt, cdn);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 
     items_add: function (frm, cdt, cdn) {
@@ -152,60 +143,34 @@ frappe.ui.form.on('Purchase Receipt Item', {
 
     qty: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
-
-        // Calculate stock quantities based on UOM
-        if (row.uom === 'Unit') {
-            // For Unit UOM, use qty directly
-            frappe.model.set_value(cdt, cdn, 'stock_qty', row.qty || 0);
-            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty || 0);
-        } else {
-            // For other UOMs, multiply by conversion factor
-            frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
-            frappe.model.set_value(cdt, cdn, 'received_stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
-        }
-
-        update_base_amount(frm, cdt, cdn);
+        // Always update stock_qty after qty change
+        frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
+        update_base_amount(frm, cdt, cdn); // This will calculate base_amount
         update_total_qty(frm);
+
     },
 
     base_rate: function (frm, cdt, cdn) {
-        update_base_amount(frm, cdt, cdn);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 
     uom: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
-
-        // Recalculate stock quantities when UOM changes
+        // Update received_stock_qty based on UOM
         if (row.uom === 'Unit') {
-            // For Unit UOM, use qty directly
-            frappe.model.set_value(cdt, cdn, 'stock_qty', row.qty || 0);
-            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty || 0);
-        } else {
-            // For other UOMs, multiply by conversion factor
-            frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
-            frappe.model.set_value(cdt, cdn, 'received_stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
+            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
         }
-
-        update_base_amount(frm, cdt, cdn);
-        update_total_qty(frm);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 
     conversion_factor: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
-
-        // Recalculate stock quantities when conversion factor changes
+        // Always update stock_qty after conversion factor change
+        frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
         if (row.uom === 'Unit') {
-            // For Unit UOM, use qty directly (ignore conversion factor)
-            frappe.model.set_value(cdt, cdn, 'stock_qty', row.qty || 0);
-            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty || 0);
-        } else {
-            // For other UOMs, multiply by conversion factor
-            frappe.model.set_value(cdt, cdn, 'stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
-            frappe.model.set_value(cdt, cdn, 'received_stock_qty', (row.qty || 0) * (row.conversion_factor || 1));
+            frappe.model.set_value(cdt, cdn, 'received_stock_qty', row.qty * (row.conversion_factor || 1));
         }
-
-        update_base_amount(frm, cdt, cdn);
-        update_total_qty(frm);
+        update_base_amount(frm, cdt, cdn); // Add this line
     },
 });
 
