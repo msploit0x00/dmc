@@ -580,10 +580,16 @@ frappe.ui.form.on('Delivery Note', {
                                 frappe.model.set_value(newRow.doctype, newRow.name, 'amount', 0),
                                 frappe.model.set_value(newRow.doctype, newRow.name, 'is_free_item', 1)
                             ]).then(() => {
+                                // Set against_sales_order and so_detail if available
+                                if (frm.doc.sales_order) {
+                                    frappe.model.set_value(newRow.doctype, newRow.name, 'against_sales_order', frm.doc.sales_order);
+                                    if (typeof so_detail_id !== 'undefined' && so_detail_id) {
+                                        frappe.model.set_value(newRow.doctype, newRow.name, 'so_detail', so_detail_id);
+                                    }
+                                }
                                 if (expiryDate) {
                                     frappe.model.set_value(newRow.doctype, newRow.name, 'batch_expiry_date', expiryDate);
                                 }
-
                                 frm.refresh_field('items');
                                 update_total_qty(frm);
                                 frm.set_value('custom_scan_barcodes_for_free_items', '');
