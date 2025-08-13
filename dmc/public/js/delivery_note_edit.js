@@ -1,5 +1,5 @@
 // ============================
-// DELIVERY NOTE SCANNER - FIXED VERSION WITH UOM HANDLING
+// DELIVERY NOTE SCANNER - FIXED VERSION
 // ============================
 
 frappe.ui.form.on('Delivery Note', {
@@ -68,7 +68,7 @@ frappe.ui.form.on('Delivery Note', {
         }
     },
 
-    // REGULAR SCANNER - FIXED WITH UOM HANDLING
+    // REGULAR SCANNER - FIXED
     custom_scan_barcodes: function (frm) {
         if (!frm.doc.custom_scan_barcodes) return;
 
@@ -102,29 +102,25 @@ frappe.ui.form.on('Delivery Note', {
                     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
                         const itemName = r.item_name;
 
-                        // FIXED: Look for existing row with EXACT match INCLUDING UOM
+                        // FIXED: Look for existing row with EXACT match
                         const existingRow = frm.doc.items.find(item => {
                             const sameItem = item.item_code === itemCode;
                             const sameBatch = item.batch_no === batchNo;
-                            const sameUom = item.uom === uom;  // 🔥 ADDED UOM CHECK
                             const notFree = !item.is_free_item;
 
                             console.log('🔍 Checking existing row:', {
                                 checking: item.item_code,
-                                checking_uom: item.uom,
-                                scanning_uom: uom,
                                 sameItem,
                                 sameBatch,
-                                sameUom,
                                 notFree,
                                 is_free: item.is_free_item
                             });
 
-                            return sameItem && sameBatch && sameUom && notFree;  // 🔥 ADDED sameUom
+                            return sameItem && sameBatch && notFree;
                         });
 
                         if (existingRow) {
-                            console.log('✅ FOUND EXISTING ROW WITH SAME UOM - UPDATING');
+                            console.log('✅ FOUND EXISTING ROW - UPDATING');
 
                             // FIXED: Store original values before any changes
                             const originalRate = existingRow.rate;
@@ -164,10 +160,10 @@ frappe.ui.form.on('Delivery Note', {
                             }
 
                             console.log('✅ UPDATED ROW SUCCESSFULLY');
-                            finalize_scan(frm, `Updated quantity to ${newQty} for ${itemName} (${uom})`, 'custom_scan_barcodes');
+                            finalize_scan(frm, `Updated quantity to ${newQty} for ${itemName}`, 'custom_scan_barcodes');
 
                         } else {
-                            console.log('➕ CREATING NEW ROW - Different UOM or new item');
+                            console.log('➕ CREATING NEW ROW');
                             // Create new row
                             let newRow = frm.add_child('items', {
                                 item_code: itemCode,
@@ -207,7 +203,7 @@ frappe.ui.form.on('Delivery Note', {
         });
     },
 
-    // FREE ITEM SCANNER - FIXED WITH UOM HANDLING
+    // FREE ITEM SCANNER - FIXED
     custom_scan_barcodes_for_free_items: function (frm) {
         if (!frm.doc.custom_scan_barcodes_for_free_items) return;
 
@@ -251,25 +247,24 @@ frappe.ui.form.on('Delivery Note', {
                             return;
                         }
 
-                        // FIXED: Check for existing free row WITH UOM
+                        // FIXED: Check for existing free row
                         const existingFreeRow = frm.doc.items.find(item => {
                             const sameItem = item.item_code === itemCode;
                             const sameBatch = item.batch_no === batchNo;
-                            const sameUom = item.uom === uom;  // 🔥 ADDED UOM CHECK
                             const isFree = item.is_free_item === 1;
-                            return sameItem && sameBatch && sameUom && isFree;  // 🔥 ADDED sameUom
+                            return sameItem && sameBatch && isFree;
                         });
 
-                        // Calculate current total free quantity for this UOM
+                        // Calculate current total free quantity
                         const currentFreeQty = frm.doc.items
-                            .filter(item => item.item_code === itemCode && item.uom === uom && item.is_free_item === 1)
+                            .filter(item => item.item_code === itemCode && item.is_free_item === 1)
                             .reduce((total, item) => total + (item.qty || 0), 0);
 
                         const newTotalQty = currentFreeQty + 1;
                         if (newTotalQty > allowedQty) {
                             frappe.msgprint({
                                 title: __('Quantity Exceeded'),
-                                message: __(`Cannot scan more free items. Current: ${currentFreeQty}, Allowed: ${allowedQty} for item ${itemCode} (${uom})`),
+                                message: __(`Cannot scan more free items. Current: ${currentFreeQty}, Allowed: ${allowedQty} for item ${itemCode}`),
                                 indicator: 'red'
                             });
                             finalize_scan(frm, "", 'custom_scan_barcodes_for_free_items');
@@ -280,7 +275,7 @@ frappe.ui.form.on('Delivery Note', {
                             const itemName = r.item_name;
 
                             if (existingFreeRow) {
-                                console.log('✅ UPDATING EXISTING FREE ROW WITH SAME UOM');
+                                console.log('✅ UPDATING EXISTING FREE ROW');
 
                                 const currentQty = existingFreeRow.qty || 0;
                                 const newQty = currentQty + 1;
@@ -300,10 +295,10 @@ frappe.ui.form.on('Delivery Note', {
                                 }
                                 set_so_detail(frm, existingFreeRow, itemCode, null, true);
 
-                                finalize_free_scan(frm, `Updated free quantity to ${newQty} for ${itemName} (${uom})`);
+                                finalize_free_scan(frm, `Updated free quantity to ${newQty} for ${itemName}`);
 
                             } else {
-                                console.log('➕ CREATING NEW FREE ROW - Different UOM or new item');
+                                console.log('➕ CREATING NEW FREE ROW');
 
                                 let newRow = frm.add_child('items', {
                                     item_code: itemCode,
@@ -497,7 +492,6 @@ function auto_add_free_items_from_so(frm) {
                 freeItems.forEach(soItem => {
                     const existingItem = frm.doc.items.find(dnItem =>
                         dnItem.item_code === soItem.item_code &&
-                        dnItem.uom === soItem.uom &&  // Check UOM too
                         dnItem.is_free_item === 1
                     );
 
@@ -747,8 +741,9 @@ frappe.ui.form.on('Delivery Note Item', {
     }
 });
 
-// oooold
 
+
+//**old */
 // // ============================
 // // DELIVERY NOTE SCANNER - FIXED VERSION
 // // ============================
