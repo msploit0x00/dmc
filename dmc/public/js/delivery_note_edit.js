@@ -740,6 +740,752 @@ frappe.ui.form.on('Delivery Note Item', {
         }
     }
 });
+
+
+
+//**old */
+// // ============================
+// // DELIVERY NOTE SCANNER - FIXED VERSION
+// // ============================
+
+// frappe.ui.form.on('Delivery Note', {
+//     onload: function (frm) {
+//         console.log('🚀 ONLOAD: Starting initialization...');
+
+//         // Clear empty initial row
+//         if (frm.is_new() && frm.doc.items && frm.doc.items.length == 1) {
+//             if (!frm.doc.items[0].barcode && !frm.doc.items[0].item_code) {
+//                 frm.clear_table("items");
+//             }
+//         }
+
+//         // Initialize scanner state
+//         frm._scanning = false;
+//         frm._scan_queue = []; // NEW: Queue to handle rapid scans
+
+//         // IMMEDIATE check for free scanner - no delay
+//         check_and_toggle_free_scanner(frm);
+
+//         // Also auto-add free items if creating from SO
+//         auto_add_free_items_from_so(frm);
+//     },
+
+//     refresh: function (frm) {
+//         console.log('🔄 REFRESH: Checking free scanner...');
+
+//         // Check free scanner on every refresh
+//         check_and_toggle_free_scanner(frm);
+
+//         // Add button to manually link Sales Order if none found
+//         if (!get_sales_order_reference(frm)) {
+//             frm.add_custom_button(__('Link Sales Order'), function () {
+//                 frappe.prompt({
+//                     label: 'Sales Order',
+//                     fieldname: 'sales_order',
+//                     fieldtype: 'Link',
+//                     options: 'Sales Order',
+//                     reqd: 1
+//                 }, function (values) {
+//                     // Set SO reference in items
+//                     if (frm.doc.items && frm.doc.items.length > 0) {
+//                         frm.doc.items.forEach(item => {
+//                             if (!item.against_sales_order) {
+//                                 frappe.model.set_value(item.doctype, item.name, 'against_sales_order', values.sales_order);
+//                             }
+//                         });
+//                     }
+
+//                     // Also set document level if field exists
+//                     if (frm.fields_dict.sales_order) {
+//                         frm.set_value('sales_order', values.sales_order);
+//                     }
+
+//                     frappe.show_alert({
+//                         message: __('Sales Order linked successfully'),
+//                         indicator: 'green'
+//                     });
+
+//                     // Refresh to show free scanner
+//                     setTimeout(() => {
+//                         check_and_toggle_free_scanner(frm);
+//                     }, 500);
+//                 }, __('Link Sales Order'));
+//             }, __('Actions'));
+//         }
+//     },
+
+//     // REGULAR SCANNER - FIXED
+//     custom_scan_barcodes: function (frm) {
+//         if (!frm.doc.custom_scan_barcodes) return;
+
+//         const barcode = frm.doc.custom_scan_barcodes;
+
+//         // FIXED: Better scanning state management
+//         if (frm._scanning) {
+//             console.log('⏸️ Already scanning, queueing:', barcode);
+//             frm._scan_queue = frm._scan_queue || [];
+//             frm._scan_queue.push({ barcode: barcode, type: 'regular' });
+//             frm.set_value('custom_scan_barcodes', '');
+//             return;
+//         }
+
+//         frm._scanning = true;
+//         console.log('📱 SCANNING REGULAR:', barcode);
+
+//         frappe.call({
+//             method: 'dmc.barcode_details.get_barcode_details',
+//             args: { barcode: barcode },
+//             async: false,
+//             callback: function (response) {
+//                 if (response.message) {
+//                     const uom = response.message.barcode_uom[0]['uom'];
+//                     const batchNo = response.message.batch_id;
+//                     const itemCode = response.message.item_code[0]['parent'];
+//                     const expiryDate = response.message.formatted_date;
+//                     const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
+//                     const so_detail_id = response.message.so_detail_id;
+
+//                     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
+//                         const itemName = r.item_name;
+
+//                         // FIXED: Look for existing row with EXACT match
+//                         const existingRow = frm.doc.items.find(item => {
+//                             const sameItem = item.item_code === itemCode;
+//                             const sameBatch = item.batch_no === batchNo;
+//                             const notFree = !item.is_free_item;
+
+//                             console.log('🔍 Checking existing row:', {
+//                                 checking: item.item_code,
+//                                 sameItem,
+//                                 sameBatch,
+//                                 notFree,
+//                                 is_free: item.is_free_item
+//                             });
+
+//                             return sameItem && sameBatch && notFree;
+//                         });
+
+//                         if (existingRow) {
+//                             console.log('✅ FOUND EXISTING ROW - UPDATING');
+
+//                             // FIXED: Store original values before any changes
+//                             const originalRate = existingRow.rate;
+//                             const originalUom = existingRow.uom;
+//                             const originalConversionFactor = existingRow.conversion_factor;
+//                             const currentQty = existingRow.qty || 0;
+//                             const newQty = currentQty + 1;
+
+//                             console.log('📊 UPDATE VALUES:', {
+//                                 current_qty: currentQty,
+//                                 new_qty: newQty,
+//                                 original_rate: originalRate,
+//                                 original_uom: originalUom,
+//                                 original_conversion: originalConversionFactor
+//                             });
+
+//                             // CRITICAL: Use batch update to prevent field triggers from interfering
+//                             frappe.model.set_value(existingRow.doctype, existingRow.name, {
+//                                 'qty': newQty,
+//                                 'custom_out_qty': newQty,
+//                                 'barcode': barcode,
+//                                 // FIXED: Force preserve original values
+//                                 'uom': originalUom,
+//                                 'conversion_factor': originalConversionFactor,
+//                                 'rate': originalRate,
+//                                 'amount': newQty * originalRate
+//                             });
+
+//                             // FIXED: Ensure SO details are maintained/set
+//                             const salesOrder = get_sales_order_reference(frm);
+//                             if (salesOrder) {
+//                                 if (!existingRow.against_sales_order) {
+//                                     frappe.model.set_value(existingRow.doctype, existingRow.name, 'against_sales_order', salesOrder);
+//                                 }
+//                                 // FIXED: Always ensure SO detail is set
+//                                 set_so_detail(frm, existingRow, itemCode, so_detail_id, false);
+//                             }
+
+//                             console.log('✅ UPDATED ROW SUCCESSFULLY');
+//                             finalize_scan(frm, `Updated quantity to ${newQty} for ${itemName}`, 'custom_scan_barcodes');
+
+//                         } else {
+//                             console.log('➕ CREATING NEW ROW');
+//                             // Create new row
+//                             let newRow = frm.add_child('items', {
+//                                 item_code: itemCode,
+//                                 item_name: itemName,
+//                                 qty: 1,
+//                                 custom_out_qty: 1,
+//                                 uom: uom,
+//                                 conversion_factor: conversionRate,
+//                                 batch_no: batchNo,
+//                                 custom_expiry_date: expiryDate,
+//                                 barcode: barcode
+//                             });
+
+//                             // FIXED: Set SO references immediately
+//                             const salesOrder = get_sales_order_reference(frm);
+//                             if (salesOrder) {
+//                                 frappe.model.set_value(newRow.doctype, newRow.name, 'against_sales_order', salesOrder);
+//                                 set_so_detail(frm, newRow, itemCode, so_detail_id, false);
+//                             }
+
+//                             // CRITICAL: Let item_code trigger set the rate, then finalize
+//                             frm.script_manager.trigger('item_code', newRow.doctype, newRow.name).then(() => {
+//                                 console.log('🎯 ITEM CODE TRIGGERED - RATE SET');
+//                                 finalize_scan(frm, `Added 1 ${uom} of ${itemName}`, 'custom_scan_barcodes');
+//                             });
+//                         }
+//                     });
+//                 } else {
+//                     frappe.msgprint(__("Barcode not found"));
+//                     finalize_scan(frm, "", 'custom_scan_barcodes');
+//                 }
+//             },
+//             error: function () {
+//                 console.log('❌ SCAN ERROR');
+//                 finalize_scan(frm, "", 'custom_scan_barcodes');
+//             }
+//         });
+//     },
+
+//     // FREE ITEM SCANNER - FIXED
+//     custom_scan_barcodes_for_free_items: function (frm) {
+//         if (!frm.doc.custom_scan_barcodes_for_free_items) return;
+
+//         const barcode = frm.doc.custom_scan_barcodes_for_free_items;
+
+//         // FIXED: Better scanning state management
+//         if (frm._scanning) {
+//             console.log('⏸️ Already scanning free item, queueing:', barcode);
+//             frm._scan_queue = frm._scan_queue || [];
+//             frm._scan_queue.push({ barcode: barcode, type: 'free' });
+//             frm.set_value('custom_scan_barcodes_for_free_items', '');
+//             return;
+//         }
+
+//         frm._scanning = true;
+//         console.log('🎁 SCANNING FREE ITEM:', barcode);
+
+//         frappe.call({
+//             method: 'dmc.barcode_details.get_barcode_details',
+//             args: { barcode: barcode },
+//             async: false,
+//             callback: function (response) {
+//                 if (response.message) {
+//                     const uom = response.message.barcode_uom[0]['uom'];
+//                     const batchNo = response.message.batch_id;
+//                     const itemCode = response.message.item_code[0]['parent'];
+//                     const expiryDate = response.message.formatted_date;
+//                     const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
+
+//                     const salesOrder = get_sales_order_reference(frm);
+//                     if (!salesOrder) {
+//                         frappe.msgprint(__("No Sales Order found for free items"));
+//                         finalize_scan(frm, "", 'custom_scan_barcodes_for_free_items');
+//                         return;
+//                     }
+
+//                     check_if_item_is_free_in_sales_order(frm, itemCode, function (is_free, allowedQty) {
+//                         if (!is_free) {
+//                             frappe.msgprint(__("This item is not marked as free in the Sales Order. Please use the regular scanner."));
+//                             finalize_scan(frm, "", 'custom_scan_barcodes_for_free_items');
+//                             return;
+//                         }
+
+//                         // FIXED: Check for existing free row
+//                         const existingFreeRow = frm.doc.items.find(item => {
+//                             const sameItem = item.item_code === itemCode;
+//                             const sameBatch = item.batch_no === batchNo;
+//                             const isFree = item.is_free_item === 1;
+//                             return sameItem && sameBatch && isFree;
+//                         });
+
+//                         // Calculate current total free quantity
+//                         const currentFreeQty = frm.doc.items
+//                             .filter(item => item.item_code === itemCode && item.is_free_item === 1)
+//                             .reduce((total, item) => total + (item.qty || 0), 0);
+
+//                         const newTotalQty = currentFreeQty + 1;
+//                         if (newTotalQty > allowedQty) {
+//                             frappe.msgprint({
+//                                 title: __('Quantity Exceeded'),
+//                                 message: __(`Cannot scan more free items. Current: ${currentFreeQty}, Allowed: ${allowedQty} for item ${itemCode}`),
+//                                 indicator: 'red'
+//                             });
+//                             finalize_scan(frm, "", 'custom_scan_barcodes_for_free_items');
+//                             return;
+//                         }
+
+//                         frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
+//                             const itemName = r.item_name;
+
+//                             if (existingFreeRow) {
+//                                 console.log('✅ UPDATING EXISTING FREE ROW');
+
+//                                 const currentQty = existingFreeRow.qty || 0;
+//                                 const newQty = currentQty + 1;
+
+//                                 // FIXED: Batch update for free items
+//                                 frappe.model.set_value(existingFreeRow.doctype, existingFreeRow.name, {
+//                                     'qty': newQty,
+//                                     'custom_out_qty': newQty,
+//                                     'barcode': barcode,
+//                                     'rate': 0,
+//                                     'amount': 0
+//                                 });
+
+//                                 // FIXED: Ensure SO details for free items
+//                                 if (!existingFreeRow.against_sales_order) {
+//                                     frappe.model.set_value(existingFreeRow.doctype, existingFreeRow.name, 'against_sales_order', salesOrder);
+//                                 }
+//                                 set_so_detail(frm, existingFreeRow, itemCode, null, true);
+
+//                                 finalize_free_scan(frm, `Updated free quantity to ${newQty} for ${itemName}`);
+
+//                             } else {
+//                                 console.log('➕ CREATING NEW FREE ROW');
+
+//                                 let newRow = frm.add_child('items', {
+//                                     item_code: itemCode,
+//                                     item_name: itemName,
+//                                     qty: 1,
+//                                     custom_out_qty: 1,
+//                                     uom: uom,
+//                                     conversion_factor: conversionRate,
+//                                     batch_no: batchNo,
+//                                     custom_expiry_date: expiryDate,
+//                                     barcode: barcode,
+//                                     is_free_item: 1,
+//                                     rate: 0,
+//                                     amount: 0,
+//                                     against_sales_order: salesOrder
+//                                 });
+
+//                                 // FIXED: Set SO detail immediately
+//                                 set_so_detail(frm, newRow, itemCode, null, true);
+
+//                                 finalize_free_scan(frm, `Added 1 free ${uom} of ${itemName}`);
+//                             }
+//                         });
+//                     });
+//                 } else {
+//                     frappe.msgprint(__("Barcode not found"));
+//                     finalize_scan(frm, "", 'custom_scan_barcodes_for_free_items');
+//                 }
+//             },
+//             error: function () {
+//                 console.log('❌ FREE SCAN ERROR');
+//                 finalize_scan(frm, "", 'custom_scan_barcodes_for_free_items');
+//             }
+//         });
+//     }
+// });
+
+// // ===========================
+// // HELPER FUNCTIONS - ENHANCED
+// // ===========================
+
+// function get_sales_order_reference(frm) {
+//     console.log('🔍 === SEARCHING FOR SALES ORDER REFERENCE ===');
+
+//     // Method 1: Check document field first
+//     if (frm.doc.sales_order) {
+//         console.log('📋 Found SO in doc.sales_order:', frm.doc.sales_order);
+//         return frm.doc.sales_order;
+//     }
+
+//     // Method 2: Check items table
+//     if (frm.doc.items && frm.doc.items.length > 0) {
+//         for (let item of frm.doc.items) {
+//             if (item.against_sales_order) {
+//                 console.log('📋 Found SO in items:', item.against_sales_order);
+//                 return item.against_sales_order;
+//             }
+//         }
+//     }
+
+//     // Method 3: Check URL parameters (when creating DN from SO)
+//     const urlParams = new URLSearchParams(window.location.search);
+//     const fromSO = urlParams.get('sales_order');
+//     if (fromSO) {
+//         console.log('📋 Found SO in URL:', fromSO);
+//         return fromSO;
+//     }
+
+//     // Method 4: Check if this DN was created from SO (check route history)
+//     if (frappe.route_history && frappe.route_history.length > 1) {
+//         const previousRoute = frappe.route_history[frappe.route_history.length - 2];
+//         if (previousRoute && previousRoute[1] === 'Sales Order') {
+//             const soName = previousRoute[2];
+//             console.log('📋 Found SO in route history:', soName);
+//             return soName;
+//         }
+//     }
+
+//     // Method 5: Check frappe.route_options (set when creating from SO)
+//     if (frappe.route_options && frappe.route_options.sales_order) {
+//         console.log('📋 Found SO in route_options:', frappe.route_options.sales_order);
+//         return frappe.route_options.sales_order;
+//     }
+
+//     // Method 6: For existing DN, check if it has items with SO references
+//     if (!frm.is_new()) {
+//         console.log('📋 Existing DN: Re-checking items for SO references...');
+//         frm.refresh();
+//         if (frm.doc.items && frm.doc.items.length > 0) {
+//             for (let item of frm.doc.items) {
+//                 if (item.against_sales_order) {
+//                     console.log('📋 Found SO in refreshed items:', item.against_sales_order);
+//                     return item.against_sales_order;
+//                 }
+//             }
+//         }
+//     }
+
+//     console.log('❌ No Sales Order reference found after all methods');
+//     console.log('🔍 Debug info:', {
+//         doc_sales_order: frm.doc.sales_order,
+//         items_count: frm.doc.items ? frm.doc.items.length : 0,
+//         url_params: window.location.search,
+//         route_options: frappe.route_options,
+//         is_new: frm.is_new()
+//     });
+
+//     return null;
+// }
+
+// function check_and_toggle_free_scanner(frm) {
+//     console.log('🔍 === CHECKING FREE SCANNER VISIBILITY ===');
+
+//     const salesOrder = get_sales_order_reference(frm);
+//     console.log('📋 Sales Order found:', salesOrder);
+
+//     if (!salesOrder) {
+//         console.log('❌ No Sales Order, hiding free scanner');
+//         hide_free_scanner(frm);
+//         return;
+//     }
+
+//     frappe.call({
+//         method: "frappe.client.get",
+//         args: {
+//             doctype: "Sales Order",
+//             name: salesOrder
+//         },
+//         callback: function (response) {
+//             if (response.message && response.message.items) {
+//                 const freeItems = response.message.items.filter(item => {
+//                     const standardFree = item.is_free_item === 1 || item.is_free_item === "1" || item.is_free_item === true;
+//                     const customFree = item.custom_is_free_item === 1 || item.custom_is_free_item === "1" || item.custom_is_free_item === true;
+//                     return standardFree || customFree;
+//                 });
+
+//                 console.log('🎁 TOTAL FREE ITEMS FOUND:', freeItems.length);
+
+//                 if (freeItems.length > 0) {
+//                     console.log('✅ FREE ITEMS EXIST - SHOWING SCANNER');
+//                     show_free_scanner(frm, freeItems.length);
+//                 } else {
+//                     console.log('❌ NO FREE ITEMS - HIDING SCANNER');
+//                     hide_free_scanner(frm);
+//                 }
+//             } else {
+//                 console.log('❌ No Sales Order data or items found');
+//                 hide_free_scanner(frm);
+//             }
+//         },
+//         error: function (err) {
+//             console.log('❌ Error fetching Sales Order:', err);
+//             hide_free_scanner(frm);
+//         }
+//     });
+// }
+
+// function show_free_scanner(frm, freeItemsCount) {
+//     console.log('🎁 SHOWING FREE SCANNER with', freeItemsCount, 'free items');
+//     frm.set_df_property('custom_scan_barcodes_for_free_items', 'hidden', 0);
+//     frm.toggle_display('custom_scan_barcodes_for_free_items', true);
+//     frm.set_df_property('custom_scan_barcodes_for_free_items', 'description',
+//         `🎁 Free Item Scanner (${freeItemsCount} free items available)`);
+//     frm.refresh_field('custom_scan_barcodes_for_free_items');
+// }
+
+// function hide_free_scanner(frm) {
+//     console.log('❌ HIDING FREE SCANNER');
+//     frm.toggle_display('custom_scan_barcodes_for_free_items', false);
+//     frm.set_df_property('custom_scan_barcodes_for_free_items', 'hidden', 1);
+// }
+
+// function auto_add_free_items_from_so(frm) {
+//     const salesOrder = get_sales_order_reference(frm);
+//     if (!salesOrder || !frm.is_new()) {
+//         return;
+//     }
+
+//     frappe.call({
+//         method: "frappe.client.get",
+//         args: {
+//             doctype: "Sales Order",
+//             name: salesOrder
+//         },
+//         callback: function (response) {
+//             if (response.message && response.message.items) {
+//                 const freeItems = response.message.items.filter(item =>
+//                     item.is_free_item === 1 || item.custom_is_free_item === 1
+//                 );
+
+//                 freeItems.forEach(soItem => {
+//                     const existingItem = frm.doc.items.find(dnItem =>
+//                         dnItem.item_code === soItem.item_code &&
+//                         dnItem.is_free_item === 1
+//                     );
+
+//                     if (!existingItem && soItem.qty > 0) {
+//                         let newRow = frm.add_child('items', {
+//                             item_code: soItem.item_code,
+//                             item_name: soItem.item_name,
+//                             qty: 0,
+//                             custom_out_qty: 0,
+//                             uom: soItem.uom,
+//                             conversion_factor: soItem.conversion_factor || 1,
+//                             is_free_item: 1,
+//                             rate: 0,
+//                             amount: 0,
+//                             against_sales_order: salesOrder,
+//                             so_detail: soItem.name
+//                         });
+//                     }
+//                 });
+
+//                 if (freeItems.length > 0) {
+//                     frm.refresh_field('items');
+//                 }
+//             }
+//         }
+//     });
+// }
+
+// function check_if_item_is_free_in_sales_order(frm, itemCode, callback) {
+//     const salesOrder = get_sales_order_reference(frm);
+
+//     if (!salesOrder) {
+//         callback(false, 0);
+//         return;
+//     }
+
+//     frappe.call({
+//         method: "frappe.client.get",
+//         args: {
+//             doctype: "Sales Order",
+//             name: salesOrder
+//         },
+//         callback: function (response) {
+//             if (response.message && response.message.items) {
+//                 const freeItem = response.message.items.find(item =>
+//                     item.item_code === itemCode &&
+//                     (item.is_free_item === 1 || item.is_free_item === "1" || item.is_free_item === true ||
+//                         item.custom_is_free_item === 1 || item.custom_is_free_item === "1" || item.custom_is_free_item === true)
+//                 );
+
+//                 callback(!!freeItem, freeItem ? freeItem.qty : 0);
+//             } else {
+//                 callback(false, 0);
+//             }
+//         }
+//     });
+// }
+
+// // FIXED: Enhanced SO detail setting with better error handling
+// function set_so_detail(frm, row, itemCode, so_detail_id, is_free_item) {
+//     const salesOrder = get_sales_order_reference(frm);
+//     if (!salesOrder) {
+//         console.log('❌ No Sales Order for SO detail setting');
+//         return;
+//     }
+
+//     console.log('🔗 Setting SO detail:', {
+//         item: itemCode,
+//         so_detail_id: so_detail_id,
+//         is_free: is_free_item,
+//         row_name: row.name
+//     });
+
+//     if (so_detail_id) {
+//         // Use provided SO detail ID
+//         frappe.model.set_value(row.doctype, row.name, 'so_detail', so_detail_id);
+//         console.log('✅ Set SO detail from barcode response:', so_detail_id);
+//     } else {
+//         // Find matching item in Sales Order
+//         frappe.call({
+//             method: "frappe.client.get",
+//             args: {
+//                 doctype: "Sales Order",
+//                 name: salesOrder
+//             },
+//             callback: function (response) {
+//                 if (response.message && response.message.items) {
+//                     let soItem;
+
+//                     if (is_free_item) {
+//                         // For free items, find the free item match
+//                         soItem = response.message.items.find(item =>
+//                             item.item_code === itemCode &&
+//                             (item.is_free_item === 1 || item.custom_is_free_item === 1)
+//                         );
+//                     } else {
+//                         // For regular items, find non-free item match
+//                         soItem = response.message.items.find(item =>
+//                             item.item_code === itemCode &&
+//                             !item.is_free_item && !item.custom_is_free_item
+//                         );
+//                     }
+
+//                     if (soItem) {
+//                         frappe.model.set_value(row.doctype, row.name, 'so_detail', soItem.name);
+//                         console.log('✅ Found and set SO detail:', soItem.name);
+//                     } else {
+//                         console.log('⚠️ No matching SO item found for:', itemCode);
+//                     }
+//                 } else {
+//                     console.log('❌ Could not fetch SO details');
+//                 }
+//             }
+//         });
+//     }
+// }
+
+// function clear_barcode_field(frm, field_name) {
+//     frm.set_value(field_name, '');
+// }
+
+// // FIXED: Enhanced finalize_scan with queue processing
+// function finalize_scan(frm, message, field_name) {
+//     console.log('🏁 FINALIZING SCAN');
+
+//     // Clear barcode field first
+//     clear_barcode_field(frm, field_name);
+
+//     // Refresh items table
+//     frm.refresh_field('items');
+
+//     // Calculate totals
+//     frm.script_manager.trigger("calculate_taxes_and_totals");
+
+//     if (message) {
+//         frappe.show_alert({
+//             message: __(message),
+//             indicator: 'green'
+//         });
+//     }
+
+//     // FIXED: Reset scanning state and process queue
+//     setTimeout(() => {
+//         frm._scanning = false;
+//         process_scan_queue(frm);
+//     }, 300);
+// }
+
+// function finalize_free_scan(frm, message) {
+//     console.log('🏁 FINALIZING FREE SCAN');
+
+//     clear_barcode_field(frm, 'custom_scan_barcodes_for_free_items');
+
+//     // Ensure all free items stay at rate 0
+//     frm.doc.items.forEach(item => {
+//         if (item.is_free_item === 1) {
+//             frappe.model.set_value(item.doctype, item.name, 'rate', 0);
+//             frappe.model.set_value(item.doctype, item.name, 'amount', 0);
+//         }
+//     });
+
+//     frm.refresh_field('items');
+//     frm.script_manager.trigger("calculate_taxes_and_totals");
+
+//     if (message) {
+//         frappe.show_alert({
+//             message: __(message),
+//             indicator: 'blue'
+//         });
+//     }
+
+//     // Reset scanning state and process queue
+//     setTimeout(() => {
+//         frm._scanning = false;
+//         process_scan_queue(frm);
+//     }, 300);
+// }
+
+// // NEW: Process queued scans
+// function process_scan_queue(frm) {
+//     if (!frm._scan_queue || frm._scan_queue.length === 0) {
+//         return;
+//     }
+
+//     console.log('📦 Processing scan queue, items:', frm._scan_queue.length);
+
+//     const nextScan = frm._scan_queue.shift();
+
+//     if (nextScan.type === 'regular') {
+//         frm.set_value('custom_scan_barcodes', nextScan.barcode);
+//     } else if (nextScan.type === 'free') {
+//         frm.set_value('custom_scan_barcodes_for_free_items', nextScan.barcode);
+//     }
+// }
+
+// // ===========================
+// // DELIVERY NOTE ITEM EVENTS - ENHANCED
+// // ===========================
+
+// frappe.ui.form.on('Delivery Note Item', {
+//     custom_out_qty: function (frm, cdt, cdn) {
+//         const row = locals[cdt][cdn];
+
+//         if (row.custom_out_qty !== row.qty) {
+//             frappe.model.set_value(cdt, cdn, 'qty', row.custom_out_qty || 0);
+//         }
+
+//         if (row.is_free_item === 1) {
+//             frappe.model.set_value(cdt, cdn, 'rate', 0);
+//             frappe.model.set_value(cdt, cdn, 'amount', 0);
+//         }
+//     },
+
+//     rate: function (frm, cdt, cdn) {
+//         const row = locals[cdt][cdn];
+
+//         if (row.is_free_item === 1 && row.rate !== 0) {
+//             frappe.model.set_value(cdt, cdn, 'rate', 0);
+//             frappe.model.set_value(cdt, cdn, 'amount', 0);
+//         }
+//     },
+
+//     item_code: function (frm, cdt, cdn) {
+//         const row = locals[cdt][cdn];
+
+//         if (row.is_free_item === 1) {
+//             frappe.model.set_value(cdt, cdn, 'rate', 0);
+//             frappe.model.set_value(cdt, cdn, 'amount', 0);
+//         }
+
+//         if (row.qty && !row.custom_out_qty) {
+//             frappe.model.set_value(cdt, cdn, 'custom_out_qty', row.qty);
+//         }
+//     },
+
+//     qty: function (frm, cdt, cdn) {
+//         const row = locals[cdt][cdn];
+
+//         if (row.is_free_item === 1) {
+//             frappe.model.set_value(cdt, cdn, 'rate', 0);
+//             frappe.model.set_value(cdt, cdn, 'amount', 0);
+//         }
+
+//         if (row.qty !== row.custom_out_qty) {
+//             frappe.model.set_value(cdt, cdn, 'custom_out_qty', row.qty || 0);
+//         }
+//     }
+// });
 // // // ============================
 
 // frappe.ui.form.on('Delivery Note', {
