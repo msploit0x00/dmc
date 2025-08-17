@@ -905,6 +905,18 @@ function is_complete_barcode(barcode) {
 }
 
 // NEW: Function to identify barcode type and details
+function are_related_barcodes(barcode1, barcode2) {
+    if (!barcode1 || !barcode2) return false;
+
+    const info1 = get_barcode_info(barcode1);
+    const info2 = get_barcode_info(barcode2);
+
+    // They are related if they have the same base part (same physical item)
+    // regardless of packaging type (unit/box/carton)
+    return info1.base === info2.base;
+}
+
+// Enhanced barcode info function
 function get_barcode_info(barcode) {
     if (!barcode || barcode.length < 3) {
         return { type: 'unknown', prefix: '', base: barcode };
@@ -914,25 +926,49 @@ function get_barcode_info(barcode) {
     const base = barcode.substring(3);
 
     let type = 'unknown';
+    let packaging = 'unit';
+
     if (prefix === '010') {
         type = 'unit';
+        packaging = 'unit';
     } else if (prefix === '011') {
         type = 'box';
+        packaging = 'box';
     } else if (prefix === '012') {
         type = 'carton';
+        packaging = 'carton';
     }
 
-    return { type, prefix, base };
+    return { type, prefix, base, packaging };
 }
+// function get_barcode_info(barcode) {
+//     if (!barcode || barcode.length < 3) {
+//         return { type: 'unknown', prefix: '', base: barcode };
+//     }
 
-// NEW: Function to check if two barcodes are for the same physical item
-function are_related_barcodes(barcode1, barcode2) {
-    const info1 = get_barcode_info(barcode1);
-    const info2 = get_barcode_info(barcode2);
+//     const prefix = barcode.substring(0, 3);
+//     const base = barcode.substring(3);
 
-    // They are related if they have the same base part but different prefixes
-    return info1.base === info2.base && info1.prefix !== info2.prefix;
-}
+//     let type = 'unknown';
+//     if (prefix === '010') {
+//         type = 'unit';
+//     } else if (prefix === '011') {
+//         type = 'box';
+//     } else if (prefix === '012') {
+//         type = 'carton';
+//     }
+
+//     return { type, prefix, base };
+// }
+
+// // NEW: Function to check if two barcodes are for the same physical item
+// function are_related_barcodes(barcode1, barcode2) {
+//     const info1 = get_barcode_info(barcode1);
+//     const info2 = get_barcode_info(barcode2);
+
+//     // They are related if they have the same base part but different prefixes
+//     return info1.base === info2.base && info1.prefix !== info2.prefix;
+// }
 
 // ===========================
 // ENHANCED PROCESSING FUNCTIONS
@@ -981,25 +1017,54 @@ function process_regular_scan(frm, barcode) {
                         const sameItem = item.item_code === itemCode;
                         const sameBatch = item.batch_no === batchNo;
                         const sameUom = item.uom === uom;
-                        const sameBarcode = item.barcode === barcode;
                         const notFree = !item.is_free_item;
+
+                        // NEW: Allow same item/batch/uom even with different barcode types
+                        const isCompatible = sameItem && sameBatch && sameUom && notFree;
 
                         console.log('🔍 Checking existing row:', {
                             row_idx: item.idx,
                             existing_barcode: item.barcode,
-                            existing_uom: item.uom,
+                            existing_barcode_info: get_barcode_info(item.barcode || ''),
                             current_barcode: barcode,
+                            current_barcode_info: get_barcode_info(barcode),
+                            existing_uom: item.uom,
                             current_uom: uom,
                             sameItem,
                             sameBatch,
                             sameUom,
-                            sameBarcode,
                             notFree,
-                            related_barcodes: are_related_barcodes(item.barcode || '', barcode)
+                            isCompatible,
+                            are_related: are_related_barcodes(item.barcode || '', barcode)
                         });
 
-                        return sameItem && sameBatch && sameUom && sameBarcode && notFree;
+                        return isCompatible;
                     });
+
+
+                    // const existingRow = frm.doc.items.find(item => {
+                    //     const sameItem = item.item_code === itemCode;
+                    //     const sameBatch = item.batch_no === batchNo;
+                    //     const sameUom = item.uom === uom;
+                    //     const sameBarcode = item.barcode === barcode;
+                    //     const notFree = !item.is_free_item;
+
+                    //     console.log('🔍 Checking existing row:', {
+                    //         row_idx: item.idx,
+                    //         existing_barcode: item.barcode,
+                    //         existing_uom: item.uom,
+                    //         current_barcode: barcode,
+                    //         current_uom: uom,
+                    //         sameItem,
+                    //         sameBatch,
+                    //         sameUom,
+                    //         sameBarcode,
+                    //         notFree,
+                    //         related_barcodes: are_related_barcodes(item.barcode || '', barcode)
+                    //     });
+
+                    //     return sameItem && sameBatch && sameUom && sameBarcode && notFree;
+                    // });
 
                     if (existingRow) {
                         console.log('✅ FOUND EXISTING ROW - UPDATING');
