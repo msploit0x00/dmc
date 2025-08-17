@@ -746,6 +746,28 @@
 // ============================
 
 frappe.ui.form.on('Delivery Note', {
+    // onload: function (frm) {
+    //     console.log('🚀 ONLOAD: Starting initialization...');
+
+    //     // Clear empty initial row
+    //     if (frm.is_new() && frm.doc.items && frm.doc.items.length == 1) {
+    //         if (!frm.doc.items[0].barcode && !frm.doc.items[0].item_code) {
+    //             frm.clear_table("items");
+    //         }
+    //     }
+
+    //     // Initialize scanner state with enhanced timing
+    //     frm._scanning = false;
+    //     frm._scan_queue = [];
+    //     frm._scan_timeout = null; // NEW: Timeout handler for delayed processing
+    //     frm._last_scan_time = 0; // NEW: Track last scan time
+
+    //     // IMMEDIATE check for free scanner - no delay
+    //     check_and_toggle_free_scanner(frm);
+
+    //     // Also auto-add free items if creating from SO
+    //     auto_add_free_items_from_so(frm);
+    // },
     onload: function (frm) {
         console.log('🚀 ONLOAD: Starting initialization...');
 
@@ -756,19 +778,20 @@ frappe.ui.form.on('Delivery Note', {
             }
         }
 
-        // Initialize scanner state with enhanced timing
+        // ENHANCED: Initialize scanner state with better tracking
         frm._scanning = false;
         frm._scan_queue = [];
-        frm._scan_timeout = null; // NEW: Timeout handler for delayed processing
-        frm._last_scan_time = 0; // NEW: Track last scan time
+        frm._scan_timeout = null;
+        frm._last_scan_time = 0;
+        frm._last_free_scan_time = 0;
 
-        // IMMEDIATE check for free scanner - no delay
+        // NEW: Track processed barcodes to prevent duplicates
+        frm._processed_barcodes = new Set();
+        frm._processed_free_barcodes = new Set();
+
         check_and_toggle_free_scanner(frm);
-
-        // Also auto-add free items if creating from SO
         auto_add_free_items_from_so(frm);
     },
-
     refresh: function (frm) {
         console.log('🔄 REFRESH: Checking free scanner...');
 
@@ -820,21 +843,34 @@ frappe.ui.form.on('Delivery Note', {
         const barcode = frm.doc.custom_scan_barcodes.trim();
         const currentTime = Date.now();
 
-        console.log('📱 SCAN INPUT DETECTED:', barcode, 'Length:', barcode.length);
+        console.log('📱 SCAN INPUT DETECTED:', barcode, 'Time:', currentTime);
 
-        // NEW: Enhanced validation for complete barcodes
+        // Enhanced validation for complete barcodes
         if (!is_complete_barcode(barcode)) {
-            console.log('⏸️ Incomplete barcode detected, waiting for more input...');
-            return; // Don't process incomplete barcodes
-        }
-
-        // NEW: Debounce rapid scans from USB scanners
-        if (frm._last_scan_time && (currentTime - frm._last_scan_time) < 100) {
-            console.log('⏸️ Too rapid scan detected, ignoring duplicate');
+            console.log('⏸️ Incomplete barcode detected');
             return;
         }
 
+        // CRITICAL FIX: Check if this exact barcode is currently being processed
+        if (frm._scanning && frm._current_processing_barcode === barcode) {
+            console.log('🚫 DUPLICATE DETECTED: Same barcode already processing:', barcode);
+            // Clear the field immediately to prevent re-triggering
+            frm.set_value('custom_scan_barcodes', '');
+            return;
+        }
+
+        // ENHANCED: Time-based debouncing with processed barcode tracking
+        const barcodeKey = `${barcode}_${Date.now()}`;
+        if (frm._processed_barcodes.has(barcode) &&
+            (currentTime - frm._last_scan_time) < 3000) { // 3 second window
+            console.log('🚫 DUPLICATE PREVENTED: Barcode recently processed:', barcode);
+            frm.set_value('custom_scan_barcodes', '');
+            return;
+        }
+
+        // Update tracking
         frm._last_scan_time = currentTime;
+        frm._current_processing_barcode = barcode;
 
         // Clear any existing timeout
         if (frm._scan_timeout) {
@@ -842,46 +878,123 @@ frappe.ui.form.on('Delivery Note', {
             frm._scan_timeout = null;
         }
 
-        // NEW: Delayed processing to ensure complete barcode capture
-        frm._scan_timeout = setTimeout(() => {
-            process_regular_scan(frm, barcode);
-        }, 200); // 200ms delay to ensure complete input
+        // Add to processed set
+        frm._processed_barcodes.add(barcode);
+
+        // Clean up old processed barcodes (keep only recent ones)
+        setTimeout(() => {
+            frm._processed_barcodes.delete(barcode);
+        }, 5000); // Remove after 5 seconds
+
+        console.log('✅ PROCESSING BARCODE:', barcode);
+
+        // Process immediately, no delay
+        process_regular_scan_fixed(frm, barcode);
     },
 
-    // FREE ITEM SCANNER - USB SCANNER OPTIMIZED
+    // FIXED: FREE SCANNER with same logic
     custom_scan_barcodes_for_free_items: function (frm) {
         if (!frm.doc.custom_scan_barcodes_for_free_items) return;
 
         const barcode = frm.doc.custom_scan_barcodes_for_free_items.trim();
         const currentTime = Date.now();
 
-        console.log('🎁 FREE SCAN INPUT DETECTED:', barcode, 'Length:', barcode.length);
-
-        // NEW: Enhanced validation for complete barcodes
         if (!is_complete_barcode(barcode)) {
-            console.log('⏸️ Incomplete free barcode detected, waiting for more input...');
             return;
         }
 
-        // NEW: Debounce rapid scans
-        if (frm._last_scan_time && (currentTime - frm._last_scan_time) < 100) {
-            console.log('⏸️ Too rapid free scan detected, ignoring duplicate');
+        // Same duplicate prevention for free items
+        if (frm._scanning && frm._current_processing_free_barcode === barcode) {
+            console.log('🚫 DUPLICATE FREE SCAN PREVENTED:', barcode);
+            frm.set_value('custom_scan_barcodes_for_free_items', '');
             return;
         }
 
-        frm._last_scan_time = currentTime;
-
-        // Clear any existing timeout
-        if (frm._scan_timeout) {
-            clearTimeout(frm._scan_timeout);
-            frm._scan_timeout = null;
+        if (frm._processed_free_barcodes.has(barcode) &&
+            (currentTime - frm._last_free_scan_time) < 3000) {
+            console.log('🚫 FREE DUPLICATE PREVENTED:', barcode);
+            frm.set_value('custom_scan_barcodes_for_free_items', '');
+            return;
         }
 
-        // NEW: Delayed processing for free items
-        frm._scan_timeout = setTimeout(() => {
-            process_free_scan(frm, barcode);
-        }, 200);
+        frm._last_free_scan_time = currentTime;
+        frm._current_processing_free_barcode = barcode;
+        frm._processed_free_barcodes.add(barcode);
+
+        setTimeout(() => {
+            frm._processed_free_barcodes.delete(barcode);
+        }, 5000);
+
+        process_free_scan(frm, barcode);
     }
+    // custom_scan_barcodes: function (frm) {
+    //     if (!frm.doc.custom_scan_barcodes) return;
+
+    //     const barcode = frm.doc.custom_scan_barcodes.trim();
+    //     const currentTime = Date.now();
+
+    //     console.log('📱 SCAN INPUT DETECTED:', barcode, 'Length:', barcode.length);
+
+    //     // NEW: Enhanced validation for complete barcodes
+    //     if (!is_complete_barcode(barcode)) {
+    //         console.log('⏸️ Incomplete barcode detected, waiting for more input...');
+    //         return; // Don't process incomplete barcodes
+    //     }
+
+    //     // NEW: Debounce rapid scans from USB scanners
+    //     if (frm._last_scan_time && (currentTime - frm._last_scan_time) < 100) {
+    //         console.log('⏸️ Too rapid scan detected, ignoring duplicate');
+    //         return;
+    //     }
+
+    //     frm._last_scan_time = currentTime;
+
+    //     // Clear any existing timeout
+    //     if (frm._scan_timeout) {
+    //         clearTimeout(frm._scan_timeout);
+    //         frm._scan_timeout = null;
+    //     }
+
+    //     // NEW: Delayed processing to ensure complete barcode capture
+    //     frm._scan_timeout = setTimeout(() => {
+    //         process_regular_scan(frm, barcode);
+    //     }, 200); // 200ms delay to ensure complete input
+    // },
+
+    // // FREE ITEM SCANNER - USB SCANNER OPTIMIZED
+    // custom_scan_barcodes_for_free_items: function (frm) {
+    //     if (!frm.doc.custom_scan_barcodes_for_free_items) return;
+
+    //     const barcode = frm.doc.custom_scan_barcodes_for_free_items.trim();
+    //     const currentTime = Date.now();
+
+    //     console.log('🎁 FREE SCAN INPUT DETECTED:', barcode, 'Length:', barcode.length);
+
+    //     // NEW: Enhanced validation for complete barcodes
+    //     if (!is_complete_barcode(barcode)) {
+    //         console.log('⏸️ Incomplete free barcode detected, waiting for more input...');
+    //         return;
+    //     }
+
+    //     // NEW: Debounce rapid scans
+    //     if (frm._last_scan_time && (currentTime - frm._last_scan_time) < 100) {
+    //         console.log('⏸️ Too rapid free scan detected, ignoring duplicate');
+    //         return;
+    //     }
+
+    //     frm._last_scan_time = currentTime;
+
+    //     // Clear any existing timeout
+    //     if (frm._scan_timeout) {
+    //         clearTimeout(frm._scan_timeout);
+    //         frm._scan_timeout = null;
+    //     }
+
+    //     // NEW: Delayed processing for free items
+    //     frm._scan_timeout = setTimeout(() => {
+    //         process_free_scan(frm, barcode);
+    //     }, 200);
+    // }
 });
 
 // ===========================
@@ -905,6 +1018,18 @@ function is_complete_barcode(barcode) {
 }
 
 // NEW: Function to identify barcode type and details
+function are_related_barcodes(barcode1, barcode2) {
+    if (!barcode1 || !barcode2) return false;
+
+    const info1 = get_barcode_info(barcode1);
+    const info2 = get_barcode_info(barcode2);
+
+    // They are related if they have the same base part (same physical item)
+    // regardless of packaging type (unit/box/carton)
+    return info1.base === info2.base;
+}
+
+// Enhanced barcode info function
 function get_barcode_info(barcode) {
     if (!barcode || barcode.length < 3) {
         return { type: 'unknown', prefix: '', base: barcode };
@@ -914,39 +1039,230 @@ function get_barcode_info(barcode) {
     const base = barcode.substring(3);
 
     let type = 'unknown';
+    let packaging = 'unit';
+
     if (prefix === '010') {
         type = 'unit';
+        packaging = 'unit';
     } else if (prefix === '011') {
         type = 'box';
+        packaging = 'box';
     } else if (prefix === '012') {
         type = 'carton';
+        packaging = 'carton';
     }
 
-    return { type, prefix, base };
+    return { type, prefix, base, packaging };
 }
+// function get_barcode_info(barcode) {
+//     if (!barcode || barcode.length < 3) {
+//         return { type: 'unknown', prefix: '', base: barcode };
+//     }
 
-// NEW: Function to check if two barcodes are for the same physical item
-function are_related_barcodes(barcode1, barcode2) {
-    const info1 = get_barcode_info(barcode1);
-    const info2 = get_barcode_info(barcode2);
+//     const prefix = barcode.substring(0, 3);
+//     const base = barcode.substring(3);
 
-    // They are related if they have the same base part but different prefixes
-    return info1.base === info2.base && info1.prefix !== info2.prefix;
-}
+//     let type = 'unknown';
+//     if (prefix === '010') {
+//         type = 'unit';
+//     } else if (prefix === '011') {
+//         type = 'box';
+//     } else if (prefix === '012') {
+//         type = 'carton';
+//     }
+
+//     return { type, prefix, base };
+// }
+
+// // NEW: Function to check if two barcodes are for the same physical item
+// function are_related_barcodes(barcode1, barcode2) {
+//     const info1 = get_barcode_info(barcode1);
+//     const info2 = get_barcode_info(barcode2);
+
+//     // They are related if they have the same base part but different prefixes
+//     return info1.base === info2.base && info1.prefix !== info2.prefix;
+// }
 
 // ===========================
 // ENHANCED PROCESSING FUNCTIONS
 // ===========================
 
-function process_regular_scan(frm, barcode) {
-    console.log('🔄 PROCESSING REGULAR SCAN:', barcode);
+// function process_regular_scan(frm, barcode) {
+//     console.log('🔄 PROCESSING REGULAR SCAN:', barcode);
 
-    // Check if already processing
+//     // Check if already processing
+//     if (frm._scanning) {
+//         console.log('⏸️ Already scanning, queueing:', barcode);
+//         frm._scan_queue = frm._scan_queue || [];
+//         frm._scan_queue.push({ barcode: barcode, type: 'regular' });
+//         // DON'T clear the field immediately, let the current scan finish
+//         return;
+//     }
+
+//     frm._scanning = true;
+
+//     frappe.call({
+//         method: 'dmc.barcode_details.get_barcode_details',
+//         args: { barcode: barcode },
+//         callback: function (response) {
+//             if (response.message) {
+//                 const uom = response.message.barcode_uom[0]['uom'];
+//                 const batchNo = response.message.batch_id;
+//                 const itemCode = response.message.item_code[0]['parent'];
+//                 const expiryDate = response.message.formatted_date;
+//                 const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
+//                 const so_detail_id = response.message.so_detail_id;
+
+//                 frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
+//                     const itemName = r.item_name;
+
+//                     console.log('🏷️ BARCODE ANALYSIS:', {
+//                         scanned_barcode: barcode,
+//                         barcode_info: get_barcode_info(barcode),
+//                         item_code: itemCode,
+//                         batch_no: batchNo,
+//                         uom: uom,
+//                         conversion_rate: conversionRate
+//                     });
+
+//                     // Look for existing row with EXACT match (item, batch, UOM, and barcode prefix)
+//                     const existingRow = frm.doc.items.find(item => {
+//                         const sameItem = item.item_code === itemCode;
+//                         const sameBatch = item.batch_no === batchNo;
+//                         const sameUom = item.uom === uom;
+//                         const notFree = !item.is_free_item;
+
+//                         // NEW: Allow same item/batch/uom even with different barcode types
+//                         const isCompatible = sameItem && sameBatch && sameUom && notFree;
+
+//                         console.log('🔍 Checking existing row:', {
+//                             row_idx: item.idx,
+//                             existing_barcode: item.barcode,
+//                             existing_barcode_info: get_barcode_info(item.barcode || ''),
+//                             current_barcode: barcode,
+//                             current_barcode_info: get_barcode_info(barcode),
+//                             existing_uom: item.uom,
+//                             current_uom: uom,
+//                             sameItem,
+//                             sameBatch,
+//                             sameUom,
+//                             notFree,
+//                             isCompatible,
+//                             are_related: are_related_barcodes(item.barcode || '', barcode)
+//                         });
+
+//                         return isCompatible;
+//                     });
+
+
+//                     // const existingRow = frm.doc.items.find(item => {
+//                     //     const sameItem = item.item_code === itemCode;
+//                     //     const sameBatch = item.batch_no === batchNo;
+//                     //     const sameUom = item.uom === uom;
+//                     //     const sameBarcode = item.barcode === barcode;
+//                     //     const notFree = !item.is_free_item;
+
+//                     //     console.log('🔍 Checking existing row:', {
+//                     //         row_idx: item.idx,
+//                     //         existing_barcode: item.barcode,
+//                     //         existing_uom: item.uom,
+//                     //         current_barcode: barcode,
+//                     //         current_uom: uom,
+//                     //         sameItem,
+//                     //         sameBatch,
+//                     //         sameUom,
+//                     //         sameBarcode,
+//                     //         notFree,
+//                     //         related_barcodes: are_related_barcodes(item.barcode || '', barcode)
+//                     //     });
+
+//                     //     return sameItem && sameBatch && sameUom && sameBarcode && notFree;
+//                     // });
+
+//                     if (existingRow) {
+//                         console.log('✅ FOUND EXISTING ROW - UPDATING');
+
+//                         const originalRate = existingRow.rate;
+//                         const originalUom = existingRow.uom;
+//                         const originalConversionFactor = existingRow.conversion_factor;
+//                         const currentQty = existingRow.qty || 0;
+//                         const newQty = currentQty + 1;
+
+//                         // Use batch update to prevent field triggers
+//                         frappe.model.set_value(existingRow.doctype, existingRow.name, {
+//                             'qty': newQty,
+//                             'custom_out_qty': newQty,
+//                             'barcode': barcode,
+//                             'uom': originalUom,
+//                             'conversion_factor': originalConversionFactor,
+//                             'rate': originalRate,
+//                             'amount': newQty * originalRate
+//                         });
+
+//                         // Ensure SO details are maintained
+//                         const salesOrder = get_sales_order_reference(frm);
+//                         if (salesOrder) {
+//                             if (!existingRow.against_sales_order) {
+//                                 frappe.model.set_value(existingRow.doctype, existingRow.name, 'against_sales_order', salesOrder);
+//                             }
+//                             set_so_detail(frm, existingRow, itemCode, so_detail_id, false);
+//                         }
+
+//                         finalize_scan(frm, `Updated quantity to ${newQty} for ${itemName}`, 'custom_scan_barcodes');
+
+//                     } else {
+//                         console.log('➕ CREATING NEW ROW');
+
+//                         let newRow = frm.add_child('items', {
+//                             item_code: itemCode,
+//                             item_name: itemName,
+//                             qty: 1,
+//                             custom_out_qty: 1,
+//                             uom: uom,
+//                             conversion_factor: conversionRate,
+//                             batch_no: batchNo,
+//                             custom_expiry_date: expiryDate,
+//                             barcode: barcode
+//                         });
+
+//                         // Set SO references immediately
+//                         const salesOrder = get_sales_order_reference(frm);
+//                         if (salesOrder) {
+//                             frappe.model.set_value(newRow.doctype, newRow.name, 'against_sales_order', salesOrder);
+//                             set_so_detail(frm, newRow, itemCode, so_detail_id, false);
+//                         }
+
+//                         // Let item_code trigger set the rate, then finalize
+//                         frm.script_manager.trigger('item_code', newRow.doctype, newRow.name).then(() => {
+//                             console.log('🎯 ITEM CODE TRIGGERED - RATE SET');
+//                             finalize_scan(frm, `Added 1 ${uom} of ${itemName}`, 'custom_scan_barcodes');
+//                         });
+//                     }
+//                 });
+//             } else {
+//                 frappe.msgprint(__("Barcode not found"));
+//                 finalize_scan(frm, "", 'custom_scan_barcodes');
+//             }
+//         },
+//         error: function () {
+//             console.log('❌ SCAN ERROR');
+//             finalize_scan(frm, "", 'custom_scan_barcodes');
+//         }
+//     });
+// }
+
+
+function process_regular_scan_fixed(frm, barcode) {
+    console.log('🔄 PROCESSING REGULAR SCAN - SINGLE RUN:', barcode);
+
+    // CRITICAL: Immediate field clear to prevent re-triggering
+    frm.set_value('custom_scan_barcodes', '');
+
+    // Check if already processing ANY scan
     if (frm._scanning) {
-        console.log('⏸️ Already scanning, queueing:', barcode);
+        console.log('⏸️ Already scanning another item, queueing:', barcode);
         frm._scan_queue = frm._scan_queue || [];
         frm._scan_queue.push({ barcode: barcode, type: 'regular' });
-        // DON'T clear the field immediately, let the current scan finish
         return;
     }
 
@@ -967,73 +1283,43 @@ function process_regular_scan(frm, barcode) {
                 frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
                     const itemName = r.item_name;
 
-                    console.log('🏷️ BARCODE ANALYSIS:', {
-                        scanned_barcode: barcode,
-                        barcode_info: get_barcode_info(barcode),
-                        item_code: itemCode,
-                        batch_no: batchNo,
-                        uom: uom,
-                        conversion_rate: conversionRate
-                    });
-
-                    // Look for existing row with EXACT match (item, batch, UOM, and barcode prefix)
+                    // Look for existing row
                     const existingRow = frm.doc.items.find(item => {
                         const sameItem = item.item_code === itemCode;
                         const sameBatch = item.batch_no === batchNo;
                         const sameUom = item.uom === uom;
-                        const sameBarcode = item.barcode === barcode;
                         const notFree = !item.is_free_item;
-
-                        console.log('🔍 Checking existing row:', {
-                            row_idx: item.idx,
-                            existing_barcode: item.barcode,
-                            existing_uom: item.uom,
-                            current_barcode: barcode,
-                            current_uom: uom,
-                            sameItem,
-                            sameBatch,
-                            sameUom,
-                            sameBarcode,
-                            notFree,
-                            related_barcodes: are_related_barcodes(item.barcode || '', barcode)
-                        });
-
-                        return sameItem && sameBatch && sameUom && sameBarcode && notFree;
+                        return sameItem && sameBatch && sameUom && notFree;
                     });
 
                     if (existingRow) {
-                        console.log('✅ FOUND EXISTING ROW - UPDATING');
+                        console.log('✅ UPDATING EXISTING ROW - SINGLE EXECUTION');
 
-                        const originalRate = existingRow.rate;
-                        const originalUom = existingRow.uom;
-                        const originalConversionFactor = existingRow.conversion_factor;
                         const currentQty = existingRow.qty || 0;
                         const newQty = currentQty + 1;
 
-                        // Use batch update to prevent field triggers
-                        frappe.model.set_value(existingRow.doctype, existingRow.name, {
-                            'qty': newQty,
-                            'custom_out_qty': newQty,
-                            'barcode': barcode,
-                            'uom': originalUom,
-                            'conversion_factor': originalConversionFactor,
-                            'rate': originalRate,
-                            'amount': newQty * originalRate
-                        });
+                        console.log(`📊 QTY UPDATE: ${currentQty} → ${newQty}`);
 
-                        // Ensure SO details are maintained
+                        // SAFE UPDATE: Use direct assignment to prevent triggers
+                        existingRow.qty = newQty;
+                        existingRow.custom_out_qty = newQty;
+                        existingRow.barcode = barcode;
+                        existingRow.amount = newQty * (existingRow.rate || 0);
+
+                        // Manual refresh
+                        frm.refresh_field('items');
+
+                        // Set SO details if needed
                         const salesOrder = get_sales_order_reference(frm);
-                        if (salesOrder) {
-                            if (!existingRow.against_sales_order) {
-                                frappe.model.set_value(existingRow.doctype, existingRow.name, 'against_sales_order', salesOrder);
-                            }
+                        if (salesOrder && !existingRow.against_sales_order) {
+                            existingRow.against_sales_order = salesOrder;
                             set_so_detail(frm, existingRow, itemCode, so_detail_id, false);
                         }
 
-                        finalize_scan(frm, `Updated quantity to ${newQty} for ${itemName}`, 'custom_scan_barcodes');
+                        finalize_scan_fixed(frm, `Updated quantity to ${newQty} for ${itemName}`);
 
                     } else {
-                        console.log('➕ CREATING NEW ROW');
+                        console.log('➕ CREATING NEW ROW - SINGLE EXECUTION');
 
                         let newRow = frm.add_child('items', {
                             item_code: itemCode,
@@ -1047,32 +1333,75 @@ function process_regular_scan(frm, barcode) {
                             barcode: barcode
                         });
 
-                        // Set SO references immediately
                         const salesOrder = get_sales_order_reference(frm);
                         if (salesOrder) {
-                            frappe.model.set_value(newRow.doctype, newRow.name, 'against_sales_order', salesOrder);
+                            newRow.against_sales_order = salesOrder;
                             set_so_detail(frm, newRow, itemCode, so_detail_id, false);
                         }
 
-                        // Let item_code trigger set the rate, then finalize
                         frm.script_manager.trigger('item_code', newRow.doctype, newRow.name).then(() => {
-                            console.log('🎯 ITEM CODE TRIGGERED - RATE SET');
-                            finalize_scan(frm, `Added 1 ${uom} of ${itemName}`, 'custom_scan_barcodes');
+                            finalize_scan_fixed(frm, `Added 1 ${uom} of ${itemName}`);
                         });
                     }
                 });
             } else {
                 frappe.msgprint(__("Barcode not found"));
-                finalize_scan(frm, "", 'custom_scan_barcodes');
+                finalize_scan_fixed(frm, "");
             }
         },
         error: function () {
             console.log('❌ SCAN ERROR');
-            finalize_scan(frm, "", 'custom_scan_barcodes');
+            finalize_scan_fixed(frm, "");
         }
     });
 }
 
+// ===========================
+// FIXED FINALIZE FUNCTION
+// ===========================
+
+function finalize_scan_fixed(frm, message) {
+    console.log('🏁 FINALIZING SCAN - SINGLE EXECUTION');
+
+    // Do NOT clear barcode field here - already cleared at start
+
+    // Refresh and calculate
+    frm.refresh_field('items');
+    frm.script_manager.trigger("calculate_taxes_and_totals");
+
+    if (message) {
+        frappe.show_alert({
+            message: __(message),
+            indicator: 'green'
+        });
+    }
+
+    // Reset state
+    frm._scanning = false;
+    frm._current_processing_barcode = null;
+
+    // Process queue if any
+    setTimeout(() => {
+        process_scan_queue(frm);
+    }, 100);
+}
+
+// ===========================
+// DEBUGGING VERSION
+// ===========================
+
+function process_regular_scan_debug(frm, barcode) {
+    const timestamp = new Date().toISOString();
+    const callId = Math.random().toString(36).substr(2, 9);
+
+    console.log(`🔍 SCAN CALL #${callId} at ${timestamp}:`, barcode);
+
+    // Add a global counter to track calls
+    window.scanCallCount = (window.scanCallCount || 0) + 1;
+    console.log(`📊 TOTAL SCAN CALLS: ${window.scanCallCount}`);
+
+    // Rest of your processing logic...
+}
 function process_free_scan(frm, barcode) {
     console.log('🔄 PROCESSING FREE SCAN:', barcode);
 
@@ -1550,6 +1879,12 @@ frappe.ui.form.on('Delivery Note Item', {
     custom_out_qty: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
 
+        // FIXED: Add check to prevent circular triggers
+        if (row._updating_qty) return;
+        row._updating_qty = true;
+
+        console.log('🔄 custom_out_qty triggered:', row.custom_out_qty, 'current qty:', row.qty);
+
         if (row.custom_out_qty !== row.qty) {
             frappe.model.set_value(cdt, cdn, 'qty', row.custom_out_qty || 0);
         }
@@ -1558,6 +1893,35 @@ frappe.ui.form.on('Delivery Note Item', {
             frappe.model.set_value(cdt, cdn, 'rate', 0);
             frappe.model.set_value(cdt, cdn, 'amount', 0);
         }
+
+        // FIXED: Reset flag after short delay
+        setTimeout(() => {
+            row._updating_qty = false;
+        }, 100);
+    },
+
+    qty: function (frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+
+        // FIXED: Add check to prevent circular triggers
+        if (row._updating_qty) return;
+        row._updating_qty = true;
+
+        console.log('🔄 qty triggered:', row.qty, 'current custom_out_qty:', row.custom_out_qty);
+
+        if (row.is_free_item === 1) {
+            frappe.model.set_value(cdt, cdn, 'rate', 0);
+            frappe.model.set_value(cdt, cdn, 'amount', 0);
+        }
+
+        if (row.qty !== row.custom_out_qty) {
+            frappe.model.set_value(cdt, cdn, 'custom_out_qty', row.qty || 0);
+        }
+
+        // FIXED: Reset flag after short delay
+        setTimeout(() => {
+            row._updating_qty = false;
+        }, 100);
     },
 
     rate: function (frm, cdt, cdn) {
@@ -1579,19 +1943,6 @@ frappe.ui.form.on('Delivery Note Item', {
 
         if (row.qty && !row.custom_out_qty) {
             frappe.model.set_value(cdt, cdn, 'custom_out_qty', row.qty);
-        }
-    },
-
-    qty: function (frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-
-        if (row.is_free_item === 1) {
-            frappe.model.set_value(cdt, cdn, 'rate', 0);
-            frappe.model.set_value(cdt, cdn, 'amount', 0);
-        }
-
-        if (row.qty !== row.custom_out_qty) {
-            frappe.model.set_value(cdt, cdn, 'custom_out_qty', row.qty || 0);
         }
     }
 });
