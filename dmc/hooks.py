@@ -161,7 +161,7 @@ override_doctype_class = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"dmc.tasks.all"
 # 	],
@@ -177,7 +177,7 @@ override_doctype_class = {
 # 	"monthly": [
 # 		"dmc.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------
