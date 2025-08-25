@@ -165,9 +165,9 @@ override_doctype_class = {
 # 	"all": [
 # 		"dmc.tasks.all"
 # 	],
-# 	"daily": [
-# 		"dmc.tasks.daily"
-# 	],
+	"daily": [
+		"dmc.tasks.daily"
+	],
 # 	"hourly": [
 # 		"dmc.tasks.hourly"
 # 	],
