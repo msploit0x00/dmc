@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class Lines(Document):
+class MeterLine(Document):
 	pass
