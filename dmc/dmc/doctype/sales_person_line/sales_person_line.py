@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class MeterLine(Document):
+class SalesPersonLine(Document):
 	pass
