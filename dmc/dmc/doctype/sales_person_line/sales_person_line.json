@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:department_line",
  "creation": "2025-09-02 14:40:11.382828",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_pald",
-  "name1"
+  "department_line"
  ],
  "fields": [
   {
@@ -14,18 +15,21 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "name1",
-   "fieldtype": "Data",
-   "label": "Name"
+   "fieldname": "department_line",
+   "fieldtype": "Link",
+   "label": "Department Line",
+   "options": "Department",
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-02 14:42:21.325826",
+ "modified": "2025-09-08 11:01:09.557865",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Sales Person Line",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
