@@ -59,7 +59,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     #                     item.qty) * flt(item.conversion_factor)
 
     def on_submit(self):
-        super().on_submit()
+        # super().on_submit()
 
         # Ensure calculations are done on submit
         # self.calculate_taxes_and_totals()
@@ -104,7 +104,7 @@ class CustomPurchaseReceipt(PurchaseReceipt):
     #     return sle
 
     def after_save(self):
-        super().after_save()
+        # super().after_save()
         # self.set_rounded_total()
         self.set_in_words()
 
