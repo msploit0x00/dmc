@@ -49,7 +49,7 @@
    "owner": "mostafa.ibrahim@datasofteg.com",
    "permlevel": 0,
    "placeholder": null,
-   "precision": "",
+   "precision": "5",
    "print_hide": 0,
    "print_hide_if_no_value": 0,
    "print_width": null,
