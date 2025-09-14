@@ -27,7 +27,7 @@ def daily():
     allShiftnames = frappe.get_all('Shift Type')
     for shiftname in allShiftnames:
         frappe.db.set_value('Shift Type', shiftname, {
-            'enable_auto_attendance': 1,
+            # 'enable_auto_attendance': 1,
             'process_attendance_after': date.today() - timedelta(1),
             'last_sync_of_checkin': date.today()
         })
