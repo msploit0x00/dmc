@@ -1,4 +1,4 @@
-# Horizontal Expense Account Landed Cost Report - Items as Rows, Expense Accounts as Columns
+# Safe Horizontal Expense Account Landed Cost Report - Checks Field Existence
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -32,8 +32,36 @@ def execute(filters=None):
     return columns, final_data
 
 
+def get_available_shipment_fields():
+    """Dynamically check which shipment-related fields exist in Landed Cost Voucher"""
+    try:
+        # Get the doctype structure
+        doc_meta = frappe.get_meta("Landed Cost Voucher")
+        available_fields = []
+
+        # Check common shipment field names
+        possible_fields = [
+            "custom_shipment_name_ref",
+            "custom_shipment_name",
+            "shipment_name",
+            "remarks"
+        ]
+
+        # Get actual fieldnames from meta
+        existing_fieldnames = [field.fieldname for field in doc_meta.fields]
+
+        for field in possible_fields:
+            if field in existing_fieldnames:
+                available_fields.append(field)
+
+        return available_fields
+    except Exception as e:
+        frappe.log_error(f"Error checking shipment fields: {str(e)}")
+        return ["remarks"]  # Fallback to remarks which should always exist
+
+
 def get_all_expense_accounts(filters):
-    """Get all unique expense accounts based on filters"""
+    """Get all unique expense accounts based on filters - with safe field checking"""
 
     # Build conditions
     conditions = []
@@ -46,31 +74,37 @@ def get_all_expense_accounts(filters):
 
     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
 
-    # Get all expense accounts from all relevant vouchers
-    accounts = frappe.db.sql(f"""
-        SELECT DISTINCT
-            lct.expense_account
-        FROM 
-            `tabLanded Cost Voucher` lcv
-        INNER JOIN 
-            `tabLanded Cost Taxes and Charges` lct ON lcv.name = lct.parent
-        WHERE 
-            lcv.docstatus = 1
-            {where_clause}
-            AND lct.expense_account IS NOT NULL
-            AND lct.expense_account != ''
-        ORDER BY lct.expense_account
-    """, filters, as_dict=1)
+    # Get all expense accounts from relevant vouchers
+    try:
+        accounts = frappe.db.sql(f"""
+            SELECT DISTINCT
+                lct.expense_account,
+                acc.account_name
+            FROM 
+                `tabLanded Cost Voucher` lcv
+            INNER JOIN 
+                `tabLanded Cost Taxes and Charges` lct ON lcv.name = lct.parent
+            LEFT JOIN
+                `tabAccount` acc ON lct.expense_account = acc.name
+            WHERE 
+                lcv.docstatus = 1
+                {where_clause}
+                AND lct.expense_account IS NOT NULL
+                AND lct.expense_account != ''
+            ORDER BY lct.expense_account
+        """, filters, as_dict=1)
+    except Exception as e:
+        frappe.log_error(f"Error getting expense accounts: {str(e)}")
+        return OrderedDict()
 
-    # Return ordered dictionary to maintain order - using expense_account as both key and value
+    # Return ordered dictionary maintaining account order
     expense_accounts = OrderedDict()
     for account in accounts:
-        account_name = account['expense_account'].strip()
-        if account_name and account_name not in expense_accounts:
-            expense_accounts[account_name] = account_name
-            # Debug log to check for duplicates
-            frappe.log_error(
-                f"Added expense account: '{account_name}'", "Expense Account Debug")
+        account_code = account['expense_account'].strip()
+        if account_code and account_code not in expense_accounts:
+            # Use account name if available, otherwise use account code
+            display_name = account.get('account_name') or account_code
+            expense_accounts[account_code] = display_name.strip()
 
     return expense_accounts
 
@@ -90,39 +124,48 @@ def get_items_with_expense_allocations(filters, expense_accounts):
     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
 
     # Get all vouchers
-    vouchers = frappe.db.sql(f"""
-        SELECT 
-            name,
-            total_taxes_and_charges,
-            posting_date
-        FROM 
-            `tabLanded Cost Voucher`
-        WHERE 
-            docstatus = 1
-            {where_clause}
-        ORDER BY posting_date DESC
-    """, filters, as_dict=1)
+    try:
+        vouchers = frappe.db.sql(f"""
+            SELECT 
+                name,
+                total_taxes_and_charges,
+                posting_date
+            FROM 
+                `tabLanded Cost Voucher`
+            WHERE 
+                docstatus = 1
+                {where_clause}
+            ORDER BY posting_date DESC
+        """, filters, as_dict=1)
+    except Exception as e:
+        frappe.log_error(f"Error getting vouchers: {str(e)}")
+        return []
 
     items_data = []
 
     for voucher in vouchers:
         voucher_name = voucher['name']
 
-        # Get purchase receipts for this voucher
+        # Get purchase receipts
         purchase_receipts = get_purchase_receipts(voucher_name)
         purchase_receipts_str = ", ".join(purchase_receipts)
 
-        # Get shipment name
-        shipment_name = get_shipment_name(voucher_name)
+        # Get shipment name using safe field checking
+        shipment_name = get_shipment_name_safe(voucher_name)
 
         # Apply shipment filter
         if filters.get("shipment_name") and shipment_name != filters.get("shipment_name"):
             continue
 
         # Get items for this voucher
-        items = frappe.get_all("Landed Cost Item",
-                               filters={"parent": voucher_name},
-                               fields=["item_code", "qty", "rate", "amount"])
+        try:
+            items = frappe.get_all("Landed Cost Item",
+                                   filters={"parent": voucher_name},
+                                   fields=["item_code", "qty", "rate", "amount"])
+        except Exception as e:
+            frappe.log_error(
+                f"Error getting items for {voucher_name}: {str(e)}")
+            continue
 
         # Apply item filter
         if filters.get("item"):
@@ -137,42 +180,49 @@ def get_items_with_expense_allocations(filters, expense_accounts):
         if total_items_amount == 0:
             continue
 
-        # Get expense accounts for this voucher (with currency conversion)
+        # Get expense accounts for this voucher with conversion
         voucher_expense_accounts = get_expense_accounts_with_conversion(
             voucher_name)
 
-        # Calculate total converted taxes and charges
-        total_converted_taxes = sum(
-            [flt(account.get('converted_amount', 0)) for account in voucher_expense_accounts])
+        # Filter expense accounts to only include those in our master list
+        filtered_expense_accounts = []
+        for account_data in voucher_expense_accounts:
+            if account_data['expense_account'] in expense_accounts:
+                filtered_expense_accounts.append(account_data)
 
-        # Process each item (ONE ROW PER ITEM)
+        # Calculate total converted taxes for this voucher
+        total_converted_taxes = sum([flt(account.get('converted_amount', 0))
+                                     for account in filtered_expense_accounts])
+
+        # Process each item
         for item in items:
             item_amount = flt(item.amount)
             item_percentage = calculate_percentage(
                 item_amount, total_items_amount)
 
             # Get item name
-            item_name = frappe.db.get_value(
-                "Item", item.item_code, "item_name") or item.item_code
+            try:
+                item_name = frappe.db.get_value(
+                    "Item", item.item_code, "item_name") or item.item_code
+            except:
+                item_name = item.item_code
 
-            # Calculate total tax share for this item (using converted amounts)
+            # Calculate total tax share for this item
             total_item_tax_share = (
                 item_percentage / 100) * total_converted_taxes
 
-            # Initialize expense account allocations
+            # Initialize expense account allocations for ALL accounts (including zeros)
             expense_allocations = {
                 account: 0 for account in expense_accounts.keys()}
 
-            # Calculate allocations for each expense account (using converted amounts)
-            for account_data in voucher_expense_accounts:
+            # Calculate allocations for each expense account that exists for this voucher
+            for account_data in filtered_expense_accounts:
                 account_code = account_data['expense_account']
                 converted_amount = flt(account_data.get('converted_amount', 0))
 
-                # Item's share from this specific account (using converted amount)
+                # Item's share from this specific account
                 item_account_share = (item_percentage / 100) * converted_amount
-
-                if account_code in expense_allocations:
-                    expense_allocations[account_code] = item_account_share
+                expense_allocations[account_code] = item_account_share
 
             # Create item data
             item_data = {
@@ -195,6 +245,25 @@ def get_items_with_expense_allocations(filters, expense_accounts):
     return items_data
 
 
+def get_shipment_name_safe(voucher_name):
+    """Get shipment name using dynamically checked fields"""
+    try:
+        available_fields = get_available_shipment_fields()
+
+        for field in available_fields:
+            try:
+                shipment = frappe.db.get_value(
+                    "Landed Cost Voucher", voucher_name, field)
+                if shipment:
+                    return shipment
+            except Exception:
+                continue
+
+        return ""
+    except Exception:
+        return ""
+
+
 def get_expense_accounts_with_conversion(voucher_name):
     """Get expense accounts with currency conversion to EGP"""
     try:
@@ -204,7 +273,8 @@ def get_expense_accounts_with_conversion(voucher_name):
                 lct.description,
                 lct.amount,
                 lct.exchange_rate,
-                acc.account_currency
+                acc.account_currency,
+                acc.account_name
             FROM 
                 `tabLanded Cost Taxes and Charges` lct
             LEFT JOIN 
@@ -221,19 +291,18 @@ def get_expense_accounts_with_conversion(voucher_name):
             account_currency = account.get('account_currency', '').upper()
             exchange_rate = flt(account.get('exchange_rate', 1))
 
-            # If account currency is not EGP and exchange rate is provided, convert
+            # Currency conversion logic
             if account_currency and account_currency != 'EGP' and exchange_rate > 0:
                 converted_amount = original_amount * exchange_rate
                 account['converted_amount'] = converted_amount
-                account['conversion_applied'] = True
                 account['original_amount'] = original_amount
                 account['original_currency'] = account_currency
+                account['exchange_rate'] = exchange_rate
             else:
-                # If currency is EGP or no conversion needed
                 account['converted_amount'] = original_amount
-                account['conversion_applied'] = False
                 account['original_amount'] = original_amount
                 account['original_currency'] = account_currency or 'EGP'
+                account['exchange_rate'] = 1
 
         return accounts
     except Exception as e:
@@ -305,42 +374,29 @@ def generate_horizontal_expense_columns(expense_accounts):
         }
     ]
 
-    # Add a column for each expense account (horizontal layout)
-    for account_code in expense_accounts.keys():
-        # Create safe fieldname from account code
+    # Add a column for each expense account
+    for account_code, account_display in expense_accounts.items():
+        # Create safe fieldname
         safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
 
-        # Debug: Print the account_code to understand what we're getting
-        frappe.log_error(
-            f"Processing account: '{account_code}' (length: {len(account_code)})", "Column Header Debug")
-
-        # Use the actual expense account name as the label
-        account_display = account_code.strip()  # Remove any whitespace
-
-        # If account code contains ' - ', take the part after the last ' - '
+        # Clean display name
         if ' - ' in account_display:
             parts = account_display.split(' - ')
-            account_display = parts[-1].strip()
+            clean_display = parts[-1].strip()
+        else:
+            clean_display = account_display
 
-        # If still empty or too short, use the full account code
-        if not account_display or len(account_display) < 2:
-            account_display = account_code.strip()
+        # Truncate if too long
+        if len(clean_display) > 25:
+            clean_display = clean_display[:22] + "..."
 
-        # Ensure minimum readable length and truncate if too long
-        if len(account_display) > 30:
-            account_display = account_display[:27] + "..."
-        elif len(account_display) < 3:
-            # If still very short, use a more descriptive name
-            account_display = f"Acc_{str(abs(hash(account_code)) % 1000)}"
-
-        # Add "(EGP)" suffix to indicate converted currency
-        account_display += " (EGP)"
+        clean_display += " (EGP)"
 
         columns.append({
-            "label": _(account_display),
+            "label": _(clean_display),
             "fieldname": safe_fieldname,
             "fieldtype": "Currency",
-            "width": 140  # Increased width for better display
+            "width": 140
         })
 
     # Add summary columns
@@ -367,7 +423,10 @@ def convert_to_horizontal_expense_display(items_data, expense_accounts):
 
     display_data = []
 
-    # Initialize totals for each expense account only
+    # Initialize totals for summary row
+    total_amount = 0
+    total_tax_share = 0
+    total_landed_cost = 0
     account_totals = {account: 0 for account in expense_accounts.keys()}
 
     for item_data in items_data:
@@ -385,19 +444,22 @@ def convert_to_horizontal_expense_display(items_data, expense_accounts):
             'total_landed_cost': item_data['total_landed_cost']
         }
 
-        # Add expense account allocations as horizontal columns
-        for unique_key in expense_accounts.keys():
-            safe_fieldname = "expense_" + str(abs(hash(unique_key)) % 100000)
-            allocation_amount = item_data['expense_allocations'].get(
-                unique_key, 0)
-            row[safe_fieldname] = allocation_amount
+        # Add to totals
+        total_amount += flt(item_data['amount'])
+        total_tax_share += flt(item_data['total_item_tax_share'])
+        total_landed_cost += flt(item_data['total_landed_cost'])
 
-            # Add to account totals
-            account_totals[unique_key] += allocation_amount
+        # Add expense account allocations as horizontal columns
+        for account_code in expense_accounts.keys():
+            safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
+            allocation_amount = item_data['expense_allocations'].get(
+                account_code, 0)
+            row[safe_fieldname] = allocation_amount
+            account_totals[account_code] += allocation_amount
 
         display_data.append(row)
 
-    # Add totals row showing only account totals
+    # Add totals row
     if display_data:
         totals_row = {
             'landed_cost_voucher': '',
@@ -407,74 +469,38 @@ def convert_to_horizontal_expense_display(items_data, expense_accounts):
             'item_name': 'TOTAL',
             'qty': '',
             'rate': '',
-            'amount': '',
+            'amount': total_amount,
             'item_percentage': '',
-            'total_item_tax_share': '',
-            'total_landed_cost': ''
+            'total_item_tax_share': total_tax_share,
+            'total_landed_cost': total_landed_cost
         }
 
-        # Add only account totals (not TOTAL prefix) to the totals row
-        for unique_key in expense_accounts.keys():
-            safe_fieldname = "expense_" + str(abs(hash(unique_key)) % 100000)
-            totals_row[safe_fieldname] = account_totals[unique_key]
+        # Add account totals to totals row
+        for account_code in expense_accounts.keys():
+            safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
+            totals_row[safe_fieldname] = account_totals[account_code]
 
         display_data.append(totals_row)
 
     return display_data
 
 
-def get_expense_accounts(voucher_name):
-    """Get expense accounts from Landed Cost Taxes table (legacy function - kept for compatibility)"""
-    return get_expense_accounts_with_conversion(voucher_name)
-
-
+# Utility functions
 def get_purchase_receipts(voucher_name):
     """Get purchase receipt numbers from Purchase Receipts table"""
     try:
         receipts = frappe.db.sql("""
-            SELECT 
-                receipt_document
-            FROM 
-                `tabLanded Cost Purchase Receipt`
-            WHERE 
-                parent = %s
-                AND parentfield = 'purchase_receipts'
+            SELECT receipt_document
+            FROM `tabLanded Cost Purchase Receipt`
+            WHERE parent = %s AND parentfield = 'purchase_receipts'
             ORDER BY idx
         """, (voucher_name,), as_dict=1)
 
-        if receipts:
-            return [receipt['receipt_document'] for receipt in receipts]
-        else:
-            return [voucher_name]
-
+        return [receipt['receipt_document'] for receipt in receipts] if receipts else [voucher_name]
     except Exception as e:
         frappe.log_error(
             f"Error getting purchase receipts for {voucher_name}: {str(e)}")
         return [voucher_name]
-
-
-def get_shipment_name(voucher_name):
-    """Get shipment name from voucher"""
-    try:
-        fields_to_try = [
-            "custom_shipment_name_ref",
-            "custom_shipment_name",
-            "shipment_name",
-            "remarks"
-        ]
-
-        for field in fields_to_try:
-            try:
-                shipment = frappe.db.get_value(
-                    "Landed Cost Voucher", voucher_name, field)
-                if shipment:
-                    return shipment
-            except Exception:
-                continue
-
-        return ""
-    except Exception:
-        return ""
 
 
 def calculate_percentage(part, total):
@@ -484,10 +510,10 @@ def calculate_percentage(part, total):
     return flt((part / total) * 100, 2)
 
 
-# Report configuration for Frappe
+# Report configuration
 report_config = {
-    "name": "Horizontal Expense Account Landed Cost",
-    "description": "Items as rows with expense accounts as horizontal columns showing allocations (converted to EGP)",
+    "name": "Safe Horizontal Expense Account Landed Cost",
+    "description": "Items as rows with expense accounts as horizontal columns (Safe field checking)",
     "module": "Stock",
     "report_type": "Script Report",
     "is_standard": "No",
