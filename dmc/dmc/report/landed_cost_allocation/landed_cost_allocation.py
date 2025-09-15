@@ -1,4 +1,4 @@
-# Enhanced Landed Cost Report - with expense account breakdown
+# Enhanced Landed Cost Report - with expense account breakdown and EGP conversion
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -89,16 +89,34 @@ def get_columns():
             "width": 120
         },
         {
-            "label": _("Total Account Amount"),
-            "fieldname": "total_account_amount",
+            "label": _("Original Amount"),
+            "fieldname": "original_account_amount",
             "fieldtype": "Currency",
             "width": 130
         },
         {
-            "label": _("Item Share from Account"),
-            "fieldname": "item_account_share",
+            "label": _("Original Currency"),
+            "fieldname": "original_currency",
+            "fieldtype": "Data",
+            "width": 100
+        },
+        {
+            "label": _("Exchange Rate"),
+            "fieldname": "exchange_rate",
+            "fieldtype": "Float",
+            "width": 100
+        },
+        {
+            "label": _("Total Account Amount (EGP)"),
+            "fieldname": "total_account_amount",
             "fieldtype": "Currency",
             "width": 150
+        },
+        {
+            "label": _("Item Share from Account (EGP)"),
+            "fieldname": "item_account_share",
+            "fieldtype": "Currency",
+            "width": 170
         },
         {
             "label": _("Account Share Percentage"),
@@ -107,22 +125,22 @@ def get_columns():
             "width": 140
         },
         {
-            "label": _("Total Item Tax Share"),
+            "label": _("Total Item Tax Share (EGP)"),
             "fieldname": "total_item_tax_share",
             "fieldtype": "Currency",
-            "width": 150
+            "width": 170
         },
         {
-            "label": _("Total Landed Cost"),
+            "label": _("Total Landed Cost (EGP)"),
             "fieldname": "total_landed_cost",
             "fieldtype": "Currency",
-            "width": 140
+            "width": 160
         }
     ]
 
 
 def get_data(filters):
-    """Enhanced version - get data with expense account breakdown"""
+    """Enhanced version - get data with expense account breakdown and EGP conversion"""
 
     # Build conditions
     conditions = []
@@ -184,8 +202,8 @@ def get_data(filters):
         # Calculate total items amount
         total_items_amount = sum([flt(item.amount) for item in items])
 
-        # Get expense accounts (taxes)
-        expense_accounts = get_expense_accounts(voucher_name)
+        # Get expense accounts with currency conversion
+        expense_accounts = get_expense_accounts_with_conversion(voucher_name)
 
         if not expense_accounts:
             # If no expense accounts, show items without breakdown
@@ -196,6 +214,10 @@ def get_data(filters):
                 )
                 processed_data.append(item_data)
         else:
+            # Calculate total converted taxes and charges
+            total_converted_taxes = sum(
+                [flt(account.get('converted_amount', 0)) for account in expense_accounts])
+
             # Process each item - ONE ROW PER ITEM PER EXPENSE ACCOUNT
             purchase_receipts_str = ", ".join(purchase_receipts)
 
@@ -208,21 +230,22 @@ def get_data(filters):
                 item_name = frappe.db.get_value(
                     "Item", item.item_code, "item_name") or item.item_code
 
-                # Calculate total tax share for this item (across all accounts)
+                # Calculate total tax share for this item (using converted amounts)
                 total_item_tax_share = (
-                    item_percentage / 100) * flt(voucher['total_taxes_and_charges'])
+                    item_percentage / 100) * total_converted_taxes
 
                 # Create a row for each expense account for this item
                 for account in expense_accounts:
-                    account_amount = flt(account['amount'])
+                    converted_amount = flt(account.get('converted_amount', 0))
+                    original_amount = flt(account.get('original_amount', 0))
 
-                    # Item's share from this specific account
+                    # Item's share from this specific account (using converted amount)
                     item_account_share = (
-                        item_percentage / 100) * account_amount
+                        item_percentage / 100) * converted_amount
 
-                    # This item's percentage of this specific account
+                    # This item's percentage of this specific account (using converted amount)
                     account_share_percentage = calculate_percentage(
-                        item_account_share, account_amount)
+                        item_account_share, converted_amount)
 
                     processed_data.append({
                         'landed_cost_voucher': voucher_name,
@@ -236,7 +259,10 @@ def get_data(filters):
                         'item_percentage': item_percentage,
                         'expense_account': account['expense_account'],
                         'account_description': account['description'] or '',
-                        'total_account_amount': account_amount,
+                        'original_account_amount': original_amount,
+                        'original_currency': account.get('original_currency', 'EGP'),
+                        'exchange_rate': account.get('exchange_rate', 1),
+                        'total_account_amount': converted_amount,
                         'item_account_share': item_account_share,
                         'account_share_percentage': account_share_percentage,
                         'total_item_tax_share': total_item_tax_share,
@@ -272,21 +298,45 @@ def get_purchase_receipts(voucher_name):
         return [voucher_name]
 
 
-def get_expense_accounts(voucher_name):
-    """Get expense accounts from Landed Cost Taxes table"""
+def get_expense_accounts_with_conversion(voucher_name):
+    """Get expense accounts with currency conversion to EGP"""
     try:
         accounts = frappe.db.sql("""
             SELECT 
-                expense_account,
-                description,
-                amount
+                lct.expense_account,
+                lct.description,
+                lct.amount,
+                lct.exchange_rate,
+                acc.account_currency
             FROM 
-                `tabLanded Cost Taxes and Charges`
+                `tabLanded Cost Taxes and Charges` lct
+            LEFT JOIN 
+                `tabAccount` acc ON lct.expense_account = acc.name
             WHERE 
-                parent = %s
-                AND parentfield = 'taxes'
-            ORDER BY idx
+                lct.parent = %s
+                AND lct.parentfield = 'taxes'
+            ORDER BY lct.idx
         """, (voucher_name,), as_dict=1)
+
+        # Convert amounts to EGP
+        for account in accounts:
+            original_amount = flt(account.get('amount', 0))
+            account_currency = account.get('account_currency', '').upper()
+            exchange_rate = flt(account.get('exchange_rate', 1))
+
+            # If account currency is not EGP and exchange rate is provided, convert
+            if account_currency and account_currency != 'EGP' and exchange_rate > 0:
+                converted_amount = original_amount * exchange_rate
+                account['converted_amount'] = converted_amount
+                account['conversion_applied'] = True
+                account['original_amount'] = original_amount
+                account['original_currency'] = account_currency
+            else:
+                # If currency is EGP or no conversion needed
+                account['converted_amount'] = original_amount
+                account['conversion_applied'] = False
+                account['original_amount'] = original_amount
+                account['original_currency'] = account_currency or 'EGP'
 
         return accounts
     except Exception as e:
@@ -300,7 +350,7 @@ def process_item_without_accounts(item, voucher, shipment_name, purchase_receipt
     item_amount = flt(item.amount)
     item_percentage = calculate_percentage(item_amount, total_items_amount)
 
-    # Calculate total tax share
+    # Calculate total tax share (assuming EGP since no conversion data available)
     total_tax_share = (item_percentage / 100) * \
         flt(voucher['total_taxes_and_charges'])
 
@@ -320,6 +370,9 @@ def process_item_without_accounts(item, voucher, shipment_name, purchase_receipt
         'item_percentage': item_percentage,
         'expense_account': '',
         'account_description': 'No expense accounts found',
+        'original_account_amount': 0,
+        'original_currency': 'EGP',
+        'exchange_rate': 1,
         'total_account_amount': 0,
         'item_account_share': 0,
         'account_share_percentage': 0,
@@ -362,8 +415,8 @@ def calculate_percentage(part, total):
 
 # Report configuration for Frappe
 report_config = {
-    "name": "Enhanced Landed Cost Allocation",
-    "description": "Detailed item-wise allocation of landed costs with expense account breakdown",
+    "name": "Enhanced Landed Cost Allocation with EGP Conversion",
+    "description": "Detailed item-wise allocation of landed costs with expense account breakdown and currency conversion to EGP",
     "module": "Stock",
     "report_type": "Script Report",
     "is_standard": "No",
