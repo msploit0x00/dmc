@@ -1,4 +1,4 @@
-# Safe Horizontal Expense Account Landed Cost Report - Checks Field Existence
+# Fixed Safe Horizontal Expense Account Landed Cost Report - Handles Duplicates
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -110,7 +110,7 @@ def get_all_expense_accounts(filters):
 
 
 def get_items_with_expense_allocations(filters, expense_accounts):
-    """Get items data with expense account allocations"""
+    """Get items data with expense account allocations - FIXED duplicate handling with detailed debugging"""
 
     # Build conditions
     conditions = []
@@ -142,6 +142,10 @@ def get_items_with_expense_allocations(filters, expense_accounts):
         return []
 
     items_data = []
+
+    # Debug: Track مصاريف بنكية across all vouchers
+    banking_fees_total = 0
+    voucher_banking_breakdown = {}
 
     for voucher in vouchers:
         voucher_name = voucher['name']
@@ -180,19 +184,31 @@ def get_items_with_expense_allocations(filters, expense_accounts):
         if total_items_amount == 0:
             continue
 
-        # Get expense accounts for this voucher with conversion
-        voucher_expense_accounts = get_expense_accounts_with_conversion(
-            voucher_name)
+        # Get expense accounts for this voucher with conversion - FIXED
+        voucher_expense_accounts_aggregated = get_expense_accounts_with_conversion_fixed(
+            voucher_name, expense_accounts)
 
-        # Filter expense accounts to only include those in our master list
-        filtered_expense_accounts = []
-        for account_data in voucher_expense_accounts:
-            if account_data['expense_account'] in expense_accounts:
-                filtered_expense_accounts.append(account_data)
+        # Debug: Check if this voucher has مصاريف بنكية
+        banking_account_names = [
+            "مصاريف بنكية - D",
+            "مصاريف بنكيه - D",
+            "مصاريف بنكية",
+            "مصاريف بنكيه"
+        ]
+
+        voucher_banking_amount = 0
+        for acc_code, acc_data in voucher_expense_accounts_aggregated.items():
+            acc_name = acc_data.get('account_name', '')
+            if any(bank_name in acc_name or bank_name in acc_code for bank_name in banking_account_names):
+                voucher_banking_amount = acc_data.get(
+                    'total_converted_amount', 0)
+                voucher_banking_breakdown[voucher_name] = voucher_banking_amount
+                banking_fees_total += voucher_banking_amount
+                break
 
         # Calculate total converted taxes for this voucher
-        total_converted_taxes = sum([flt(account.get('converted_amount', 0))
-                                     for account in filtered_expense_accounts])
+        total_converted_taxes = sum([flt(account_data.get('total_converted_amount', 0))
+                                     for account_data in voucher_expense_accounts_aggregated.values()])
 
         # Process each item
         for item in items:
@@ -215,14 +231,15 @@ def get_items_with_expense_allocations(filters, expense_accounts):
             expense_allocations = {
                 account: 0 for account in expense_accounts.keys()}
 
-            # Calculate allocations for each expense account that exists for this voucher
-            for account_data in filtered_expense_accounts:
-                account_code = account_data['expense_account']
-                converted_amount = flt(account_data.get('converted_amount', 0))
-
-                # Item's share from this specific account
-                item_account_share = (item_percentage / 100) * converted_amount
-                expense_allocations[account_code] = item_account_share
+            # Calculate allocations for each expense account
+            for account_code, account_data in voucher_expense_accounts_aggregated.items():
+                if account_code in expense_accounts:
+                    total_converted_amount = flt(
+                        account_data.get('total_converted_amount', 0))
+                    # Item's share from this specific account
+                    item_account_share = (
+                        item_percentage / 100) * total_converted_amount
+                    expense_allocations[account_code] = item_account_share
 
             # Create item data
             item_data = {
@@ -242,30 +259,21 @@ def get_items_with_expense_allocations(filters, expense_accounts):
 
             items_data.append(item_data)
 
+    # Debug log the مصاريف بنكية breakdown
+    frappe.log_error(f"=== مصاريف بنكية Debug ===")
+    frappe.log_error(
+        f"Total vouchers processed: {len(voucher_banking_breakdown)}")
+    for voucher, amount in voucher_banking_breakdown.items():
+        frappe.log_error(f"Voucher {voucher}: {amount}")
+    frappe.log_error(
+        f"Total مصاريف بنكية across all vouchers: {banking_fees_total}")
+    frappe.log_error(f"=== End Debug ===")
+
     return items_data
 
 
-def get_shipment_name_safe(voucher_name):
-    """Get shipment name using dynamically checked fields"""
-    try:
-        available_fields = get_available_shipment_fields()
-
-        for field in available_fields:
-            try:
-                shipment = frappe.db.get_value(
-                    "Landed Cost Voucher", voucher_name, field)
-                if shipment:
-                    return shipment
-            except Exception:
-                continue
-
-        return ""
-    except Exception:
-        return ""
-
-
-def get_expense_accounts_with_conversion(voucher_name):
-    """Get expense accounts with currency conversion to EGP"""
+def get_expense_accounts_with_conversion_fixed(voucher_name, expense_accounts):
+    """Get expense accounts with currency conversion - FIXED to handle duplicates"""
     try:
         accounts = frappe.db.sql("""
             SELECT 
@@ -285,8 +293,14 @@ def get_expense_accounts_with_conversion(voucher_name):
             ORDER BY lct.idx
         """, (voucher_name,), as_dict=1)
 
-        # Convert amounts to EGP
+        # Aggregate duplicate accounts - THIS IS THE KEY FIX
+        aggregated_accounts = {}
+
         for account in accounts:
+            account_code = account.get('expense_account')
+            if not account_code:
+                continue
+
             original_amount = flt(account.get('amount', 0))
             account_currency = account.get('account_currency', '').upper()
             exchange_rate = flt(account.get('exchange_rate', 1))
@@ -294,21 +308,52 @@ def get_expense_accounts_with_conversion(voucher_name):
             # Currency conversion logic
             if account_currency and account_currency != 'EGP' and exchange_rate > 0:
                 converted_amount = original_amount * exchange_rate
-                account['converted_amount'] = converted_amount
-                account['original_amount'] = original_amount
-                account['original_currency'] = account_currency
-                account['exchange_rate'] = exchange_rate
             else:
-                account['converted_amount'] = original_amount
-                account['original_amount'] = original_amount
-                account['original_currency'] = account_currency or 'EGP'
-                account['exchange_rate'] = 1
+                converted_amount = original_amount
+                exchange_rate = 1
+                account_currency = account_currency or 'EGP'
 
-        return accounts
+            # Aggregate amounts for duplicate accounts
+            if account_code in aggregated_accounts:
+                # Add to existing
+                aggregated_accounts[account_code]['original_amount'] += original_amount
+                aggregated_accounts[account_code]['total_converted_amount'] += converted_amount
+            else:
+                # Create new entry
+                aggregated_accounts[account_code] = {
+                    'expense_account': account_code,
+                    'account_name': account.get('account_name', ''),
+                    'original_amount': original_amount,
+                    'total_converted_amount': converted_amount,
+                    'account_currency': account_currency,
+                    'exchange_rate': exchange_rate
+                }
+
+        return aggregated_accounts
+
     except Exception as e:
         frappe.log_error(
             f"Error getting expense accounts for {voucher_name}: {str(e)}")
-        return []
+        return {}
+
+
+def get_shipment_name_safe(voucher_name):
+    """Get shipment name using dynamically checked fields"""
+    try:
+        available_fields = get_available_shipment_fields()
+
+        for field in available_fields:
+            try:
+                shipment = frappe.db.get_value(
+                    "Landed Cost Voucher", voucher_name, field)
+                if shipment:
+                    return shipment
+            except Exception:
+                continue
+
+        return ""
+    except Exception:
+        return ""
 
 
 def generate_horizontal_expense_columns(expense_accounts):
@@ -512,8 +557,8 @@ def calculate_percentage(part, total):
 
 # Report configuration
 report_config = {
-    "name": "Safe Horizontal Expense Account Landed Cost",
-    "description": "Items as rows with expense accounts as horizontal columns (Safe field checking)",
+    "name": "Fixed Safe Horizontal Expense Account Landed Cost",
+    "description": "Items as rows with expense accounts as horizontal columns (Fixed duplicate handling)",
     "module": "Stock",
     "report_type": "Script Report",
     "is_standard": "No",
