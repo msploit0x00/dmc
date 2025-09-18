@@ -1,4 +1,3 @@
-// landed_cost_allocation_horizontal.js - Horizontal Layout Version
 frappe.query_reports["Landed Cost Allocation Pivot View"] = {
 	"filters": [
 		{
@@ -86,7 +85,6 @@ frappe.query_reports["Landed Cost Allocation Pivot View"] = {
 	}
 };
 
-// Helper functions
 function format_currency(amount) {
 	if (!amount) return "0.00";
 	return new Intl.NumberFormat('en-US', {
