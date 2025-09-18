@@ -37,79 +37,6 @@ frappe.ui.form.on('Sales Order', {
     customer_address(frm) {
         handle_tax_logic_from_address(frm);
     },
-
-    // setup: function (frm) {
-    //     // Only trigger on new (unsaved) forms
-    //     if (frm.is_new()) {
-    //         // Check if created from Partial Supply Order
-    //         const from_doctype = frappe.get_prev_route()[0];
-    //         const from_form = frappe.get_prev_route()[1];
-
-    //         if (from_doctype === 'Partial Supply Order' && from_form) {
-    //             // Set the custom field;
-    //             frm.set_value('custom_sales_order_type', 'امر بيع - هيئة الشراء الموحد');
-    //         }
-    //     }
-    // }
-    // custom_supply_order: function (frm) {
-    //     if (frm.doc.custom_supply_order) {
-    //         console.log("it not working")
-
-    //         frappe.call({
-    //             method: "dmc.api.get_supply_order_type",
-    //             args: {
-    //                 supply_order_name: frm.doc.custom_supply_order
-    //             },
-    //             callback: function (r) {
-    //                 if (r.message === "Partial Supply Order") {
-    //                     frm.set_value('custom_sales_order_type', 'أمر بيع - هيئة الشراء الموحد');
-    //                 }
-    //             }
-    //         });
-    //     }
-    // },
-    // onload: function (frm) {
-    //     if (frm.doc.custom_supply_order) {
-    //         frappe.call({
-    //             method: "dmc.api.get_supply_order_type",
-    //             args: {
-    //                 supply_order_name: frm.doc.custom_supply_order
-    //             },
-    //             callback: function (r) {
-    //                 if (r.message === "Partial Supply Order") {
-    //                     frm.set_value('custom_sales_order_type', 'أمر بيع - هيئة الشراء الموحد');
-    //                 }
-    //             }
-    //         });
-    //     }
-    // }
-    // custom_supply_order: function (frm) {
-    //     console.log("it not working")
-    //     if (frm.doc.custom_supply_order) {
-    //         console.log("it not working 2")
-    //         frappe.db.get_value('Supply order', frm.doc.custom_supply_order, 'custom_supply_order_type', function (r) {
-    //             if (r && r.custom_supply_order_type === "Partial Supply Order") {
-    //                 console.log("it not working 3")
-    //                 frm.set_value('custom_sales_order_type', 'أمر بيع - هيئة الشراء الموحد');
-    //                 frm.refresh_field('custom_sales_order_type');
-    //             }
-    //         });
-    //     }
-    // },
-
-    // onload: function (frm) {
-    //     console.log("it not working")
-    //     if (frm.doc.custom_supply_order) {
-    //         console.log("it not working 2")
-    //         frappe.db.get_value('Supply order', frm.doc.custom_supply_order, 'custom_supply_order_type', function (r) {
-    //             if (r && r.custom_supply_order_type === "Partial Supply Order") {
-    //                 console.log("it not working 3")
-    //                 frm.set_value('custom_sales_order_type', 'أمر بيع - هيئة الشراء الموحد');
-    //                 frm.refresh_field('custom_sales_order_type');
-    //             }
-    //         });
-    //     }
-    // }
 })
 
 frappe.ui.form.on('Sales Order Item', {
@@ -220,15 +147,7 @@ async function handle_tax_logic_from_address(frm) {
         // خاضع (Taxable)
         frm.toggle_display('taxes', true);
         frm.set_value('custom_delivery_note_status', 'خاضع');
-        // frm.set_value('custom_tax_status', 'Taxable');
 
-        // if (!frm.doc.taxes || frm.doc.taxes.length === 0) {
-        //     let row = frm.add_child('taxes');
-        //     row.charge_type = 'On Net Total';
-        //     // row.account_head = 'VAT - YourCompany'; // Replace with your actual account
-        //     row.rate = 14; // Adjust as needed
-        //     frm.refresh_field('taxes');
-        // }
     }
 }
 

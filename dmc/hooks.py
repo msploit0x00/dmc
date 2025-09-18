@@ -36,6 +36,8 @@ doctype_js = {
     "Bank Guarantee": "public/js/bank_guarantee_edit.js",
     "Purchase Receipt": "public/js/purchase_receipt_edit.js",
     "Delivery Note": "public/js/delivery_note_edit.js",
+    "Supply order": "public/js/supply_order_edit.js",
+
     # "Employee Checkin": "public/js/employee_checkin_edit.js"
 
 }
