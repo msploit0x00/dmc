@@ -1,4 +1,4 @@
-# FIXED VERSION - NO ROUNDING DIFFERENCES
+# FIXED VERSION - Respects Item-Specific Tax Assignments
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -18,7 +18,7 @@ def execute(filters=None):
         return [], []
 
     # Get items data with expense account allocations
-    items_data = get_items_with_perfect_match(filters, expense_accounts)
+    items_data = get_items_with_item_specific_taxes(filters, expense_accounts)
 
     if not items_data:
         return [], []
@@ -81,8 +81,8 @@ def get_all_expense_accounts(filters):
     return expense_accounts
 
 
-def get_items_with_perfect_match(filters, expense_accounts):
-    """Get items data with PERFECT MATCH to ERPNext internal calculations"""
+def get_items_with_item_specific_taxes(filters, expense_accounts):
+    """Get items data with ITEM-SPECIFIC tax assignments - the key fix!"""
 
     # Build conditions
     conditions = []
@@ -133,7 +133,7 @@ def get_items_with_perfect_match(filters, expense_accounts):
         try:
             items = frappe.get_all("Landed Cost Item",
                                    filters={"parent": voucher_name},
-                                   fields=["item_code", "qty", "rate", "amount"])
+                                   fields=["item_code", "qty", "rate", "amount", "applicable_charges"])
         except Exception as e:
             frappe.log_error(
                 f"Error getting items for {voucher_name}: {str(e)}")
@@ -147,8 +147,8 @@ def get_items_with_perfect_match(filters, expense_accounts):
         if not items:
             continue
 
-        # *** FIXED CALCULATION TO AVOID ROUNDING DIFFERENCES ***
-        voucher_items_data = replicate_erpnext_internal_logic_FIXED(
+        # *** NEW APPROACH: Use item-specific applicable_charges ***
+        voucher_items_data = process_items_with_specific_charges(
             items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts)
 
         items_data.extend(voucher_items_data)
@@ -156,20 +156,22 @@ def get_items_with_perfect_match(filters, expense_accounts):
     return items_data
 
 
-def replicate_erpnext_internal_logic_FIXED(items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts):
-    """FIXED VERSION: Replicate ERPNext logic but avoid early rounding that causes differences"""
+def process_items_with_specific_charges(items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts):
+    """NEW APPROACH: Use the applicable_charges field from Landed Cost Item table"""
 
     voucher_items_data = []
 
-    # Get raw data exactly as stored in database
-    # Step 1: Get taxes with exact precision as stored
+    frappe.log_error(f"=== PROCESSING VOUCHER {voucher_name} ===")
+
+    # Get the tax structure for this voucher
     taxes_data = frappe.db.sql("""
         SELECT 
             lct.expense_account,
             lct.amount,
             lct.exchange_rate,
             lct.idx,
-            acc.account_currency
+            acc.account_currency,
+            acc.account_name
         FROM 
             `tabLanded Cost Taxes and Charges` lct
         LEFT JOIN 
@@ -181,191 +183,115 @@ def replicate_erpnext_internal_logic_FIXED(items, voucher_name, purchase_receipt
         ORDER BY lct.idx
     """, (voucher_name,), as_dict=1)
 
-    # Step 2: Get company currency
+    # Get company currency
     company = frappe.db.get_value(
         "Landed Cost Voucher", voucher_name, "company")
     company_currency = frappe.db.get_value(
         "Company", company, "default_currency")
 
-    # Step 3: Calculate converted amounts using Decimal for precision
+    # Convert tax amounts to base currency
     converted_taxes = {}
     for tax in taxes_data:
         expense_account = tax.expense_account
-        # Use Decimal to avoid floating point precision issues
         amount = Decimal(str(tax.amount))
         exchange_rate = Decimal(str(tax.exchange_rate or 1.0))
         account_currency = tax.account_currency
 
-        # ERPNext conversion logic - EXACT replication using Decimal
         if account_currency and account_currency != company_currency:
-            # Convert to base currency
             base_amount = amount * exchange_rate
         else:
             base_amount = amount
 
-        # ERPNext aggregates duplicate accounts at this stage
-        if expense_account in converted_taxes:
-            converted_taxes[expense_account] += base_amount
-        else:
-            converted_taxes[expense_account] = base_amount
+        converted_taxes[expense_account] = {
+            'amount': base_amount,
+            'account_name': tax.account_name or expense_account
+        }
 
-    # Step 4: Calculate total item amount using Decimal
-    total_item_amount = Decimal('0')
+    frappe.log_error(f"Converted Taxes: {converted_taxes}")
+
+    # Process each item
     for item in items:
-        total_item_amount += Decimal(str(item.amount))
-
-    frappe.log_error(f"=== FIXED CALCULATION DEBUG - {voucher_name} ===")
-    frappe.log_error(f"Total Item Amount: {total_item_amount}")
-
-    for account, amount in converted_taxes.items():
-        account_name = frappe.db.get_value(
-            "Account", account, "account_name") or account
-        frappe.log_error(f"Tax {account_name}: {amount}")
-
-    # Step 5: Process each item with precise Decimal calculations
-    # IMPORTANT: We'll use distribution logic to ensure totals match exactly
-
-    # First pass: Calculate exact percentages and raw allocations
-    item_calculations = []
-
-    for item in items:
-        item_amount = Decimal(str(item.amount))
-
-        # Get item name
         try:
             item_name = frappe.db.get_value(
                 "Item", item.item_code, "item_name") or item.item_code
         except:
             item_name = item.item_code
 
-        # Calculate percentage with high precision
-        if total_item_amount > 0:
-            percentage = item_amount / total_item_amount
-        else:
-            percentage = Decimal('0')
-
-        # Calculate raw allocations (before any rounding)
-        raw_expense_allocations = {}
-        for expense_account, tax_amount in converted_taxes.items():
-            if expense_account in expense_accounts:
-                raw_allocation = percentage * tax_amount
-                raw_expense_allocations[expense_account] = raw_allocation
-
-        item_calculations.append({
-            'item': item,
-            'item_name': item_name,
-            'item_amount': item_amount,
-            'percentage': percentage,
-            'raw_expense_allocations': raw_expense_allocations
-        })
-
-    # Second pass: Apply intelligent rounding to ensure totals match
-    # This is the key fix - we distribute rounding differences
-
-    final_allocations_by_account = {}
-
-    for expense_account in expense_accounts.keys():
-        if expense_account not in converted_taxes:
-            continue
-
-        expected_total = converted_taxes[expense_account]
-
-        # Calculate rounded allocations
-        rounded_allocations = []
-        sum_rounded = Decimal('0')
-
-        for calc in item_calculations:
-            if expense_account in calc['raw_expense_allocations']:
-                raw_value = calc['raw_expense_allocations'][expense_account]
-                rounded_value = raw_value.quantize(
-                    Decimal('0.01'), rounding=ROUND_HALF_UP)
-                rounded_allocations.append(rounded_value)
-                sum_rounded += rounded_value
-            else:
-                rounded_allocations.append(Decimal('0'))
-
-        # Calculate difference and distribute it
-        difference = expected_total - sum_rounded
+        # *** KEY FIX: Use applicable_charges instead of proportional distribution ***
+        applicable_charges = Decimal(str(item.get('applicable_charges') or 0))
 
         frappe.log_error(
-            f"Account {expense_account}: Expected={expected_total}, Rounded Sum={sum_rounded}, Diff={difference}")
+            f"Item {item.item_code}: applicable_charges = {applicable_charges}")
 
-        # Distribute the difference to the largest allocation(s)
-        if abs(difference) > Decimal('0.005'):  # Only adjust if significant difference
-            # Find item with largest allocation for this account
-            max_index = -1
-            max_value = Decimal('0')
-            for i, allocation in enumerate(rounded_allocations):
-                if allocation > max_value:
-                    max_value = allocation
-                    max_index = i
-
-            if max_index >= 0:
-                rounded_allocations[max_index] += difference
-                frappe.log_error(
-                    f"  Adjusted item {max_index} by {difference}")
-
-        # Store final allocations
-        final_allocations_by_account[expense_account] = rounded_allocations
-
-    # Third pass: Create final item data with corrected allocations
-    for i, calc in enumerate(item_calculations):
-        item = calc['item']
-        item_amount = calc['item_amount']
-        percentage = calc['percentage']
-
-        # Build expense allocations from corrected values
+        # Build expense allocations based on the applicable_charges
         expense_allocations = {}
-        total_item_tax_share = Decimal('0')
 
-        for expense_account in expense_accounts.keys():
-            if expense_account in final_allocations_by_account:
-                allocation = final_allocations_by_account[expense_account][i]
-                expense_allocations[expense_account] = float(allocation)
-                total_item_tax_share += allocation
+        # The applicable_charges represents this item's share of ALL taxes
+        # We need to distribute this proportionally across the tax accounts
+
+        total_tax_amount = sum([tax_info['amount']
+                               for tax_info in converted_taxes.values()])
+
+        frappe.log_error(f"Total tax amount: {total_tax_amount}")
+
+        for expense_account, tax_info in converted_taxes.items():
+            if expense_account in expense_accounts and total_tax_amount > 0:
+                # Calculate this account's proportion of total taxes
+                tax_proportion = tax_info['amount'] / total_tax_amount
+                # Apply this proportion to the item's applicable_charges
+                item_allocation = applicable_charges * tax_proportion
+
+                expense_allocations[expense_account] = float(item_allocation)
+
+                frappe.log_error(
+                    f"  {tax_info['account_name']}: proportion={tax_proportion}, allocation={item_allocation}")
             else:
                 expense_allocations[expense_account] = 0
 
-        frappe.log_error(
-            f"Item {item.item_code}: Tax Share={total_item_tax_share}")
+        # Calculate totals
+        total_item_tax_share = float(applicable_charges)
+        item_amount = Decimal(str(item.amount))
+        total_landed_cost = float(item_amount + applicable_charges)
 
-        # Create item data with corrected calculations
+        # Calculate percentage
+        # Get total item amount for percentage calculation
+        total_voucher_items = Decimal(
+            str(sum([Decimal(str(i.amount)) for i in items])))
+        item_percentage = float(
+            (item_amount / total_voucher_items * 100) if total_voucher_items > 0 else 0)
+
+        # Create item data
         item_data = {
             'landed_cost_voucher': voucher_name,
             'purchase_receipt': purchase_receipts_str,
             'shipment_name': shipment_name,
             'item_code': item.item_code,
-            'item_name': calc['item_name'],
+            'item_name': item_name,
             'qty': item.qty,
             'rate': item.rate,
             'amount': float(item_amount),
-            'item_percentage': float(percentage * 100),
-            'total_item_tax_share': float(total_item_tax_share),
-            'total_landed_cost': float(item_amount + total_item_tax_share),
+            'item_percentage': item_percentage,
+            'total_item_tax_share': total_item_tax_share,
+            'total_landed_cost': total_landed_cost,
             'expense_allocations': expense_allocations
         }
 
         voucher_items_data.append(item_data)
 
-    # Final verification - should now show zero differences
-    for account_code in expense_accounts.keys():
-        if account_code in converted_taxes:
-            expected_total = float(converted_taxes[account_code])
+        frappe.log_error(f"Item {item.item_code} final data: {item_data}")
+
+    # Verification
+    for account_code, tax_info in converted_taxes.items():
+        if account_code in expense_accounts:
+            expected_total = float(tax_info['amount'])
             calculated_total = sum([item['expense_allocations'].get(
                 account_code, 0) for item in voucher_items_data])
             difference = abs(expected_total - calculated_total)
 
-            account_name = frappe.db.get_value(
-                "Account", account_code, "account_name") or account_code
-            frappe.log_error(f"FINAL VERIFICATION - {account_name}:")
+            frappe.log_error(f"VERIFICATION - {tax_info['account_name']}:")
             frappe.log_error(f"  Expected: {expected_total}")
             frappe.log_error(f"  Calculated: {calculated_total}")
             frappe.log_error(f"  Difference: {difference}")
-
-            if difference > 0.005:  # More than half a cent
-                frappe.log_error(f"  *** WARNING: STILL HAS DIFFERENCE ***")
-            else:
-                frappe.log_error(f"  ✓ PERFECT MATCH ACHIEVED!")
 
     return voucher_items_data
 
@@ -605,8 +531,8 @@ def get_purchase_receipts(voucher_name):
 
 # Report configuration
 report_config = {
-    "name": "FIXED Perfect Match ERPNext Internal Logic Landed Cost Report",
-    "description": "Exact replication with NO rounding differences - uses Decimal precision",
+    "name": "Item-Specific Tax Assignment Landed Cost Report",
+    "description": "Uses applicable_charges field to respect item-specific tax assignments",
     "module": "Stock",
     "report_type": "Script Report",
     "is_standard": "No",
