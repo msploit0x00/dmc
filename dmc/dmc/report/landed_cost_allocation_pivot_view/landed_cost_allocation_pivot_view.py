@@ -161,8 +161,6 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
 
     voucher_items_data = []
 
-    frappe.log_error(f"=== PROCESSING VOUCHER {voucher_name} ===")
-
     # Get the tax structure for this voucher
     taxes_data = frappe.db.sql("""
         SELECT 
@@ -207,8 +205,6 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
             'account_name': tax.account_name or expense_account
         }
 
-    frappe.log_error(f"Converted Taxes: {converted_taxes}")
-
     # Process each item
     for item in items:
         try:
@@ -220,9 +216,6 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
         # *** KEY FIX: Use applicable_charges instead of proportional distribution ***
         applicable_charges = Decimal(str(item.get('applicable_charges') or 0))
 
-        frappe.log_error(
-            f"Item {item.item_code}: applicable_charges = {applicable_charges}")
-
         # Build expense allocations based on the applicable_charges
         expense_allocations = {}
 
@@ -232,8 +225,6 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
         total_tax_amount = sum([tax_info['amount']
                                for tax_info in converted_taxes.values()])
 
-        frappe.log_error(f"Total tax amount: {total_tax_amount}")
-
         for expense_account, tax_info in converted_taxes.items():
             if expense_account in expense_accounts and total_tax_amount > 0:
                 # Calculate this account's proportion of total taxes
@@ -242,9 +233,6 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
                 item_allocation = applicable_charges * tax_proportion
 
                 expense_allocations[expense_account] = float(item_allocation)
-
-                frappe.log_error(
-                    f"  {tax_info['account_name']}: proportion={tax_proportion}, allocation={item_allocation}")
             else:
                 expense_allocations[expense_account] = 0
 
@@ -278,20 +266,11 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
 
         voucher_items_data.append(item_data)
 
-        frappe.log_error(f"Item {item.item_code} final data: {item_data}")
-
-    # Verification
-    for account_code, tax_info in converted_taxes.items():
-        if account_code in expense_accounts:
-            expected_total = float(tax_info['amount'])
-            calculated_total = sum([item['expense_allocations'].get(
-                account_code, 0) for item in voucher_items_data])
-            difference = abs(expected_total - calculated_total)
-
-            frappe.log_error(f"VERIFICATION - {tax_info['account_name']}:")
-            frappe.log_error(f"  Expected: {expected_total}")
-            frappe.log_error(f"  Calculated: {calculated_total}")
-            frappe.log_error(f"  Difference: {difference}")
+    # Verification - Summary only
+    total_expected = sum([float(tax_info['amount'])
+                         for tax_info in converted_taxes.values()])
+    total_calculated = sum(
+        [sum(item['expense_allocations'].values()) for item in voucher_items_data])
 
     return voucher_items_data
 
