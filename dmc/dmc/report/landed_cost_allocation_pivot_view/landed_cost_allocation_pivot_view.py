@@ -493,9 +493,84 @@ def generate_horizontal_expense_columns(expense_accounts):
     return columns
 
 
+# def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
+#     """Convert items data to horizontal display format - KEEPING RAW VALUES"""
+#     display_data = []
+
+#     # Initialize totals - RAW VALUES
+#     total_amount = 0
+#     total_tax_share = 0
+#     total_landed_cost = 0
+#     account_totals = {account: 0 for account in expense_accounts.keys()}
+
+#     for item_data in items_data:
+#         row = {
+#             'landed_cost_voucher': item_data['landed_cost_voucher'],
+#             'purchase_receipt': item_data['purchase_receipt'],
+#             'shipment_name': item_data['shipment_name'],
+#             'item_code': item_data['item_code'],
+#             'item_name': item_data['item_name'],
+#             'qty': item_data['qty'],  # RAW VALUE
+#             'rate': item_data['rate'],  # RAW VALUE
+#             'amount': item_data['amount'],  # RAW VALUE
+#             'item_percentage': item_data['item_percentage'],  # RAW VALUE
+#             # RAW VALUE
+#             'total_item_tax_share': item_data['total_item_tax_share'],
+#             'total_landed_cost': item_data['total_landed_cost']  # RAW VALUE
+#         }
+
+#         # Add to totals - RAW ADDITION
+#         total_amount += item_data['amount']
+#         total_tax_share += item_data['total_item_tax_share']
+#         total_landed_cost += item_data['total_landed_cost']
+
+#         # Add expense account allocations - RAW VALUES
+#         for account_code in expense_accounts.keys():
+#             safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
+#             allocation_amount = item_data['expense_allocations'].get(
+#                 account_code, 0)
+
+#             row[safe_fieldname] = allocation_amount  # RAW VALUE
+#             account_totals[account_code] += allocation_amount  # RAW ADDITION
+
+#         display_data.append(row)
+
+#     # Add totals row - RAW VALUES
+#     if display_data:
+#         totals_row = {
+#             'landed_cost_voucher': '',
+#             'purchase_receipt': '',
+#             'shipment_name': '',
+#             'item_code': '',
+#             'item_name': 'TOTAL',
+#             'qty': '',
+#             'rate': '',
+#             'amount': total_amount,  # RAW VALUE
+#             'item_percentage': '',
+#             'total_item_tax_share': total_tax_share,  # RAW VALUE
+#             'total_landed_cost': total_landed_cost  # RAW VALUE
+#         }
+
+#         # Add account totals - RAW VALUES
+#         for account_code in expense_accounts.keys():
+#             safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
+#             # RAW VALUE
+#             totals_row[safe_fieldname] = account_totals[account_code]
+
+#         display_data.append(totals_row)
+
+#     return display_data
 def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
-    """Convert items data to horizontal display format - KEEPING RAW VALUES"""
+    """Convert items data to horizontal display format - KEEPING RAW VALUES with better separation"""
     display_data = []
+
+    # Group by voucher for better organization
+    voucher_groups = {}
+    for item_data in items_data:
+        voucher = item_data['landed_cost_voucher']
+        if voucher not in voucher_groups:
+            voucher_groups[voucher] = []
+        voucher_groups[voucher].append(item_data)
 
     # Initialize totals - RAW VALUES
     total_amount = 0
@@ -503,37 +578,52 @@ def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
     total_landed_cost = 0
     account_totals = {account: 0 for account in expense_accounts.keys()}
 
-    for item_data in items_data:
-        row = {
-            'landed_cost_voucher': item_data['landed_cost_voucher'],
-            'purchase_receipt': item_data['purchase_receipt'],
-            'shipment_name': item_data['shipment_name'],
-            'item_code': item_data['item_code'],
-            'item_name': item_data['item_name'],
-            'qty': item_data['qty'],  # RAW VALUE
-            'rate': item_data['rate'],  # RAW VALUE
-            'amount': item_data['amount'],  # RAW VALUE
-            'item_percentage': item_data['item_percentage'],  # RAW VALUE
-            # RAW VALUE
-            'total_item_tax_share': item_data['total_item_tax_share'],
-            'total_landed_cost': item_data['total_landed_cost']  # RAW VALUE
-        }
+    # Process each voucher group
+    for voucher_name, voucher_items in voucher_groups.items():
+        # Add voucher header row (optional - uncomment if needed)
+        # header_row = {
+        #     'landed_cost_voucher': f"=== {voucher_name} ===",
+        #     'item_name': 'VOUCHER HEADER',
+        #     # ... other fields as empty
+        # }
+        # display_data.append(header_row)
 
-        # Add to totals - RAW ADDITION
-        total_amount += item_data['amount']
-        total_tax_share += item_data['total_item_tax_share']
-        total_landed_cost += item_data['total_landed_cost']
+        # Process items in this voucher
+        for item_data in voucher_items:
+            row = {
+                'landed_cost_voucher': item_data['landed_cost_voucher'],
+                'purchase_receipt': item_data['purchase_receipt'],
+                'shipment_name': item_data['shipment_name'],
+                'item_code': item_data['item_code'],
+                # Include voucher in item name for clarity
+                'item_name': f"{item_data['item_name']} [{voucher_name}]",
+                'qty': item_data['qty'],  # RAW VALUE
+                'rate': item_data['rate'],  # RAW VALUE
+                'amount': item_data['amount'],  # RAW VALUE
+                'item_percentage': item_data['item_percentage'],  # RAW VALUE
+                # RAW VALUE
+                'total_item_tax_share': item_data['total_item_tax_share'],
+                # RAW VALUE
+                'total_landed_cost': item_data['total_landed_cost']
+            }
 
-        # Add expense account allocations - RAW VALUES
-        for account_code in expense_accounts.keys():
-            safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
-            allocation_amount = item_data['expense_allocations'].get(
-                account_code, 0)
+            # Add to totals - RAW ADDITION
+            total_amount += item_data['amount']
+            total_tax_share += item_data['total_item_tax_share']
+            total_landed_cost += item_data['total_landed_cost']
 
-            row[safe_fieldname] = allocation_amount  # RAW VALUE
-            account_totals[account_code] += allocation_amount  # RAW ADDITION
+            # Add expense account allocations - RAW VALUES
+            for account_code in expense_accounts.keys():
+                safe_fieldname = "expense_" + \
+                    str(abs(hash(account_code)) % 100000)
+                allocation_amount = item_data['expense_allocations'].get(
+                    account_code, 0)
 
-        display_data.append(row)
+                row[safe_fieldname] = allocation_amount  # RAW VALUE
+                # RAW ADDITION
+                account_totals[account_code] += allocation_amount
+
+            display_data.append(row)
 
     # Add totals row - RAW VALUES
     if display_data:
@@ -542,7 +632,7 @@ def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
             'purchase_receipt': '',
             'shipment_name': '',
             'item_code': '',
-            'item_name': 'TOTAL',
+            'item_name': '=== TOTAL ===',
             'qty': '',
             'rate': '',
             'amount': total_amount,  # RAW VALUE
