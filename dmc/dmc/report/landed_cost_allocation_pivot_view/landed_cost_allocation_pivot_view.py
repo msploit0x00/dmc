@@ -75,32 +75,116 @@ def get_all_expense_accounts(filters):
     return expense_accounts
 
 
+# def get_items_with_raw_calculations(filters, expense_accounts):
+#     """Get items data with RAW VALUES - no conversion or rounding"""
+#     conditions = []
+#     if filters.get("landed_cost_name"):
+#         conditions.append("name = %(landed_cost_name)s")
+#     if filters.get("from_date"):
+#         conditions.append("posting_date >= %(from_date)s")
+#     if filters.get("to_date"):
+#         conditions.append("posting_date <= %(to_date)s")
+
+#     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
+
+#     # Get all vouchers
+#     try:
+#         vouchers = frappe.db.sql(f"""
+#             SELECT
+#                 name,
+#                 total_taxes_and_charges,
+#                 posting_date
+#             FROM
+#                 `tabLanded Cost Voucher`
+#             WHERE
+#                 docstatus = 1
+#                 {where_clause}
+#             ORDER BY posting_date DESC
+#         """, filters, as_dict=1)
+#     except Exception as e:
+#         frappe.log_error(f"Error getting vouchers: {str(e)}")
+#         return []
+
+#     items_data = []
+#     for voucher in vouchers:
+#         voucher_name = voucher['name']
+
+#         # Get purchase receipts
+#         purchase_receipts = get_purchase_receipts(voucher_name)
+#         purchase_receipts_str = ", ".join(purchase_receipts)
+
+#         # Get shipment name
+#         shipment_name = get_shipment_name_safe(voucher_name)
+
+#         # Apply shipment filter
+#         if filters.get("shipment_name") and shipment_name != filters.get("shipment_name"):
+#             continue
+
+#         # Get items for this voucher
+#         try:
+#             items = frappe.get_all("Landed Cost Item",
+#                                    filters={"parent": voucher_name},
+#                                    fields=["item_code", "qty", "rate", "amount", "applicable_charges"])
+#         except Exception as e:
+#             frappe.log_error(
+#                 f"Error getting items for {voucher_name}: {str(e)}")
+#             continue
+
+#         # Apply item filter
+#         if filters.get("item"):
+#             items = [item for item in items if item.item_code ==
+#                      filters.get("item")]
+
+#         if not items:
+#             continue
+
+#         # Process items with RAW VALUES
+#         voucher_items_data = process_items_with_raw_values(
+#             items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts)
+
+#         items_data.extend(voucher_items_data)
+
+#     return items_data
 def get_items_with_raw_calculations(filters, expense_accounts):
     """Get items data with RAW VALUES - no conversion or rounding"""
     conditions = []
     if filters.get("landed_cost_name"):
-        conditions.append("name = %(landed_cost_name)s")
+        conditions.append("lcv.name = %(landed_cost_name)s")
     if filters.get("from_date"):
-        conditions.append("posting_date >= %(from_date)s")
+        conditions.append("lcv.posting_date >= %(from_date)s")
     if filters.get("to_date"):
-        conditions.append("posting_date <= %(to_date)s")
+        conditions.append("lcv.posting_date <= %(to_date)s")
 
     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
 
-    # Get all vouchers
+    # Modified query to include item filtering at SQL level
+    item_filter_sql = ""
+    if filters.get("item"):
+        item_filter_sql = """
+            AND EXISTS (
+                SELECT 1 FROM `tabLanded Cost Item` lci 
+                WHERE lci.parent = lcv.name 
+                AND lci.item_code = %(item)s
+            )
+        """
+
+    # Get vouchers that contain the specific item (if filtered)
     try:
-        vouchers = frappe.db.sql(f"""
+        vouchers_sql = f"""
             SELECT 
-                name,
-                total_taxes_and_charges,
-                posting_date
+                lcv.name,
+                lcv.total_taxes_and_charges,
+                lcv.posting_date
             FROM 
-                `tabLanded Cost Voucher`
+                `tabLanded Cost Voucher` lcv
             WHERE 
-                docstatus = 1
+                lcv.docstatus = 1
                 {where_clause}
-            ORDER BY posting_date DESC
-        """, filters, as_dict=1)
+                {item_filter_sql}
+            ORDER BY lcv.posting_date DESC
+        """
+
+        vouchers = frappe.db.sql(vouchers_sql, filters, as_dict=1)
     except Exception as e:
         frappe.log_error(f"Error getting vouchers: {str(e)}")
         return []
@@ -120,20 +204,19 @@ def get_items_with_raw_calculations(filters, expense_accounts):
         if filters.get("shipment_name") and shipment_name != filters.get("shipment_name"):
             continue
 
-        # Get items for this voucher
+        # Get items for this voucher with item filter applied at SQL level
         try:
+            item_conditions = {"parent": voucher_name}
+            if filters.get("item"):
+                item_conditions["item_code"] = filters.get("item")
+
             items = frappe.get_all("Landed Cost Item",
-                                   filters={"parent": voucher_name},
+                                   filters=item_conditions,
                                    fields=["item_code", "qty", "rate", "amount", "applicable_charges"])
         except Exception as e:
             frappe.log_error(
                 f"Error getting items for {voucher_name}: {str(e)}")
             continue
-
-        # Apply item filter
-        if filters.get("item"):
-            items = [item for item in items if item.item_code ==
-                     filters.get("item")]
 
         if not items:
             continue
