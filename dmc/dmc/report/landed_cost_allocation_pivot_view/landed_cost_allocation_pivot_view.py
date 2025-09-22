@@ -150,16 +150,17 @@ def get_exact_item_allocations(voucher_name, purchase_receipts_str, shipment_nam
             FROM 
                 `tabLanded Cost Item`
             WHERE 
-                parent = %s
+                parent = %(parent)s
         """
+
+        params = {"parent": voucher_name}
 
         # Apply item filter if provided
         if filters.get("item"):
             items_query += " AND item_code = %(item)s"
-            items = frappe.db.sql(
-                items_query, {"parent": voucher_name, "item": filters.get("item")}, as_dict=1)
-        else:
-            items = frappe.db.sql(items_query, (voucher_name,), as_dict=1)
+            params["item"] = filters.get("item")
+
+        items = frappe.db.sql(items_query, params, as_dict=1)
 
     except Exception as e:
         frappe.log_error(f"Error getting items for {voucher_name}: {str(e)}")
@@ -216,11 +217,59 @@ def get_exact_item_allocations(voucher_name, purchase_receipts_str, shipment_nam
     return voucher_items_data
 
 
+# def get_item_exact_distribution(voucher_name, item_code, expense_accounts):
+#     """Get EXACT distribution values - match Excel calculations exactly"""
+
+#     try:
+#         # First, let's check if the Distribution table exists and has data
+#         distributions = frappe.db.sql("""
+#             SELECT
+#                 lcid.expense_account,
+#                 lcid.amount
+#             FROM
+#                 `tabLanded Cost Item Distribution` lcid
+#             WHERE
+#                 lcid.parent = %s
+#                 AND lcid.item_code = %s
+#                 AND lcid.expense_account IS NOT NULL
+#         """, (voucher_name, item_code), as_dict=1)
+
+#         # Build allocations dictionary
+#         exact_allocations = {}
+
+#         # Initialize all accounts with 0
+#         for account_code in expense_accounts.keys():
+#             exact_allocations[account_code] = 0.0
+
+#         if distributions:
+#             # Use distribution table if available
+#             for dist in distributions:
+#                 expense_account = dist.expense_account
+#                 if expense_account in expense_accounts:
+#                     exact_allocations[expense_account] = float(dist.amount)
+#         else:
+#             # Fallback: Calculate using the EXACT same method as Excel
+#             exact_allocations = calculate_like_excel(
+#                 voucher_name, item_code, expense_accounts)
+
+#         return exact_allocations
+
+#     except Exception as e:
+#         frappe.log_error(
+#             f"Error getting exact distribution for {voucher_name} - {item_code}: {str(e)}")
+
+#         # Last resort: calculate like Excel
+#         return calculate_like_excel(voucher_name, item_code, expense_accounts)
+
 def get_item_exact_distribution(voucher_name, item_code, expense_accounts):
     """Get EXACT distribution values - match Excel calculations exactly"""
-
     try:
-        # First, let's check if the Distribution table exists and has data
+        # Check if table exists before querying
+        if not frappe.db.table_exists("Landed Cost Item Distribution"):
+            # Table doesn't exist → fallback to Excel-like calculation
+            return calculate_like_excel(voucher_name, item_code, expense_accounts)
+
+        # If exists, fetch data
         distributions = frappe.db.sql("""
             SELECT 
                 lcid.expense_account,
@@ -228,26 +277,22 @@ def get_item_exact_distribution(voucher_name, item_code, expense_accounts):
             FROM 
                 `tabLanded Cost Item Distribution` lcid
             WHERE 
-                lcid.parent = %s
-                AND lcid.item_code = %s
+                lcid.parent = %(parent)s
+                AND lcid.item_code = %(item)s
                 AND lcid.expense_account IS NOT NULL
-        """, (voucher_name, item_code), as_dict=1)
+        """, {"parent": voucher_name, "item": item_code}, as_dict=1)
 
         # Build allocations dictionary
-        exact_allocations = {}
-
-        # Initialize all accounts with 0
-        for account_code in expense_accounts.keys():
-            exact_allocations[account_code] = 0.0
+        exact_allocations = {
+            account_code: 0.0 for account_code in expense_accounts.keys()}
 
         if distributions:
-            # Use distribution table if available
             for dist in distributions:
                 expense_account = dist.expense_account
                 if expense_account in expense_accounts:
                     exact_allocations[expense_account] = float(dist.amount)
         else:
-            # Fallback: Calculate using the EXACT same method as Excel
+            # If table exists but has no rows → fallback
             exact_allocations = calculate_like_excel(
                 voucher_name, item_code, expense_accounts)
 
@@ -255,9 +300,8 @@ def get_item_exact_distribution(voucher_name, item_code, expense_accounts):
 
     except Exception as e:
         frappe.log_error(
-            f"Error getting exact distribution for {voucher_name} - {item_code}: {str(e)}")
-
-        # Last resort: calculate like Excel
+            f"Error getting exact distribution for {voucher_name} - {item_code}: {str(e)}"
+        )
         return calculate_like_excel(voucher_name, item_code, expense_accounts)
 
 
