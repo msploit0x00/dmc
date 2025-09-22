@@ -156,56 +156,181 @@ def get_items_with_item_specific_taxes(filters, expense_accounts):
     return items_data
 
 
+# def process_items_with_specific_charges(items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts):
+#     """NEW APPROACH: Use the applicable_charges field from Landed Cost Item table"""
+
+#     voucher_items_data = []
+
+#     # Get the tax structure for this voucher
+#     taxes_data = frappe.db.sql("""
+#         SELECT
+#             lct.expense_account,
+#             lct.amount,
+#             lct.exchange_rate,
+#             lct.idx,
+#             acc.account_currency,
+#             acc.account_name
+#         FROM
+#             `tabLanded Cost Taxes and Charges` lct
+#         LEFT JOIN
+#             `tabAccount` acc ON lct.expense_account = acc.name
+#         WHERE
+#             lct.parent = %s
+#             AND lct.parentfield = 'taxes'
+#             AND lct.expense_account IS NOT NULL
+#         ORDER BY lct.idx
+#     """, (voucher_name,), as_dict=1)
+
+#     # Get company currency
+#     company = frappe.db.get_value(
+#         "Landed Cost Voucher", voucher_name, "company")
+#     company_currency = frappe.db.get_value(
+#         "Company", company, "default_currency")
+
+#     # Convert tax amounts to base currency
+#     converted_taxes = {}
+#     for tax in taxes_data:
+#         expense_account = tax.expense_account
+#         amount = Decimal(str(tax.amount))
+#         exchange_rate = Decimal(str(tax.exchange_rate or 1.0))
+#         account_currency = tax.account_currency
+
+#         if account_currency and account_currency != company_currency:
+#             base_amount = amount * exchange_rate
+#         else:
+#             base_amount = amount
+
+#         converted_taxes[expense_account] = {
+#             'amount': base_amount,
+#             'account_name': tax.account_name or expense_account
+#         }
+
+#     # Process each item
+#     for item in items:
+#         try:
+#             item_name = frappe.db.get_value(
+#                 "Item", item.item_code, "item_name") or item.item_code
+#         except:
+#             item_name = item.item_code
+
+#         # *** KEY FIX: Use applicable_charges instead of proportional distribution ***
+#         applicable_charges = Decimal(str(item.get('applicable_charges') or 0))
+
+#         # Build expense allocations based on the applicable_charges
+#         expense_allocations = {}
+
+#         # The applicable_charges represents this item's share of ALL taxes
+#         # We need to distribute this proportionally across the tax accounts
+
+#         total_tax_amount = sum([tax_info['amount']
+#                                for tax_info in converted_taxes.values()])
+
+#         for expense_account, tax_info in converted_taxes.items():
+#             if expense_account in expense_accounts and total_tax_amount > 0:
+#                 # Calculate this account's proportion of total taxes
+#                 tax_proportion = tax_info['amount'] / total_tax_amount
+#                 # Apply this proportion to the item's applicable_charges
+#                 item_allocation = applicable_charges * tax_proportion
+
+#                 expense_allocations[expense_account] = float(item_allocation)
+#             else:
+#                 expense_allocations[expense_account] = 0
+
+#         # Calculate totals
+#         total_item_tax_share = float(applicable_charges)
+#         item_amount = Decimal(str(item.amount))
+#         total_landed_cost = float(item_amount + applicable_charges)
+
+#         # Calculate percentage
+#         # Get total item amount for percentage calculation
+#         total_voucher_items = Decimal(
+#             str(sum([Decimal(str(i.amount)) for i in items])))
+#         item_percentage = float(
+#             (item_amount / total_voucher_items * 100) if total_voucher_items > 0 else 0)
+
+#         # Create item data
+#         item_data = {
+#             'landed_cost_voucher': voucher_name,
+#             'purchase_receipt': purchase_receipts_str,
+#             'shipment_name': shipment_name,
+#             'item_code': item.item_code,
+#             'item_name': item_name,
+#             'qty': item.qty,
+#             'rate': item.rate,
+#             'amount': float(item_amount),
+#             'item_percentage': item_percentage,
+#             'total_item_tax_share': total_item_tax_share,
+#             'total_landed_cost': total_landed_cost,
+#             'expense_allocations': expense_allocations
+#         }
+
+#         voucher_items_data.append(item_data)
+
+#     # Verification - Summary only
+#     total_expected = sum([float(tax_info['amount'])
+#                          for tax_info in converted_taxes.values()])
+#     total_calculated = sum(
+#         [sum(item['expense_allocations'].values()) for item in voucher_items_data])
+
+#     return voucher_items_data
 def process_items_with_specific_charges(items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts):
-    """NEW APPROACH: Use the applicable_charges field from Landed Cost Item table"""
+    """CORRECTED: Get the actual item-specific allocations from Landed Cost system"""
 
     voucher_items_data = []
 
-    # Get the tax structure for this voucher
-    taxes_data = frappe.db.sql("""
+    # Get the actual item distributions as calculated by the Landed Cost Voucher
+    # This respects any custom allocation logic already applied
+    item_distributions = frappe.db.sql("""
         SELECT 
+            lci.item_code,
+            lci.applicable_charges,
             lct.expense_account,
-            lct.amount,
-            lct.exchange_rate,
+            lct.amount as total_tax_amount,
             lct.idx,
-            acc.account_currency,
             acc.account_name
         FROM 
+            `tabLanded Cost Item` lci
+        CROSS JOIN 
             `tabLanded Cost Taxes and Charges` lct
         LEFT JOIN 
             `tabAccount` acc ON lct.expense_account = acc.name
         WHERE 
-            lct.parent = %s
+            lci.parent = %s 
+            AND lct.parent = %s
             AND lct.parentfield = 'taxes'
             AND lct.expense_account IS NOT NULL
-        ORDER BY lct.idx
-    """, (voucher_name,), as_dict=1)
+            AND lct.expense_account != ''
+        ORDER BY lci.item_code, lct.idx
+    """, (voucher_name, voucher_name), as_dict=1)
 
-    # Get company currency
-    company = frappe.db.get_value(
-        "Landed Cost Voucher", voucher_name, "company")
-    company_currency = frappe.db.get_value(
-        "Company", company, "default_currency")
+    # Group by item_code
+    items_tax_allocations = defaultdict(dict)
 
-    # Convert tax amounts to base currency
-    converted_taxes = {}
-    for tax in taxes_data:
-        expense_account = tax.expense_account
-        amount = Decimal(str(tax.amount))
-        exchange_rate = Decimal(str(tax.exchange_rate or 1.0))
-        account_currency = tax.account_currency
+    # Get total of all tax amounts for this voucher
+    total_voucher_taxes = frappe.db.sql("""
+        SELECT SUM(amount) as total
+        FROM `tabLanded Cost Taxes and Charges`
+        WHERE parent = %s AND parentfield = 'taxes'
+    """, (voucher_name,))[0][0] or 0
 
-        if account_currency and account_currency != company_currency:
-            base_amount = amount * exchange_rate
+    # Calculate actual allocations per item per tax account
+    for dist in item_distributions:
+        item_code = dist['item_code']
+        expense_account = dist['expense_account']
+        applicable_charges = Decimal(str(dist['applicable_charges'] or 0))
+        tax_amount = Decimal(str(dist['total_tax_amount'] or 0))
+
+        # Calculate this tax account's share of this item's applicable_charges
+        if total_voucher_taxes > 0:
+            tax_proportion = tax_amount / Decimal(str(total_voucher_taxes))
+            item_tax_allocation = applicable_charges * tax_proportion
         else:
-            base_amount = amount
+            item_tax_allocation = Decimal('0')
 
-        converted_taxes[expense_account] = {
-            'amount': base_amount,
-            'account_name': tax.account_name or expense_account
-        }
+        items_tax_allocations[item_code][expense_account] = float(
+            item_tax_allocation)
 
-    # Process each item
+    # Process each item with the actual allocations
     for item in items:
         try:
             item_name = frappe.db.get_value(
@@ -213,36 +338,22 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
         except:
             item_name = item.item_code
 
-        # *** KEY FIX: Use applicable_charges instead of proportional distribution ***
+        # Get this item's actual applicable_charges (DON'T recalculate it!)
         applicable_charges = Decimal(str(item.get('applicable_charges') or 0))
 
-        # Build expense allocations based on the applicable_charges
+        # Get the pre-calculated expense allocations for this item
         expense_allocations = {}
+        for expense_account in expense_accounts.keys():
+            allocation = items_tax_allocations[item.item_code].get(
+                expense_account, 0)
+            expense_allocations[expense_account] = allocation
 
-        # The applicable_charges represents this item's share of ALL taxes
-        # We need to distribute this proportionally across the tax accounts
-
-        total_tax_amount = sum([tax_info['amount']
-                               for tax_info in converted_taxes.values()])
-
-        for expense_account, tax_info in converted_taxes.items():
-            if expense_account in expense_accounts and total_tax_amount > 0:
-                # Calculate this account's proportion of total taxes
-                tax_proportion = tax_info['amount'] / total_tax_amount
-                # Apply this proportion to the item's applicable_charges
-                item_allocation = applicable_charges * tax_proportion
-
-                expense_allocations[expense_account] = float(item_allocation)
-            else:
-                expense_allocations[expense_account] = 0
-
-        # Calculate totals
+        # Calculate totals (using actual figures, not recalculated)
         total_item_tax_share = float(applicable_charges)
         item_amount = Decimal(str(item.amount))
         total_landed_cost = float(item_amount + applicable_charges)
 
         # Calculate percentage
-        # Get total item amount for percentage calculation
         total_voucher_items = Decimal(
             str(sum([Decimal(str(i.amount)) for i in items])))
         item_percentage = float(
@@ -265,12 +376,6 @@ def process_items_with_specific_charges(items, voucher_name, purchase_receipts_s
         }
 
         voucher_items_data.append(item_data)
-
-    # Verification - Summary only
-    total_expected = sum([float(tax_info['amount'])
-                         for tax_info in converted_taxes.values()])
-    total_calculated = sum(
-        [sum(item['expense_allocations'].values()) for item in voucher_items_data])
 
     return voucher_items_data
 
