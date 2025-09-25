@@ -32,7 +32,7 @@ frappe.ui.form.on('Proforma Invoice', {
 	validate(frm) {
 		if (frm.doc.grand_total) {
 			frappe.call({
-				method: "dmc.api.money_to_arabic_words",  // full Python path
+				method: "dmc.api.money_to_arabic_words_with_qirsh",  // full Python path
 				args: {
 					amount: frm.doc.rounded_total
 				},
