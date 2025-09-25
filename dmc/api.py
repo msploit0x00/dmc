@@ -132,6 +132,23 @@ def money_to_arabic_words(amount):
         return f"خطأ في التحويل: {str(e)}"
 
 
+@frappe.whitelist()
+def money_to_arabic_words_with_qirsh(amount):
+    try:
+        amount = float(amount)
+        pounds = int(amount)
+        qirsh = round((amount - pounds) * 100)  # استخراج القروش
+
+        words = num2words(pounds, lang='ar') + " جنيه"
+        if qirsh > 0:
+            words += " و " + num2words(qirsh, lang='ar') + " قرشاً"
+
+        words += " فقط لا غير"
+        return words
+    except Exception as e:
+        return f"خطأ في التحويل: {str(e)}"
+
+
 # @frappe.whitelist()
 # def set_custom_sales_order_type(doc, method):
 #     if doc.custom_supply_order:
