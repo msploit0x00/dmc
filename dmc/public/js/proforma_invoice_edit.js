@@ -34,7 +34,7 @@ frappe.ui.form.on('Proforma Invoice', {
 			frappe.call({
 				method: "dmc.api.money_to_arabic_words_with_qirsh",  // full Python path
 				args: {
-					amount: frm.doc.rounded_total
+					amount: frm.doc.grand_total
 				},
 				callback: function (r) {
 					if (r.message) {
