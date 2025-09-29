@@ -1,6 +1,3 @@
-# Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
-# License: GNU General Public License v3. See license.txt
-
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -25,7 +22,8 @@ def execute(filters=None):
     if not salary_slips:
         return [], []
 
-    earning_types, ded_types = get_earning_and_deduction_types(salary_slips)
+    # Get ALL salary components from master, not just from salary slips
+    earning_types, ded_types = get_all_earning_and_deduction_types()
     columns = get_columns(earning_types, ded_types)
 
     ss_earning_map = get_salary_slip_details(
@@ -57,12 +55,15 @@ def execute(filters=None):
 
         update_column_width(ss, columns)
 
+        # Add all earning components (will be 0 if not in this salary slip)
         for e in earning_types:
             row.update(
-                {frappe.scrub(e): ss_earning_map.get(ss.name, {}).get(e)})
+                {frappe.scrub(e): ss_earning_map.get(ss.name, {}).get(e, 0.0)})
 
+        # Add all deduction components (will be 0 if not in this salary slip)
         for d in ded_types:
-            row.update({frappe.scrub(d): ss_ded_map.get(ss.name, {}).get(d)})
+            row.update(
+                {frappe.scrub(d): ss_ded_map.get(ss.name, {}).get(d, 0.0)})
 
         # Calculate Total Salary using all possible keys
         basic_keys = ["Basic"]
@@ -265,7 +266,36 @@ def get_columns(earning_types, ded_types):
     return columns
 
 
+def get_all_earning_and_deduction_types():
+    """
+    Get ALL enabled salary components from Salary Component master,
+    not just those present in the current salary slips
+    """
+    earning_types = []
+    deduction_types = []
+
+    # Fetch all enabled salary components
+    salary_components = frappe.get_all(
+        "Salary Component",
+        filters={"disabled": 0},
+        fields=["salary_component", "type"],
+        order_by="salary_component"
+    )
+
+    for component in salary_components:
+        if component.type == "Earning":
+            earning_types.append(component.salary_component)
+        elif component.type == "Deduction":
+            deduction_types.append(component.salary_component)
+
+    return earning_types, deduction_types
+
+
 def get_earning_and_deduction_types(salary_slips):
+    """
+    OLD FUNCTION - Get only components that exist in current salary slips
+    Keeping this for reference but not using it anymore
+    """
     salary_component_and_type = {_("Earning"): [], _("Deduction"): []}
 
     for salary_component in get_salary_components(salary_slips):
