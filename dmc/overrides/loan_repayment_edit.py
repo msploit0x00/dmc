@@ -7,22 +7,43 @@ from lending.loan_management.doctype.loan_repayment.loan_repayment import LoanRe
 class CustomLoanRepayment(LoanRepayment):
     """
     Custom Loan Repayment Override
-    Purpose: Prevent automatic GL Entry on submit
+    Purpose: Prevent automatic GL Entry on submit (Payment Entry handles it)
     """
 
     def on_submit(self):
         """
-        Override on_submit WITHOUT calling super()
-        لأننا مش عايزين make_gl_entries() يشتغل
+        ✅ Override WITHOUT calling super() to prevent make_gl_entries()
         """
+        # فقط نحدث حالة القرض، بدون GL Entry
         self.update_loan_status()
+
+    def on_cancel(self):
+        """
+        ✅ Override on_cancel to prevent GL reversal
+        """
+        # لا نفعل شيء هنا لأن Payment Entry سيتولى الأمر
+        pass
 
     def update_loan_status(self):
         """تحديث حالة القرض بدون عمل GL Entry"""
         if self.against_loan:
             loan = frappe.get_doc("Loan", self.against_loan)
             loan.add_comment(
-                "Comment", f"Repayment of {self.amount_paid} via {self.name}")
+                "Comment",
+                f"Repayment of {self.amount_paid} recorded via {self.name}"
+            )
+
+    def make_gl_entries(self, cancel=0, adv_adj=0):
+        """
+        ✅ Override لمنع أي GL Entries من Loan Repayment
+        """
+        # لا نفعل شيء - Payment Entry سيتولى GL Entry
+        frappe.msgprint(
+            _("GL Entry will be created by Payment Entry only"),
+            alert=True,
+            indicator="blue"
+        )
+        return
 
 
 @frappe.whitelist()
@@ -45,30 +66,34 @@ def make_payment_entry(source_name, target_doc=None):
         target.company = loan_repayment.company
         target.mode_of_payment = "Cash"
 
-        # الحسابات
+        # ✅ الحسابات الصحيحة
+        # من: حساب السلفة (Loan Account)
+        target.paid_from = loan.loan_account
+
+        # إلى: حساب الخزينة (Cash Account)
         target.paid_to = company.default_cash_account or frappe.db.get_value(
             "Account",
             {"account_type": "Cash", "company": company.name, "is_group": 0},
             "name"
         )
-        target.paid_from = loan.loan_account
+
         target.paid_to_account_currency = company.default_currency
         target.paid_from_account_currency = company.default_currency
 
-        # ✅ رجع الـ References (بس بدون outstanding/allocated)
+        # ✅ References للربط فقط (بدون outstanding)
         target.append("references", {
             "reference_doctype": "Loan Repayment",
             "reference_name": loan_repayment.name,
             "total_amount": loan_repayment.amount_paid,
-            "outstanding_amount": 0,  # ✅ صفر عشان الـ validation
-            "allocated_amount": 0     # ✅ صفر عشان الـ validation
+            "outstanding_amount": 0,
+            "allocated_amount": 0
         })
 
-        # Custom field للربط
+        # ✅ Custom field للربط
         target.loan_repayment = loan_repayment.name
 
         # Remarks
-        target.remarks = f"Payment received for Loan Repayment {loan_repayment.name}"
+        target.remarks = f"Payment received for Loan Repayment {loan_repayment.name} against Loan {loan.name}"
 
     doc = get_mapped_doc(
         "Loan Repayment",

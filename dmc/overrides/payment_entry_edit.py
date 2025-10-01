@@ -23,7 +23,6 @@ class CustomPaymentEntry(PaymentEntry):
     def update_loan_repayment(self):
         """Update Loan Repayment & Loan after Payment Entry submission"""
 
-        # ✅ جرب الطريقتين: References أو Custom Field
         loan_repayment_name = None
 
         # طريقة 1: من References
@@ -32,11 +31,10 @@ class CustomPaymentEntry(PaymentEntry):
                 loan_repayment_name = ref.reference_name
                 break
 
-        # طريقة 2: من Custom Field (لو مش موجود في References)
-        if not loan_repayment_name and self.loan_repayment:
+        # طريقة 2: من Custom Field
+        if not loan_repayment_name and hasattr(self, 'loan_repayment'):
             loan_repayment_name = self.loan_repayment
 
-        # لو لقينا Loan Repayment
         if loan_repayment_name:
             try:
                 # 1. Link Payment Entry to Loan Repayment
@@ -51,21 +49,24 @@ class CustomPaymentEntry(PaymentEntry):
                 loan_repayment = frappe.get_doc(
                     "Loan Repayment", loan_repayment_name)
 
-                # 3. Make GL Entry for Loan Repayment
-                if hasattr(loan_repayment, 'make_gl_entries'):
-                    loan_repayment.make_gl_entries(cancel=0, adv_adj=0)
-                    frappe.msgprint(
-                        _("GL Entry created for Loan Repayment {0}").format(
-                            frappe.bold(loan_repayment_name)
-                        ),
-                        alert=True
-                    )
+                # ✅ 3. لا نعمل GL Entry هنا - Payment Entry كافي!
+                # القيد المحاسبي تم بواسطة Payment Entry:
+                # Debit: الخزينة
+                # Credit: حساب السلفة
+
+                frappe.msgprint(
+                    _("Loan Repayment {0} linked to Payment Entry").format(
+                        frappe.bold(loan_repayment_name)
+                    ),
+                    alert=True,
+                    indicator="green"
+                )
 
                 # 4. Update Loan status
                 if loan_repayment.against_loan:
                     loan = frappe.get_doc("Loan", loan_repayment.against_loan)
 
-                    # Calculate total paid
+                    # Calculate total paid (فقط من الدفعات المربوطة بـ Payment Entry)
                     total_paid = frappe.db.sql("""
                         SELECT IFNULL(SUM(amount_paid), 0)
                         FROM `tabLoan Repayment`
@@ -94,12 +95,12 @@ class CustomPaymentEntry(PaymentEntry):
                     title=f"Error updating Loan Repayment {loan_repayment_name}"
                 )
                 frappe.throw(
-                    _("Error while updating Loan Repayment. Please check Error Log."))
+                    _("Error while updating Loan Repayment. Please check Error Log.")
+                )
 
     def cancel_loan_repayment(self):
         """Handle Loan Repayment when Payment Entry is cancelled"""
 
-        # ✅ جرب الطريقتين
         loan_repayment_name = None
 
         # من References
@@ -109,7 +110,7 @@ class CustomPaymentEntry(PaymentEntry):
                 break
 
         # من Custom Field
-        if not loan_repayment_name and self.loan_repayment:
+        if not loan_repayment_name and hasattr(self, 'loan_repayment'):
             loan_repayment_name = self.loan_repayment
 
         if loan_repayment_name:
@@ -126,9 +127,8 @@ class CustomPaymentEntry(PaymentEntry):
                 loan_repayment = frappe.get_doc(
                     "Loan Repayment", loan_repayment_name)
 
-                # 3. Cancel GL Entry for Loan Repayment
-                if hasattr(loan_repayment, 'make_gl_entries'):
-                    loan_repayment.make_gl_entries(cancel=1, adv_adj=0)
+                # ✅ 3. لا نعمل GL Entry Cancellation هنا
+                # Payment Entry سيلغي القيد تلقائياً
 
                 # 4. Update Loan Status
                 if loan_repayment.against_loan:
