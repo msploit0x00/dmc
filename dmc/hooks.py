@@ -37,6 +37,7 @@ doctype_js = {
     "Purchase Receipt": "public/js/purchase_receipt_edit.js",
     "Delivery Note": "public/js/delivery_note_edit.js",
     "Supply order": "public/js/supply_order_edit.js",
+    "Loan Repayment": "public/js/loan_repayment_edit.js"
 
     # "Employee Checkin": "public/js/employee_checkin_edit.js"
 
@@ -82,7 +83,7 @@ doctype_js = {
 
 # Installation
 # ------------
-
+# after_install = "dmc.setup.after_install.execute"
 # before_install = "dmc.install.before_install"
 # after_install = "dmc.install.after_install"
 
@@ -136,6 +137,8 @@ override_doctype_class = {
     "Material Request": "dmc.material_request.CustomPurchaseRequest",
     "Permission": "dmc.permission_override.CustomPermission",
     "Delivery Note": "dmc.overrides.delivery_note_override.CustomDeliveryNote",
+    "Loan Repayment": "dmc.overrides.loan_repayment_edit.CustomLoanRepayment",
+    "Payment Entry": "dmc.overrides.payment_entry_edit.CustomPaymentEntry"
 }
 
 # Document Events
@@ -144,12 +147,10 @@ override_doctype_class = {
 
 
 # doc_events = {
-#     "*": {
-#         "on_update": "dmc.workflow_logger.log_workflow_action",
-#         "on_load": "dmc.workflow_logger.log_workflow_action",
-#         "on_submit": "dmc.workflow_logger.log_workflow_action",
-#         # 		"on_cancel": "method",
-#         # 		"on_trash": "method"
+#     "Payment Entry": {
+#         # "before_validate": "dmc.overrides.payment_entry_edit.before_validate_payment_entry",
+#         "before_save": "dmc.overrides.payment_entry_edit.before_save_payment_entry",
+#         "on_submit": "dmc.overrides.payment_entry_edit.on_submit_payment_entry",
 #     }
 # }
 
