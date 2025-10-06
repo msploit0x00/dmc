@@ -1,6 +1,3 @@
-// Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
-// License: GNU General Public License v3. See license.txt
-
 frappe.query_reports["Custom Stock Ledger"] = {
 	filters: [
 		{
@@ -32,9 +29,7 @@ frappe.query_reports["Custom Stock Ledger"] = {
 			options: "Warehouse",
 			get_query: function () {
 				const company = frappe.query_report.get_filter_value("company");
-				return {
-					filters: { company: company },
-				};
+				return { filters: { company: company } };
 			},
 		},
 		{
@@ -43,9 +38,7 @@ frappe.query_reports["Custom Stock Ledger"] = {
 			fieldtype: "Link",
 			options: "Item",
 			get_query: function () {
-				return {
-					query: "erpnext.controllers.queries.item_query",
-				};
+				return { query: "erpnext.controllers.queries.item_query" };
 			},
 		},
 		{
@@ -61,11 +54,10 @@ frappe.query_reports["Custom Stock Ledger"] = {
 			options: "Batch",
 			on_change() {
 				const batch_no = frappe.query_report.get_filter_value("batch_no");
-				if (batch_no) {
-					frappe.query_report.set_filter_value("segregate_serial_batch_bundle", 1);
-				} else {
-					frappe.query_report.set_filter_value("segregate_serial_batch_bundle", 0);
-				}
+				frappe.query_report.set_filter_value(
+					"segregate_serial_batch_bundle",
+					batch_no ? 1 : 0
+				);
 			},
 		},
 		{
@@ -105,16 +97,59 @@ frappe.query_reports["Custom Stock Ledger"] = {
 			fieldtype: "Check",
 			default: 0,
 		},
+		{
+			fieldname: "show_pivot_view",
+			label: __("Show Pivot View"),
+			fieldtype: "Check",
+			default: 0,
+		},
 	],
-	formatter: function (value, row, column, data, default_formatter) {
+
+	formatter(value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
 		if (column.fieldname == "out_qty" && data && data.out_qty < 0) {
-			value = "<span style='color:red'>" + value + "</span>";
+			value = `<span style="color:red;">${value}</span>`;
 		} else if (column.fieldname == "in_qty" && data && data.in_qty > 0) {
-			value = "<span style='color:green'>" + value + "</span>";
+			value = `<span style="color:green;">${value}</span>`;
 		}
-
 		return value;
+	},
+
+	// This runs every time report refreshes
+	onload(report) {
+		report.refresh_pivot_colors = () => {
+			const pivot = document.querySelector(".pivot-table");
+			if (!pivot) return;
+
+			pivot.querySelectorAll("td").forEach((td) => {
+				const text = td.innerText.trim().replace(/,/g, "");
+				if (!text) return;
+
+				const num = parseFloat(text);
+				if (!isNaN(num)) {
+					if (num < 0) {
+						td.style.color = "red";
+						if (!td.innerText.startsWith("-")) {
+							td.innerText = "-" + td.innerText;
+						}
+					} else if (num > 0) {
+						td.style.color = "green";
+					}
+				}
+			});
+		};
+
+		// Recolor pivot after each refresh
+		frappe.realtime.on("report-render-complete", () => {
+			setTimeout(() => report.refresh_pivot_colors(), 300);
+		});
+
+		// Fallback observer if realtime event doesn’t fire
+		const target = document.querySelector(".report-container");
+		if (target) {
+			const obs = new MutationObserver(() => report.refresh_pivot_colors());
+			obs.observe(target, { childList: true, subtree: true });
+		}
 	},
 };
 
