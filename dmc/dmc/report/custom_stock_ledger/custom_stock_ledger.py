@@ -206,6 +206,13 @@ def get_pivot_data(filters=None):
          "fieldtype": "Float", "width": 80, "convertible": "qty"},
         {"label": _("Out Qty"), "fieldname": "out_qty",
          "fieldtype": "Float", "width": 80, "convertible": "qty"},
+        {
+            "label": _("Stock on Hand"),
+            "fieldname": "stock_on_hand",
+            "fieldtype": "Int",
+            "width": 120
+        }
+
     ])
 
     # نضيف عمود لكل warehouse (هنا الفرق - Balance Qty لكل warehouse)
@@ -289,6 +296,10 @@ def get_pivot_data(filters=None):
         for warehouse in warehouses:
             fieldname = warehouse_fieldnames[warehouse]
             row[fieldname] = entry['warehouses'].get(warehouse, 0)
+
+        # نحسب Stock on Hand (مجموع كل المخازن)
+        stock_on_hand = sum(entry['warehouses'].values())
+        row['stock_on_hand'] = int(stock_on_hand)
 
         pivot_rows.append(row)
 
