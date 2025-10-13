@@ -17,7 +17,7 @@ class CustomLoanRepayment(LoanRepayment):
         ✅ Create GL Entry ONLY if from Salary Slip
         ✅ Skip GL Entry if manual payment (after resignation)
         """
-        if self.is_manual_payment():
+        if self.check_is_manual_payment():
             # Manual payment after resignation - NO GL Entry
             # Only update loan status
             self.update_paid_amount_in_loan()
@@ -90,7 +90,7 @@ class CustomLoanRepayment(LoanRepayment):
         """
         ✅ CRITICAL: Override to prevent GL Entry for manual payments
         """
-        if self.is_manual_payment():
+        if self.check_is_manual_payment():
             # Manual payment - Skip GL Entry completely
             frappe.logger().info(
                 f"Skipping GL Entry for manual Loan Repayment {self.name}. "
@@ -118,7 +118,7 @@ class CustomLoanRepayment(LoanRepayment):
                     indicator="orange"
                 )
 
-    def is_manual_payment(self):
+    def check_is_manual_payment(self):
         """
         ✅ Check if this is a manual payment (after resignation)
 
@@ -129,7 +129,9 @@ class CustomLoanRepayment(LoanRepayment):
         2. If not set, check if payroll_payable_account exists (from Salary Slip)
         """
         # Method 1: Check custom field (explicitly marked as manual)
-        if hasattr(self, 'is_manual_payment') and self.is_manual_payment:
+        # Use get() to safely access the field value
+        manual_payment_flag = self.get('is_manual_payment')
+        if manual_payment_flag and int(manual_payment_flag) == 1:
             return True
 
         # Method 2: If payroll_payable_account exists = from Salary Slip
@@ -196,7 +198,10 @@ def make_payment_entry(source_name, target_doc=None):
             )
 
         # ✅ Don't allow Payment Entry for Salary Slip repayments
-        if loan_repayment.payroll_payable_account and not getattr(loan_repayment, 'is_manual_payment', False):
+        manual_payment_flag = loan_repayment.get('is_manual_payment')
+        is_manual = manual_payment_flag and int(manual_payment_flag) == 1
+
+        if loan_repayment.payroll_payable_account and not is_manual:
             frappe.throw(
                 _("Cannot create Payment Entry for Loan Repayment from Salary Slip. "
                   "GL Entry is already created via Salary Slip accounting.")
@@ -305,6 +310,9 @@ def get_loan_repayment_details(loan_repayment):
     doc = frappe.get_doc("Loan Repayment", loan_repayment)
     loan = frappe.get_doc("Loan", doc.against_loan)
 
+    manual_payment_flag = doc.get('is_manual_payment')
+    is_manual = manual_payment_flag and int(manual_payment_flag) == 1
+
     return {
         "employee": loan.applicant,
         "employee_name": frappe.db.get_value("Employee", loan.applicant, "employee_name"),
@@ -313,5 +321,5 @@ def get_loan_repayment_details(loan_repayment):
         "loan_account": loan.loan_account,
         "posting_date": doc.posting_date,
         "from_salary_slip": bool(doc.payroll_payable_account),
-        "is_manual": bool(getattr(doc, 'is_manual_payment', False))
+        "is_manual": is_manual
     }
