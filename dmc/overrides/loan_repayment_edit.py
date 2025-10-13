@@ -8,103 +8,31 @@ class CustomLoanRepayment(LoanRepayment):
     """
     Custom Loan Repayment Override
     Purpose: 
-    - From Salary Slip (شهري): Create GL Entry automatically
-    - Manual (استقالة/تسوية): NO GL Entry until Payment Entry
-    - يدعم دفع باقي الأقساط دفعة واحدة
+    - From Salary Slip: Create GL Entry automatically (Core behavior)
+    - Manual: NO GL Entry (Payment Entry handles it)
     """
-
-    def validate(self):
-        """Add validation"""
-        super(CustomLoanRepayment, self).validate()
-
-        # ✅ لو Manual وتاريخ الاستحقاق مستقبلي، اجلب باقي الأقساط
-        if not self.is_from_salary_slip() and self.is_early_settlement():
-            self.calculate_remaining_amount()
-
-        # Warn if Payment Entry already exists
-        if self.payment_entry and self.docstatus == 0:
-            pe_status = frappe.db.get_value(
-                "Payment Entry", self.payment_entry, "docstatus")
-            if pe_status == 1:
-                frappe.msgprint(
-                    _("This Loan Repayment is linked to submitted Payment Entry {0}").format(
-                        frappe.bold(self.payment_entry)
-                    ),
-                    alert=True,
-                    indicator="orange"
-                )
-
-    def calculate_remaining_amount(self):
-        """
-        ✅ حساب باقي المبلغ الكلي للقرض (للتسوية المبكرة)
-        """
-        if not self.against_loan:
-            return
-
-        loan = frappe.get_doc("Loan", self.against_loan)
-
-        # إجمالي المبلغ المطلوب (أصل + فوائد)
-        total_payable = loan.total_payment
-
-        # المبلغ المدفوع فعلياً
-        total_paid = frappe.db.sql("""
-            SELECT IFNULL(SUM(amount_paid), 0)
-            FROM `tabLoan Repayment`
-            WHERE against_loan = %s
-            AND docstatus = 1
-            AND name != %s
-        """, (self.against_loan, self.name or ""))[0][0]
-
-        # الباقي
-        remaining = total_payable - total_paid
-
-        if remaining > 0:
-            self.amount_paid = remaining
-            frappe.msgprint(
-                _("تم حساب باقي المبلغ الكلي: {0}").format(
-                    frappe.bold(frappe.format_value(
-                        remaining, {"fieldtype": "Currency"}))
-                ),
-                alert=True,
-                indicator="blue"
-            )
-
-    def is_early_settlement(self):
-        """
-        ✅ تحقق: هل ده تسوية مبكرة (دفع قبل موعد الاستحقاق)؟
-        """
-        if not self.against_loan or not self.due_date:
-            return False
-
-        from frappe.utils import getdate, nowdate
-
-        # لو تاريخ الاستحقاق في المستقبل = تسوية مبكرة
-        return getdate(self.due_date) > getdate(nowdate())
 
     def on_submit(self):
         """
-        ✅ Create GL Entry ONLY if from Salary Slip
-        ✅ Manual: Update loan only, NO GL Entry
+        ✅ FIXED: Only create GL Entry if ACTUALLY from Salary Slip
+        ✅ Manual creation: Skip GL Entry (Payment Entry will handle it)
         """
         if self.is_from_salary_slip():
             # From Salary Slip - call parent to create GL Entry
             super(CustomLoanRepayment, self).on_submit()
             frappe.msgprint(
-                _("تم رفع قيد من كشف المرتب"),
+                _("Loan Repayment submitted. GL Entry created from Salary Slip."),
                 alert=True,
                 indicator="green"
             )
         else:
-            # ✅ Manual - DON'T call parent, just update loan
-            # مش بنعمل super() عشان مايرميش قيد
+            # Manual creation - skip GL Entry
+            # Only update loan status without calling parent
             self.update_paid_amount_in_loan()
             self.set_status_in_loan()
 
-            # ✅ نعمل ignore_permissions عشان نتجنب أي مشاكل صلاحيات
-            frappe.db.commit()
-
             frappe.msgprint(
-                _("تم حفظ السداد بدون قيد محاسبي. اعمل Payment Entry لرفع القيد"),
+                _("Loan Repayment submitted. Create Payment Entry to record the payment."),
                 alert=True,
                 indicator="blue"
             )
@@ -113,6 +41,7 @@ class CustomLoanRepayment(LoanRepayment):
         """
         ✅ Cancel GL Entry ONLY if it exists (from Salary Slip)
         """
+        # Check if GL Entry exists
         has_gl_entry = frappe.db.exists("GL Entry", {
             "voucher_type": "Loan Repayment",
             "voucher_no": self.name,
@@ -132,11 +61,58 @@ class CustomLoanRepayment(LoanRepayment):
             frappe.db.set_value("Loan Repayment", self.name,
                                 "payment_entry", None)
 
+    def make_gl_entries(self, cancel=0, adv_adj=0):
+        """
+        ✅ CRITICAL: Override to prevent GL Entry for manual repayments
+        Only create GL Entry if ACTUALLY from Salary Slip
+        """
+        if self.is_from_salary_slip():
+            # From Salary Slip - create GL Entry (Core behavior)
+            return super(CustomLoanRepayment, self).make_gl_entries(cancel=cancel, adv_adj=adv_adj)
+
+        # Manual - Skip GL Entry
+        # Payment Entry will create it instead
+        frappe.logger().info(
+            f"Skipping GL Entry for manual Loan Repayment {self.name}. "
+            f"GL Entry will be created via Payment Entry."
+        )
+        return None
+
+    def is_from_salary_slip(self):
+        """
+        ✅ FIXED: Correct detection of Salary Slip origin
+
+        Returns: True ONLY if ACTUALLY created from Salary Slip
+
+        Logic:
+        1. Check if payroll_payable_account is filled (this is ONLY set by Salary Slip)
+        2. Check if referenced in Salary Slip Loan child table
+
+        Note: The "Repay From Salary" checkbox is NOT reliable!
+               It's just a user preference, not a creation source indicator.
+        """
+        # Method 1: Check payroll_payable_account
+        # This field is ONLY filled when created from Salary Slip
+        if self.payroll_payable_account:
+            return True
+
+        # Method 2: Check if linked to Salary Slip Loan
+        # This table is ONLY populated by Salary Slip creation
+        salary_slip_loan = frappe.db.exists("Salary Slip Loan", {
+            "loan_repayment_entry": self.name
+        })
+        if salary_slip_loan:
+            return True
+
+        # If neither condition is met, it's manual
+        return False
+
     def update_paid_amount_in_loan(self):
         """Update the paid amount in the loan document"""
         if self.against_loan:
             loan = frappe.get_doc("Loan", self.against_loan)
 
+            # Calculate total paid amount
             total_paid = frappe.db.sql("""
                 SELECT IFNULL(SUM(amount_paid), 0)
                 FROM `tabLoan Repayment`
@@ -144,6 +120,7 @@ class CustomLoanRepayment(LoanRepayment):
                 AND docstatus = 1
             """, self.against_loan)[0][0]
 
+            # Update loan
             loan.db_set("total_amount_paid", total_paid)
 
     def set_status_in_loan(self):
@@ -154,42 +131,12 @@ class CustomLoanRepayment(LoanRepayment):
             loan.set_status()
             loan.db_set("status", loan.status)
 
-    def make_gl_entries(self, cancel=0, adv_adj=0):
-        """
-        ✅ CRITICAL: Override to prevent GL Entry for manual Loan Repayments
-        Only create GL Entry if from Salary Slip
-        """
-        if self.is_from_salary_slip():
-            # From Salary Slip - create GL Entry
-            return super(CustomLoanRepayment, self).make_gl_entries(cancel=cancel, adv_adj=adv_adj)
-        else:
-            # ✅ Manual - Return empty list to prevent GL Entry
-            # ده المهم: نرجع [] مش None عشان مايحصلش error
-            frappe.logger().info(
-                f"Skipping GL Entry for manual Loan Repayment {self.name}")
-            return []
-
-    def is_from_salary_slip(self):
-        """
-        Check if this Loan Repayment was created from Salary Slip
-        """
-        if self.payroll_payable_account:
-            return True
-
-        salary_slip_loan = frappe.db.exists("Salary Slip Loan", {
-            "loan_repayment_entry": self.name
-        })
-        if salary_slip_loan:
-            return True
-
-        return False
-
 
 @frappe.whitelist()
 def make_payment_entry(source_name, target_doc=None):
     """
-    ✅ Create Payment Entry from Loan Repayment
-    ✅ يشتغل مع Salary Slip و Manual
+    Create Payment Entry from Loan Repayment
+    ✅ This creates the ONLY GL Entry for manual Loan Repayments
     """
 
     def set_missing_values(source, target):
@@ -198,35 +145,28 @@ def make_payment_entry(source_name, target_doc=None):
         # ✅ Validate: Loan Repayment must be submitted
         if loan_repayment.docstatus != 1:
             frappe.throw(
-                _("لازم تعمل Submit للـ Loan Repayment الأول"))
+                _("Loan Repayment must be submitted before creating Payment Entry"))
 
-        # ✅ التعديل الأساسي: نسمح بـ Payment Entry حتى لو من Salary Slip
-        # بس نتأكد إنه مفيش Payment Entry موجود
+        # ✅ Check if Payment Entry already exists
         if loan_repayment.payment_entry:
             frappe.throw(
-                _("في Payment Entry موجود فعلاً: {0}").format(
+                _("Payment Entry {0} already exists for this Loan Repayment").format(
                     frappe.bold(loan_repayment.payment_entry)
                 )
+            )
+
+        # ✅ FIXED: Check if ACTUALLY from Salary Slip (not just checkbox)
+        if loan_repayment.payroll_payable_account:
+            frappe.throw(
+                _("Cannot create Payment Entry for Loan Repayment from Salary Slip. "
+                  "GL Entry is already created via Salary Slip accounting.")
             )
 
         loan = frappe.get_doc("Loan", loan_repayment.against_loan)
         company = frappe.get_doc("Company", loan_repayment.company)
 
-        # ✅ تحديد نوع الدفع حسب المصدر
-        is_from_salary = loan_repayment.payroll_payable_account
-
-        if is_from_salary:
-            # من كشف المرتب: استلام من حساب المرتبات
-            target.payment_type = "Receive"
-            target.paid_from = loan_repayment.payroll_payable_account
-            remarks_prefix = "استلام من المرتب"
-        else:
-            # Manual: استلام نقدي
-            target.payment_type = "Receive"
-            target.paid_from = loan.loan_account
-            remarks_prefix = "سداد نقدي"
-
         # Payment Entry Configuration
+        target.payment_type = "Receive"
         target.party_type = "Employee"
         target.party = loan.applicant
         target.paid_amount = loan_repayment.amount_paid
@@ -237,7 +177,12 @@ def make_payment_entry(source_name, target_doc=None):
         target.mode_of_payment = "Cash"
 
         # ✅ Account Configuration
-        # الحساب المستلم إليه (النقدية أو البنك)
+        # This creates THE GL Entry:
+        # Debit: Cash Account (money received)
+        # Credit: Loan Account (reduce loan liability)
+        target.paid_from = loan.loan_account
+
+        # Get Cash Account
         target.paid_to = company.default_cash_account or frappe.db.get_value(
             "Account",
             {"account_type": "Cash", "company": company.name, "is_group": 0},
@@ -246,12 +191,14 @@ def make_payment_entry(source_name, target_doc=None):
 
         if not target.paid_to:
             frappe.throw(
-                _("حدد حساب النقدية الافتراضي في الشركة {0}").format(company.name))
+                _("Please set Default Cash Account in Company {0}").format(
+                    company.name)
+            )
 
         target.paid_to_account_currency = company.default_currency
         target.paid_from_account_currency = company.default_currency
 
-        # ✅ References
+        # ✅ References for linking
         target.append("references", {
             "reference_doctype": "Loan Repayment",
             "reference_name": loan_repayment.name,
@@ -260,14 +207,14 @@ def make_payment_entry(source_name, target_doc=None):
             "allocated_amount": 0
         })
 
-        # ✅ Custom field
+        # ✅ Custom field for tracking
         if hasattr(target, 'loan_repayment'):
             target.loan_repayment = loan_repayment.name
 
         # Remarks
         target.remarks = (
-            f"{remarks_prefix} للسلفة {loan.name} "
-            f"للموظف {loan.applicant} - مبلغ {loan_repayment.amount_paid}"
+            f"Payment received for Loan Repayment {loan_repayment.name} "
+            f"against Loan {loan.name} for Employee {loan.applicant}"
         )
 
     doc = get_mapped_doc(
@@ -291,9 +238,7 @@ def make_payment_entry(source_name, target_doc=None):
 
 @frappe.whitelist()
 def get_remaining_loan_amount(loan_id):
-    """
-    ✅ API لجلب باقي المبلغ الكلي للقرض
-    """
+    """Get remaining loan amount for early settlement"""
     loan = frappe.get_doc("Loan", loan_id)
 
     total_payable = loan.total_payment
@@ -316,9 +261,7 @@ def get_remaining_loan_amount(loan_id):
 
 @frappe.whitelist()
 def get_loan_repayment_details(loan_repayment):
-    """
-    Get details of Loan Repayment for Payment Entry
-    """
+    """Get details of Loan Repayment for Payment Entry"""
     doc = frappe.get_doc("Loan Repayment", loan_repayment)
     loan = frappe.get_doc("Loan", doc.against_loan)
 
