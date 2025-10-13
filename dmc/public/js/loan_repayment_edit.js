@@ -22,7 +22,7 @@ frappe.ui.form.on('Loan Repayment', {
 
         // ✅ زرار عرض Payment Entry
         if (frm.doc.payment_entry) {
-            frm.add_custom_button(__('عرض Payment Entry'), function () {
+            frm.add_custom_button(__('Create Payment Entry'), function () {
                 frappe.set_route('Form', 'Payment Entry', frm.doc.payment_entry);
             });
         }
