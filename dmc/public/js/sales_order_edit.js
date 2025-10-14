@@ -42,7 +42,28 @@ frappe.ui.form.on('Sales Order', {
 frappe.ui.form.on('Sales Order Item', {
     rate(frm, cdt, cdn) {
         rate_validation(frm, cdt, cdn)
-    }
+    },
+    is_free_item: function (frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (row.is_free_item) {
+            console.log('🎁 Free item detected, setting discount to 100%');
+
+            // Set margin type to Percentage
+            frappe.model.set_value(cdt, cdn, 'margin_type', 'Percentage');
+
+            // Set discount percentage to 100
+            frappe.model.set_value(cdt, cdn, 'discount_percentage', 100);
+
+            frappe.show_alert({
+                message: __('Free item: 100% discount applied'),
+                indicator: 'green'
+            });
+        } else {
+            // Optional: Reset values when unchecked
+            frappe.model.set_value(cdt, cdn, 'discount_percentage', 0);
+        }
+    },
 
 });
 
@@ -156,6 +177,12 @@ async function handle_tax_logic_from_address(frm) {
 function rate_validation(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
 
+    // ✅ SKIP VALIDATION IF is_free_item IS CHECKED
+    if (row.is_free_item) {
+        console.log('✅ is_free_item is checked - skipping rate validation');
+        return;
+    }
+
     // Skip if no item or invalid rate
     if (!row.item_code || row.rate === null || row.rate === undefined || row.rate === '') {
         return;
@@ -185,7 +212,6 @@ function rate_validation(frm, cdt, cdn) {
         }
     });
 }
-
 function sales_team_add_to_cost_center_allocation(frm, cdt, cdn) {
     const row = locals[cdt][cdn];
     if (!row.sales_person) return;
