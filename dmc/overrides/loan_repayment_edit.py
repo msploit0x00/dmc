@@ -399,12 +399,100 @@ class CustomLoanRepayment(LoanRepayment):
             frappe.db.set_value("Loan Repayment", self.name,
                                 "payment_entry", None)
 
+    # def update_repayment_schedule_on_manual_payment(self):
+    #     """
+    #     ✅ Update Repayment Schedule when manual payment is made
+
+    #     Logic:
+    #     1. Get the loan's repayment schedule
+    #     2. Mark pending installments as paid (starting from oldest)
+    #     3. Update the schedule with payment details
+    #     """
+    #     if not self.against_loan:
+    #         return
+
+    #     try:
+    #         loan = frappe.get_doc("Loan", self.against_loan)
+
+    #         if not loan.repayment_schedule:
+    #             frappe.log_error(
+    #                 title=f"No Repayment Schedule for Loan {self.against_loan}",
+    #                 message=f"Loan Repayment {self.name} - No schedule to update"
+    #             )
+    #             return
+
+    #         amount_to_allocate = flt(self.amount_paid)
+
+    #         # Get unpaid installments (sorted by payment date)
+    #         for schedule in sorted(loan.repayment_schedule, key=lambda x: x.payment_date):
+    #             if amount_to_allocate <= 0:
+    #                 break
+
+    #             # Check if installment is not yet paid
+    #             # Use custom field if exists, or check if total_payment matches paid amount
+    #             is_paid = False
+    #             if hasattr(schedule, 'custom_is_paid'):
+    #                 is_paid = schedule.custom_is_paid
+    #             elif hasattr(schedule, 'custom_paid_amount'):
+    #                 is_paid = flt(schedule.custom_paid_amount) >= flt(
+    #                     schedule.total_payment)
+
+    #             if not is_paid:
+    #                 # Calculate how much of this installment we can pay
+    #                 installment_total = flt(schedule.total_payment)
+    #                 paid_amount = min(amount_to_allocate, installment_total)
+
+    #                 # Update the schedule row
+    #                 frappe.db.set_value(
+    #                     "Repayment Schedule",
+    #                     schedule.name,
+    #                     {
+    #                         "custom_paid_amount": paid_amount,
+    #                         "custom_is_paid": 1 if paid_amount >= installment_total else 0,
+    #                         "custom_payment_reference": self.name,
+    #                         "custom_payment_date_actual": self.posting_date
+    #                     }
+    #                 )
+
+    #                 amount_to_allocate -= paid_amount
+
+    #                 frappe.logger().info(
+    #                     f"Updated schedule {schedule.name}: paid {paid_amount} of {installment_total}"
+    #                 )
+
+    #         # If there's remaining amount after clearing all installments
+    #         if amount_to_allocate > 0:
+    #             frappe.msgprint(
+    #                 _("Warning: Payment amount exceeds remaining installments by {0}").format(
+    #                     frappe.format_value(amount_to_allocate, {
+    #                                         "fieldtype": "Currency"})
+    #                 ),
+    #                 alert=True,
+    #                 indicator="orange"
+    #             )
+
+    #         frappe.db.commit()
+
+    #         frappe.msgprint(
+    #             _("Repayment Schedule updated for manual payment"),
+    #             alert=True,
+    #             indicator="green"
+    #         )
+
+    #     except Exception as e:
+    #         frappe.log_error(
+    #             title=f"Error updating Repayment Schedule for {self.name}",
+    #             message=frappe.get_traceback()
+    #         )
+    #         frappe.throw(
+    #             _("Failed to update Repayment Schedule. Check Error Log."))
+
     def update_repayment_schedule_on_manual_payment(self):
         """
         ✅ Update Repayment Schedule when manual payment is made
 
         Logic:
-        1. Get the loan's repayment schedule
+        1. Get the loan's repayment schedule (linked records)
         2. Mark pending installments as paid (starting from oldest)
         3. Update the schedule with payment details
         """
@@ -412,9 +500,21 @@ class CustomLoanRepayment(LoanRepayment):
             return
 
         try:
-            loan = frappe.get_doc("Loan", self.against_loan)
+            # ✅ Fetch all repayment schedules linked to this loan
+            repayment_schedules = frappe.get_all(
+                "Loan Repayment Schedule",
+                filters={"loan": self.against_loan},
+                fields=[
+                    "name",
+                    "payment_date",
+                    "total_payment",
+                    "custom_paid_amount",
+                    "custom_is_paid"
+                ],
+                order_by="payment_date asc"
+            )
 
-            if not loan.repayment_schedule:
+            if not repayment_schedules:
                 frappe.log_error(
                     title=f"No Repayment Schedule for Loan {self.against_loan}",
                     message=f"Loan Repayment {self.name} - No schedule to update"
@@ -423,44 +523,41 @@ class CustomLoanRepayment(LoanRepayment):
 
             amount_to_allocate = flt(self.amount_paid)
 
-            # Get unpaid installments (sorted by payment date)
-            for schedule in sorted(loan.repayment_schedule, key=lambda x: x.payment_date):
+            # ✅ Iterate through each schedule entry in chronological order
+            for schedule in repayment_schedules:
                 if amount_to_allocate <= 0:
                     break
 
-                # Check if installment is not yet paid
-                # Use custom field if exists, or check if total_payment matches paid amount
-                is_paid = False
-                if hasattr(schedule, 'custom_is_paid'):
-                    is_paid = schedule.custom_is_paid
-                elif hasattr(schedule, 'custom_paid_amount'):
-                    is_paid = flt(schedule.custom_paid_amount) >= flt(
-                        schedule.total_payment)
+                paid_amount_so_far = flt(schedule.custom_paid_amount)
+                installment_total = flt(schedule.total_payment)
+                remaining_installment_amount = installment_total - paid_amount_so_far
 
-                if not is_paid:
-                    # Calculate how much of this installment we can pay
-                    installment_total = flt(schedule.total_payment)
-                    paid_amount = min(amount_to_allocate, installment_total)
+                if remaining_installment_amount <= 0:
+                    continue  # already fully paid
 
-                    # Update the schedule row
-                    frappe.db.set_value(
-                        "Repayment Schedule",
-                        schedule.name,
-                        {
-                            "custom_paid_amount": paid_amount,
-                            "custom_is_paid": 1 if paid_amount >= installment_total else 0,
-                            "custom_payment_reference": self.name,
-                            "custom_payment_date_actual": self.posting_date
-                        }
-                    )
+                # Calculate how much to allocate to this installment
+                paid_amount = min(amount_to_allocate,
+                                  remaining_installment_amount)
+                new_paid_amount = paid_amount_so_far + paid_amount
 
-                    amount_to_allocate -= paid_amount
+                frappe.db.set_value(
+                    "Loan Repayment Schedule",
+                    schedule.name,
+                    {
+                        "custom_paid_amount": new_paid_amount,
+                        "custom_is_paid": 1 if new_paid_amount >= installment_total else 0,
+                        "custom_payment_reference": self.name,
+                        "custom_payment_date_actual": self.posting_date
+                    }
+                )
 
-                    frappe.logger().info(
-                        f"Updated schedule {schedule.name}: paid {paid_amount} of {installment_total}"
-                    )
+                frappe.logger().info(
+                    f"Updated Loan Repayment Schedule {schedule.name}: "
+                    f"paid {paid_amount} / {installment_total}"
+                )
 
-            # If there's remaining amount after clearing all installments
+                amount_to_allocate -= paid_amount
+
             if amount_to_allocate > 0:
                 frappe.msgprint(
                     _("Warning: Payment amount exceeds remaining installments by {0}").format(
@@ -472,14 +569,13 @@ class CustomLoanRepayment(LoanRepayment):
                 )
 
             frappe.db.commit()
-
             frappe.msgprint(
                 _("Repayment Schedule updated for manual payment"),
                 alert=True,
                 indicator="green"
             )
 
-        except Exception as e:
+        except Exception:
             frappe.log_error(
                 title=f"Error updating Repayment Schedule for {self.name}",
                 message=frappe.get_traceback()
@@ -487,30 +583,79 @@ class CustomLoanRepayment(LoanRepayment):
             frappe.throw(
                 _("Failed to update Repayment Schedule. Check Error Log."))
 
+    # def revert_repayment_schedule_on_cancel(self):
+    #     """
+    #     ✅ Revert Repayment Schedule changes when cancelling manual payment
+    #     """
+    #     if not self.against_loan:
+    #         return
+
+    #     try:
+    #         # Find all schedule rows that reference this repayment
+    #         schedules = frappe.db.sql("""
+    #             SELECT name, total_payment, custom_paid_amount
+    #             FROM `tabRepayment Schedule`
+    #             WHERE parent = %s
+    #             AND custom_payment_reference = %s
+    #         """, (self.against_loan, self.name), as_dict=1)
+
+    #         for schedule in schedules:
+    #             # Revert the payment
+    #             new_paid_amount = flt(
+    #                 schedule.custom_paid_amount) - flt(self.amount_paid)
+    #             new_paid_amount = max(0, new_paid_amount)  # Don't go negative
+
+    #             frappe.db.set_value(
+    #                 "Repayment Schedule",
+    #                 schedule.name,
+    #                 {
+    #                     "custom_paid_amount": new_paid_amount,
+    #                     "custom_is_paid": 1 if new_paid_amount >= flt(schedule.total_payment) else 0,
+    #                     "custom_payment_reference": None,
+    #                     "custom_payment_date_actual": None
+    #                 }
+    #             )
+
+    #         frappe.db.commit()
+
+    #     except Exception as e:
+    #         frappe.log_error(
+    #             title=f"Error reverting Repayment Schedule for {self.name}",
+    #             message=frappe.get_traceback()
+    #         )
     def revert_repayment_schedule_on_cancel(self):
         """
         ✅ Revert Repayment Schedule changes when cancelling manual payment
+        Works for connection-based (not child table) setup
         """
         if not self.against_loan:
             return
 
         try:
             # Find all schedule rows that reference this repayment
-            schedules = frappe.db.sql("""
-                SELECT name, total_payment, custom_paid_amount
-                FROM `tabRepayment Schedule`
-                WHERE parent = %s
-                AND custom_payment_reference = %s
-            """, (self.against_loan, self.name), as_dict=1)
+            schedules = frappe.get_all(
+                "Loan Repayment Schedule",
+                filters={
+                    "loan": self.against_loan,
+                    "custom_payment_reference": self.name
+                },
+                fields=["name", "total_payment", "custom_paid_amount"]
+            )
+
+            if not schedules:
+                frappe.logger().info(
+                    f"No linked repayment schedules found for {self.name} to revert."
+                )
+                return
 
             for schedule in schedules:
-                # Revert the payment
+                # Revert the payment amount for this schedule
                 new_paid_amount = flt(
                     schedule.custom_paid_amount) - flt(self.amount_paid)
-                new_paid_amount = max(0, new_paid_amount)  # Don't go negative
+                new_paid_amount = max(0, new_paid_amount)  # avoid negative
 
                 frappe.db.set_value(
-                    "Repayment Schedule",
+                    "Loan Repayment Schedule",
                     schedule.name,
                     {
                         "custom_paid_amount": new_paid_amount,
@@ -520,9 +665,22 @@ class CustomLoanRepayment(LoanRepayment):
                     }
                 )
 
+                frappe.logger().info(
+                    f"Reverted Loan Repayment Schedule {schedule.name}: "
+                    f"paid amount set to {new_paid_amount}"
+                )
+
             frappe.db.commit()
 
-        except Exception as e:
+            frappe.msgprint(
+                _("Repayment Schedule reverted for cancelled repayment {0}").format(
+                    frappe.bold(self.name)
+                ),
+                alert=True,
+                indicator="orange"
+            )
+
+        except Exception:
             frappe.log_error(
                 title=f"Error reverting Repayment Schedule for {self.name}",
                 message=frappe.get_traceback()
