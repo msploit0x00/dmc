@@ -137,7 +137,8 @@ override_doctype_class = {
     "Permission": "dmc.permission_override.CustomPermission",
     "Delivery Note": "dmc.overrides.delivery_note_override.CustomDeliveryNote",
     "Loan Repayment": "dmc.overrides.loan_repayment_edit.CustomLoanRepayment",
-    "Payment Entry": "dmc.overrides.payment_entry_edit.CustomPaymentEntry"
+    "Payment Entry": "dmc.overrides.payment_entry_edit.CustomPaymentEntry",
+    "Purchase Receipt": "dmc.overrides.buying_controller_edit.CustomBuyingController",
 }
 
 # Document Events
@@ -145,13 +146,11 @@ override_doctype_class = {
 # Hook on document methods and events
 
 
-# doc_events = {
-#     "Payment Entry": {
-#         # "before_validate": "dmc.overrides.payment_entry_edit.before_validate_payment_entry",
-#         "before_save": "dmc.overrides.payment_entry_edit.before_save_payment_entry",
-#         "on_submit": "dmc.overrides.payment_entry_edit.on_submit_payment_entry",
-#     }
-# }
+doc_events = {
+    "Salary Slip": {
+        "validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction"
+    }
+}
 
 # Scheduled Tasks
 # ---------------
