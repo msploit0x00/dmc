@@ -3,11 +3,7 @@ frappe.ui.form.on('Sales Team', {
         sales_team_add_to_cost_center_allocation(frm, cdt, cdn);
     }
 });
-frappe.ui.form.on('Sales Team', {
-    sales_person(frm, cdt, cdn) {
-        sales_team_add_to_cost_center_allocation(frm, cdt, cdn);
-    }
-});
+
 
 
 frappe.ui.form.on('Sales Order', {
