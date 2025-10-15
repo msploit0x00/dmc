@@ -574,9 +574,16 @@ def prevent_duplicate_loan_deduction(doc, method):
         pluck="name"
     )
 
-    # If the employee has no active loans → clear the section completely
+    # ✅ If no active loans → clear section and set flag
     if not active_loans:
         doc.set("loans", [])
+        doc.total_principal_amount = 0
+        doc.total_interest_amount = 0
+        doc.total_loan_repayment = 0
+
+        # 🚫 Tell system to skip make_loan_repayment_entry later
+        doc.flags.skip_loan_repayment_entry = True
+
         frappe.msgprint(
             _("No active loans for this employee — hiding Loan Repayment section."),
             alert=True,
@@ -584,6 +591,7 @@ def prevent_duplicate_loan_deduction(doc, method):
         )
         return
 
+    # ✅ Filter valid loans only (not fully paid)
     valid_rows = []
     for row in doc.loans:
         if row.loan in active_loans:
@@ -594,6 +602,7 @@ def prevent_duplicate_loan_deduction(doc, method):
             """, row.loan)[0][0]
 
             loan_total = frappe.db.get_value("Loan", row.loan, "total_payment")
+
             if flt(total_paid) < flt(loan_total):
                 valid_rows.append(row)
             else:
@@ -607,8 +616,14 @@ def prevent_duplicate_loan_deduction(doc, method):
 
     doc.set("loans", valid_rows)
 
+    # ✅ Still empty → hide and set flag
     if not valid_rows:
         doc.set("loans", [])
+        doc.total_principal_amount = 0
+        doc.total_interest_amount = 0
+        doc.total_loan_repayment = 0
+        doc.flags.skip_loan_repayment_entry = True
+
         frappe.msgprint(
             _("No active or unpaid loans to deduct — hiding Loan Repayment section."),
             alert=True,
