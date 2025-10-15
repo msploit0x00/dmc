@@ -568,7 +568,6 @@ def prevent_duplicate_loan_deduction(doc, method):
         "Loan",
         filters={
             "applicant": doc.employee,
-
             "docstatus": 1,
             "status": ["not in", ["Closed", "Fully Paid"]]
         },
@@ -585,11 +584,9 @@ def prevent_duplicate_loan_deduction(doc, method):
         )
         return
 
-    # Remove any rows not matching the employee’s active loans
     valid_rows = []
     for row in doc.loans:
         if row.loan in active_loans:
-            # Check if fully paid
             total_paid = frappe.db.sql("""
                 SELECT IFNULL(SUM(amount_paid), 0)
                 FROM `tabLoan Repayment`
@@ -608,10 +605,8 @@ def prevent_duplicate_loan_deduction(doc, method):
                     indicator="orange"
                 )
 
-    # Replace the table with filtered valid rows
     doc.set("loans", valid_rows)
 
-    # If still empty → hide the section
     if not valid_rows:
         doc.set("loans", [])
         frappe.msgprint(
