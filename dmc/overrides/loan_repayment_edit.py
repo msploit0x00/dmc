@@ -567,7 +567,8 @@ def prevent_duplicate_loan_deduction(doc, method):
     active_loans = frappe.get_all(
         "Loan",
         filters={
-            "employee": doc.employee,
+            "applicant": doc.employee,
+
             "docstatus": 1,
             "status": ["not in", ["Closed", "Fully Paid"]]
         },
