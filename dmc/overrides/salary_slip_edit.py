@@ -1,3 +1,7 @@
+# ========================================
+# الملف: dmc/overrides/salary_slip_edit.py
+# ========================================
+
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate
@@ -13,16 +17,14 @@ class CustomSalarySlip(SalarySlip):
     def get_loan_details(self):
         """
         ✅ Override: جلب تفاصيل القروض ولكن تجاهل الأقساط المدفوعة يدوياً
-        ✅ NEW: Clean up fully paid loans BEFORE adding to table
         """
-        # 🔥 Logging محسّن
         frappe.logger().info(
             f"🔍 Getting loan details for employee {self.employee}"
         )
 
         # الحصول على القروض النشطة للموظف
         loans = frappe.db.sql("""
-            SELECT
+            SELECT 
                 l.name as loan,
                 l.total_payment,
                 l.total_amount_paid,
@@ -33,7 +35,7 @@ class CustomSalarySlip(SalarySlip):
                 l.repayment_start_date,
                 l.penalty_income_account
             FROM `tabLoan` l
-            WHERE
+            WHERE 
                 l.applicant = %s
                 AND l.company = %s
                 AND l.docstatus = 1
@@ -62,14 +64,10 @@ class CustomSalarySlip(SalarySlip):
                     f"⏭️ Skipping loan {loan_info.loan} - no pending installments in this period"
                 )
 
-        # ✅ NEW: After adding loans, clean up again using prevent_duplicate_loan_deduction
-        from dmc.overrides.loan_repayment_edit import prevent_duplicate_loan_deduction
-        prevent_duplicate_loan_deduction(self, method="get_loan_details")
-
     def get_pending_loan_installments(self, loan_name, from_date, to_date):
         """
-        ✅ IMPROVED: Get unpaid installments from Loan Repayment Schedule
-        CRITICAL: Checks custom_is_paid and custom_paid_amount
+        ✅ الحصول على الأقساط غير المدفوعة فقط في فترة الراتب الحالية
+        CRITICAL: يتحقق من custom_is_paid و custom_paid_amount
         """
         try:
             from_date = getdate(from_date)
@@ -79,7 +77,7 @@ class CustomSalarySlip(SalarySlip):
                 f"🔎 Checking installments for loan {loan_name} between {from_date} and {to_date}"
             )
 
-            # ✅ Get active Loan Repayment Schedule
+            # ✅ الحصول على جدول السداد النشط
             active_schedule = frappe.db.sql("""
                 SELECT name
                 FROM `tabLoan Repayment Schedule`
@@ -99,9 +97,9 @@ class CustomSalarySlip(SalarySlip):
             schedule_name = active_schedule[0].name
             frappe.logger().info(f"📋 Found schedule: {schedule_name}")
 
-            # ✅ Get installments with custom fields
+            # ✅ الحصول على الأقساط غير المدفوعة في الفترة
             installments = frappe.db.sql("""
-                SELECT
+                SELECT 
                     rs.name,
                     rs.payment_date,
                     rs.principal_amount,
@@ -127,30 +125,25 @@ class CustomSalarySlip(SalarySlip):
                 is_paid = schedule.is_paid
                 payment_ref = schedule.custom_payment_reference
 
-                # 🔍 Detailed logging
                 frappe.logger().info(
                     f"📅 Installment {payment_date}: Total={total_payment}, "
                     f"Paid={paid_amount}, Is_Paid={is_paid}, Ref={payment_ref}"
                 )
 
-                # ✅ CRITICAL: Only add if NOT fully paid
+                # ✅ CRITICAL: إضافة فقط إذا لم يتم دفعه بالكامل
                 if not is_paid and paid_amount < total_payment:
                     outstanding = total_payment - paid_amount
 
-                    # ✅ Calculate proportional principal and interest
-                    ratio = outstanding / total_payment if total_payment > 0 else 0
-
                     pending_installments.append({
                         'payment_date': schedule.payment_date,
-                        'principal_amount': flt(schedule.principal_amount) * ratio,
-                        'interest_amount': flt(schedule.interest_amount) * ratio,
-                        'total_payment': outstanding,  # Only unpaid amount
+                        'principal_amount': flt(schedule.principal_amount) * (outstanding / total_payment),
+                        'interest_amount': flt(schedule.interest_amount) * (outstanding / total_payment),
+                        'total_payment': outstanding,  # المبلغ المتبقي فقط
                         'balance_loan_amount': flt(schedule.balance_loan_amount)
                     })
 
                     frappe.logger().info(
-                        f"✅ Added unpaid installment: Date={payment_date}, "
-                        f"Amount={outstanding} (Ratio={ratio:.2%})"
+                        f"✅ Added unpaid installment: Date={payment_date}, Amount={outstanding}"
                     )
                 else:
                     if is_paid:
@@ -158,16 +151,10 @@ class CustomSalarySlip(SalarySlip):
                             f"⏭️ Skipped FULLY PAID installment: Date={payment_date}, "
                             f"Paid={paid_amount}/{total_payment}, Ref={payment_ref}"
                         )
-                    elif paid_amount >= total_payment:
+                    else:
                         frappe.logger().info(
-                            f"⏭️ Skipped overpaid installment: Date={payment_date}, "
-                            f"Paid={paid_amount}/{total_payment}"
+                            f"⏭️ Skipped installment: Date={payment_date}"
                         )
-
-            frappe.logger().info(
-                f"📊 Result: {len(pending_installments)} unpaid installment(s) "
-                f"out of {len(installments)} total"
-            )
 
             return pending_installments
 
