@@ -692,28 +692,60 @@ def prevent_duplicate_loan_deduction(doc, method):
         )
         return
 
-    # ✅ Filter valid loans only (not fully paid)
+    # ✅ Filter valid loans only (not fully paid + has pending amount)
     valid_rows = []
     for row in doc.loans:
-        if row.loan in active_loans:
-            total_paid = frappe.db.sql("""
-                SELECT IFNULL(SUM(amount_paid), 0)
-                FROM `tabLoan Repayment`
-                WHERE against_loan = %s AND docstatus = 1
-            """, row.loan)[0][0]
+        if row.loan not in active_loans:
+            continue
 
-            loan_total = frappe.db.get_value("Loan", row.loan, "total_payment")
+        # Get loan details
+        loan = frappe.get_doc("Loan", row.loan)
 
-            if flt(total_paid) < flt(loan_total):
-                valid_rows.append(row)
-            else:
-                frappe.msgprint(
-                    _("Loan {0} is fully paid — it will be removed from Salary Slip.").format(
-                        frappe.bold(row.loan)
-                    ),
-                    alert=True,
-                    indicator="orange"
-                )
+        # Calculate total paid
+        total_paid = frappe.db.sql("""
+            SELECT IFNULL(SUM(amount_paid), 0)
+            FROM `tabLoan Repayment`
+            WHERE against_loan = %s AND docstatus = 1
+        """, row.loan)[0][0]
+
+        loan_total = loan.total_payment
+        remaining = flt(loan_total) - flt(total_paid)
+
+        # ✅ Check if loan is fully paid
+        if remaining <= 0:
+            frappe.msgprint(
+                _("Loan {0} is fully paid (Total: {1}, Paid: {2}) — removed from Salary Slip.").format(
+                    frappe.bold(row.loan),
+                    frappe.bold(frappe.format_value(
+                        loan_total, {"fieldtype": "Currency"})),
+                    frappe.bold(frappe.format_value(
+                        total_paid, {"fieldtype": "Currency"}))
+                ),
+                alert=True,
+                indicator="orange"
+            )
+            continue
+
+        # ✅ Check if amount in row exceeds remaining
+        if flt(row.total_payment) > remaining:
+            frappe.msgprint(
+                _("Loan {0}: Adjusted payment from {1} to {2} (Remaining balance)").format(
+                    frappe.bold(row.loan),
+                    frappe.bold(frappe.format_value(
+                        row.total_payment, {"fieldtype": "Currency"})),
+                    frappe.bold(frappe.format_value(
+                        remaining, {"fieldtype": "Currency"}))
+                ),
+                alert=True,
+                indicator="orange"
+            )
+            # Adjust the amounts
+            row.total_payment = remaining
+            row.principal_amount = min(flt(row.principal_amount), remaining)
+            row.interest_amount = remaining - flt(row.principal_amount)
+
+        # ✅ Add to valid rows
+        valid_rows.append(row)
 
     doc.set("loans", valid_rows)
 
