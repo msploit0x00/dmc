@@ -970,27 +970,21 @@ def prevent_duplicate_loan_deduction(doc, method):
         pluck="name"
     )
 
-    # ✅ If no active loans → clear section and set flag
+    # ✅ If no active loans → clear section
     if not active_loans:
         doc.set("loans", [])
         doc.total_principal_amount = 0
         doc.total_interest_amount = 0
         doc.total_loan_repayment = 0
 
-        # ✅ CRITICAL: Recalculate Net Pay after clearing loans
+        # ✅ Recalculate Net Pay after clearing loans
         doc.calculate_net_pay()
 
-        # 🚫 Tell system to skip make_loan_repayment_entry later
+        # 🚫 Skip loan repayment entry
         doc.flags.skip_loan_repayment_entry = True
 
-        # ✅ Pass flag to client side for hiding section
-        if not doc.get("__onload"):
-            doc.set_onload("hide_loan_section", True)
-        else:
-            doc.__onload.hide_loan_section = True
-
         frappe.msgprint(
-            _("No active loans for this employee — hiding Loan Repayment section."),
+            _("No active loans for this employee — loan section will be hidden."),
             alert=True,
             indicator="blue"
         )
@@ -1002,7 +996,6 @@ def prevent_duplicate_loan_deduction(doc, method):
         if row.loan not in active_loans:
             continue
 
-        # Get loan details
         loan = frappe.get_doc("Loan", row.loan)
 
         # Calculate total paid
@@ -1015,70 +1008,54 @@ def prevent_duplicate_loan_deduction(doc, method):
         loan_total = loan.total_payment
         remaining = flt(loan_total) - flt(total_paid)
 
-        # ✅ Check if loan is fully paid
+        # ✅ Loan fully paid
         if remaining <= 0:
             frappe.msgprint(
-                _("Loan {0} is fully paid (Total: {1}, Paid: {2}) — removed from Salary Slip.").format(
-                    frappe.bold(row.loan),
-                    frappe.bold(frappe.format_value(
-                        loan_total, {"fieldtype": "Currency"})),
-                    frappe.bold(frappe.format_value(
-                        total_paid, {"fieldtype": "Currency"}))
-                ),
+                _("Loan {0} is fully paid — removed from Salary Slip.").format(
+                    frappe.bold(row.loan)),
                 alert=True,
                 indicator="orange"
             )
             continue
 
-        # ✅ Check if amount in row exceeds remaining
+        # ✅ Adjust overpaid amounts
         if flt(row.total_payment) > remaining:
             frappe.msgprint(
-                _("Loan {0}: Adjusted payment from {1} to {2} (Remaining balance)").format(
+                _("Loan {0}: Adjusted payment to remaining balance ({1}).").format(
                     frappe.bold(row.loan),
-                    frappe.bold(frappe.format_value(
-                        row.total_payment, {"fieldtype": "Currency"})),
                     frappe.bold(frappe.format_value(
                         remaining, {"fieldtype": "Currency"}))
                 ),
                 alert=True,
                 indicator="orange"
             )
-            # Adjust the amounts
             row.total_payment = remaining
             row.principal_amount = min(flt(row.principal_amount), remaining)
             row.interest_amount = remaining - flt(row.principal_amount)
 
-        # ✅ Add to valid rows
         valid_rows.append(row)
 
+    # ✅ Update valid loans
     doc.set("loans", valid_rows)
 
-    # ✅ Still empty → hide and set flag
+    # ✅ If still no valid loans → clear again
     if not valid_rows:
         doc.set("loans", [])
         doc.total_principal_amount = 0
         doc.total_interest_amount = 0
         doc.total_loan_repayment = 0
-
-        # ✅ CRITICAL: Recalculate Net Pay after clearing loans
         doc.calculate_net_pay()
-
         doc.flags.skip_loan_repayment_entry = True
 
-        # ✅ Pass flag to client side for hiding section
-        if not doc.get("__onload"):
-            doc.set_onload("hide_loan_section", True)
-        else:
-            doc.__onload.hide_loan_section = True
-
         frappe.msgprint(
-            _("No active or unpaid loans to deduct — hiding Loan Repayment section."),
+            _("No active or unpaid loans to deduct — loan section will be hidden."),
             alert=True,
             indicator="blue"
         )
 
-
 # ✅ Custom wrapper to skip loan repayment entry
+
+
 def custom_make_loan_repayment_entry(doc):
     """
     Custom wrapper to skip loan repayment entry
