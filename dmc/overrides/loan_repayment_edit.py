@@ -606,6 +606,45 @@ class CustomLoanRepayment(LoanRepayment):
     def validate(self):
         super(CustomLoanRepayment, self).validate()
 
+        # ✅ Validate manual payment amount doesn't exceed remaining
+        if self.check_is_manual_payment() and self.against_loan:
+            # Get total already paid
+            total_paid = frappe.db.sql("""
+                SELECT IFNULL(SUM(amount_paid), 0)
+                FROM `tabLoan Repayment`
+                WHERE against_loan = %s 
+                AND docstatus = 1
+                AND name != %s
+            """, (self.against_loan, self.name))[0][0]
+
+            # Get loan total
+            loan = frappe.get_doc("Loan", self.against_loan)
+            remaining = flt(loan.total_payment) - flt(total_paid)
+
+            # Check if amount exceeds remaining
+            if flt(self.amount_paid) > remaining:
+                frappe.throw(
+                    _("Payment amount {0} exceeds remaining loan balance {1}.<br><br>"
+                      "Loan Total: {2}<br>"
+                      "Already Paid: {3}<br>"
+                      "Remaining: {4}<br><br>"
+                      "Please adjust the amount to {5} or less.").format(
+                        frappe.bold(frappe.format_value(
+                            self.amount_paid, {"fieldtype": "Currency"})),
+                        frappe.bold(frappe.format_value(
+                            remaining, {"fieldtype": "Currency"})),
+                        frappe.format_value(loan.total_payment, {
+                                            "fieldtype": "Currency"}),
+                        frappe.format_value(
+                            total_paid, {"fieldtype": "Currency"}),
+                        frappe.format_value(
+                            remaining, {"fieldtype": "Currency"}),
+                        frappe.bold(frappe.format_value(
+                            remaining, {"fieldtype": "Currency"}))
+                    ),
+                    title=_("Overpayment Not Allowed")
+                )
+
         if self.payment_entry and self.docstatus == 0:
             pe_status = frappe.db.get_value(
                 "Payment Entry", self.payment_entry, "docstatus")
