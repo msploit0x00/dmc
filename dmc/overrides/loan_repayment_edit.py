@@ -469,37 +469,62 @@ class CustomLoanRepayment(LoanRepayment):
             return
 
         try:
-            loan = frappe.get_doc("Loan", self.against_loan)
-            if not hasattr(loan, "repayment_schedule") or not loan.repayment_schedule:
+            # ✅ Find active Loan Repayment Schedule for this loan
+            active_schedules = frappe.get_all(
+                "Loan Repayment Schedule",
+                filters={
+                    "loan": self.against_loan,
+                    "status": "Active",
+                    "docstatus": 1
+                },
+                fields=["name"],
+                order_by="posting_date desc",
+                limit=1
+            )
+
+            if not active_schedules:
                 frappe.log_error(
-                    title=f"No Repayment Schedule for Loan {self.against_loan}",
-                    message=f"Loan Repayment {self.name} - No schedule to update"
+                    title=f"No Active Schedule for Loan {self.against_loan}",
+                    message=f"Loan Repayment {self.name} - No active schedule to update"
+                )
+                return
+
+            # Get the schedule document
+            schedule_doc = frappe.get_doc(
+                "Loan Repayment Schedule", active_schedules[0].name)
+
+            if not hasattr(schedule_doc, "repayment_schedule") or not schedule_doc.repayment_schedule:
+                frappe.log_error(
+                    title=f"No Repayment Rows in Schedule {schedule_doc.name}",
+                    message=f"Loan Repayment {self.name} - Schedule has no payment rows"
                 )
                 return
 
             amount_to_allocate = flt(self.amount_paid)
 
+            # Sort by payment date
             schedules = sorted(
-                loan.repayment_schedule,
+                schedule_doc.repayment_schedule,
                 key=lambda x: getdate(
                     x.payment_date) if x.payment_date else getdate("1900-01-01")
             )
 
-            for schedule in schedules:
+            for schedule_row in schedules:
                 if amount_to_allocate <= 0:
                     break
 
-                paid_existing = flt(schedule.custom_paid_amount)
-                total_due = flt(schedule.total_payment)
+                paid_existing = flt(schedule_row.custom_paid_amount)
+                total_due = flt(schedule_row.total_payment)
 
                 if flt(paid_existing) >= total_due:
                     continue
 
                 paid_now = min(amount_to_allocate, total_due - paid_existing)
 
+                # ✅ Update the child table row
                 frappe.db.set_value(
                     "Repayment Schedule",
-                    schedule.name,
+                    schedule_row.name,
                     {
                         "custom_paid_amount": paid_existing + paid_now,
                         "custom_is_paid": 1 if (paid_existing + paid_now) >= total_due else 0,
@@ -513,7 +538,9 @@ class CustomLoanRepayment(LoanRepayment):
             frappe.db.commit()
 
             frappe.msgprint(
-                _("Repayment Schedule updated for manual payment."),
+                _("Repayment Schedule {0} updated for manual payment.").format(
+                    frappe.bold(schedule_doc.name)
+                ),
                 alert=True,
                 indicator="green"
             )
@@ -532,20 +559,27 @@ class CustomLoanRepayment(LoanRepayment):
             return
 
         try:
-            schedules = frappe.get_all(
-                "Loan Repayment Schedule",
-                filters={
-                    "loan": self.against_loan,
-                    "custom_payment_reference": self.name
-                },
-                fields=["name", "total_payment", "custom_paid_amount"]
-            )
+            # ✅ Find all schedules linked to this repayment
+            schedules = frappe.db.sql("""
+                SELECT rs.name, rs.parent, rs.total_payment, rs.custom_paid_amount
+                FROM `tabRepayment Schedule` rs
+                WHERE rs.parenttype = 'Loan Repayment Schedule'
+                AND rs.custom_payment_reference = %s
+            """, self.name, as_dict=1)
+
+            if not schedules:
+                frappe.log_error(
+                    title=f"No schedules found for Loan Repayment {self.name}",
+                    message="Cannot revert schedule - no matching payment reference found"
+                )
+                return
 
             for schedule in schedules:
                 new_paid = max(
                     0, flt(schedule.custom_paid_amount) - flt(self.amount_paid))
+
                 frappe.db.set_value(
-                    "Loan Repayment Schedule",
+                    "Repayment Schedule",
                     schedule.name,
                     {
                         "custom_paid_amount": new_paid,
@@ -556,6 +590,12 @@ class CustomLoanRepayment(LoanRepayment):
                 )
 
             frappe.db.commit()
+
+            frappe.msgprint(
+                _("Repayment Schedule reverted for cancelled payment."),
+                alert=True,
+                indicator="orange"
+            )
 
         except Exception:
             frappe.log_error(
