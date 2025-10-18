@@ -467,126 +467,15 @@ class CustomPaymentEntry(PaymentEntry):
                     title=f"خطأ في إلغاء ربط Loan Repayment {loan_repayment_name}"
                 )
 
-    # def mark_loan_schedule_as_paid(self, loan_name, amount_paid, posting_date):
-    #     """
-    #     ✅ تعليم أقساط جدول السداد كمدفوعة (الأقدم أولاً)
-    #     هذا يمنع Salary Slip من محاولة خصم الأقساط المدفوعة بالفعل
-    #     """
-    #     try:
-    #         loan = frappe.get_doc("Loan", loan_name)
-    #         remaining_amount = flt(amount_paid)
-    #         posting_date = getdate(posting_date)
-
-    #         # الحصول على الأقساط غير المدفوعة (الأقدم أولاً)
-    #         unpaid_schedules = [
-    #             row for row in loan.repayment_schedule
-    #             if not row.is_paid and flt(row.total_payment) > flt(row.paid_amount)
-    #         ]
-
-    #         # الترتيب حسب تاريخ الدفع
-    #         unpaid_schedules.sort(key=lambda x: getdate(x.payment_date))
-
-    #         for schedule in unpaid_schedules:
-    #             if remaining_amount <= 0:
-    #                 break
-
-    #             outstanding = flt(schedule.total_payment) - \
-    #                 flt(schedule.paid_amount)
-
-    #             if outstanding <= 0:
-    #                 continue
-
-    #             # حساب المبلغ المراد دفعه لهذا القسط
-    #             payment_for_schedule = min(remaining_amount, outstanding)
-
-    #             # تحديث صف الجدول
-    #             new_paid_amount = flt(
-    #                 schedule.paid_amount) + payment_for_schedule
-    #             schedule.paid_amount = new_paid_amount
-
-    #             # تعليم كمدفوع إذا تم الدفع بالكامل
-    #             if flt(new_paid_amount) >= flt(schedule.total_payment):
-    #                 schedule.is_paid = 1
-
-    #             remaining_amount -= payment_for_schedule
-
-    #             frappe.logger().info(
-    #                 f"تم تعليم جدول {schedule.payment_date} كمدفوع "
-    #                 f"(مدفوع: {new_paid_amount}/{schedule.total_payment})"
-    #             )
-
-    #         # حفظ القرض بدون تفعيل التحققات
-    #         loan.flags.ignore_validate = True
-    #         loan.save(ignore_permissions=True)
-
-    #         frappe.msgprint(
-    #             _("تم تحديث جدول سداد القرض بنجاح للقرض {0}").format(
-    #                 frappe.bold(loan.name)
-    #             ),
-    #             alert=True,
-    #             indicator="green"
-    #         )
-
-    #     except Exception as e:
-    #         frappe.log_error(
-    #             message=frappe.get_traceback(),
-    #             title=f"خطأ في تحديث جدول القرض لـ {loan_name}"
-    #         )
-
-    # def unmark_loan_schedule(self, loan_name, amount_paid, posting_date):
-    #     """
-    #     ✅ إعادة تغييرات الجدول عند إلغاء Payment Entry
-    #     """
-    #     try:
-    #         loan = frappe.get_doc("Loan", loan_name)
-    #         remaining_amount = flt(amount_paid)
-    #         posting_date = getdate(posting_date)
-
-    #         # الحصول على الأقساط المدفوعة (الأحدث أولاً للعكس)
-    #         paid_schedules = [
-    #             row for row in loan.repayment_schedule
-    #             if row.is_paid or flt(row.paid_amount) > 0
-    #         ]
-
-    #         # الترتيب حسب تاريخ الدفع (عكسي)
-    #         paid_schedules.sort(key=lambda x: getdate(
-    #             x.payment_date), reverse=True)
-
-    #         for schedule in paid_schedules:
-    #             if remaining_amount <= 0:
-    #                 break
-
-    #             # حساب المبلغ المراد خصمه
-    #             deduction = min(remaining_amount, flt(schedule.paid_amount))
-
-    #             # تحديث صف الجدول
-    #             schedule.paid_amount = flt(schedule.paid_amount) - deduction
-
-    #             # إلغاء التعليم إذا لم يعد مدفوعاً بالكامل
-    #             if flt(schedule.paid_amount) < flt(schedule.total_payment):
-    #                 schedule.is_paid = 0
-
-    #             remaining_amount -= deduction
-
-    #         # حفظ القرض
-    #         loan.flags.ignore_validate = True
-    #         loan.save(ignore_permissions=True)
-
-    #     except Exception as e:
-    #         frappe.log_error(
-    #             message=frappe.get_traceback(),
-    #             title=f"خطأ في إعادة جدول القرض لـ {loan_name}"
-    #         )
     def mark_loan_schedule_as_paid(self, loan_name, amount_paid, posting_date):
         """
-        ✅ تعليم أقساط جدول السداد كمدفوعة (الأقدم أولاً)
-        FIXED: يحدث Loan Repayment Schedule مش Loan Document
+        ✅ CRITICAL FIX: Mark installments in ACTIVE Loan Repayment Schedule
         """
         try:
             remaining_amount = flt(amount_paid)
             posting_date = getdate(posting_date)
 
-            # ✅ 1. الحصول على آخر Loan Repayment Schedule نشط
+            # ✅ 1. Get ACTIVE Loan Repayment Schedule
             active_schedule = frappe.db.sql("""
                 SELECT name
                 FROM `tabLoan Repayment Schedule`
@@ -598,77 +487,63 @@ class CustomPaymentEntry(PaymentEntry):
             """, loan_name, as_dict=1)
 
             if not active_schedule:
-                frappe.log_error(
-                    message=f"No active Loan Repayment Schedule found for {loan_name}",
-                    title="Missing Repayment Schedule"
+                frappe.logger().warning(
+                    f"⚠️ No active schedule for loan {loan_name}"
                 )
                 return
 
             schedule_name = active_schedule[0].name
-            frappe.logger().info(f"✅ Found active schedule: {schedule_name}")
 
-            # ✅ 2. الحصول على الأقساط غير المدفوعة (الأقدم أولاً)
+            # ✅ 2. Get unpaid installments
             unpaid_installments = frappe.db.sql("""
                 SELECT 
                     rs.name,
                     rs.payment_date,
                     rs.total_payment,
-                    IFNULL(rs.custom_paid_amount, 0) as paid_amount,
-                    IFNULL(rs.custom_is_paid, 0) as is_paid
+                    IFNULL(rs.custom_paid_amount, 0) as paid_amount
                 FROM `tabRepayment Schedule` rs
                 WHERE rs.parent = %s
                 AND rs.parenttype = 'Loan Repayment Schedule'
                 AND (rs.custom_is_paid IS NULL OR rs.custom_is_paid = 0)
-                AND (rs.total_payment > IFNULL(rs.custom_paid_amount, 0))
+                AND rs.total_payment > IFNULL(rs.custom_paid_amount, 0)
                 ORDER BY rs.payment_date ASC
             """, schedule_name, as_dict=1)
 
-            if not unpaid_installments:
-                frappe.logger().info(
-                    f"⚠️ No unpaid installments found in schedule {schedule_name}")
-                return
-
-            # ✅ 3. تحديث كل قسط بالترتيب
+            # ✅ 3. Update each installment
             for installment in unpaid_installments:
                 if remaining_amount <= 0:
                     break
 
                 outstanding = flt(installment.total_payment) - \
                     flt(installment.paid_amount)
+                payment_now = min(remaining_amount, outstanding)
+                new_paid = flt(installment.paid_amount) + payment_now
 
-                if outstanding <= 0:
-                    continue
-
-                # حساب المبلغ المراد دفعه لهذا القسط
-                payment_for_installment = min(remaining_amount, outstanding)
-                new_paid_amount = flt(installment.paid_amount) + \
-                    payment_for_installment
-
-                # ✅ تحديث Custom Fields مباشرة في Database
+                # ✅ CRITICAL: Update custom fields
                 frappe.db.set_value(
                     "Repayment Schedule",
                     installment.name,
                     {
-                        "custom_paid_amount": new_paid_amount,
-                        "custom_is_paid": 1 if new_paid_amount >= flt(installment.total_payment) else 0,
+                        "custom_paid_amount": new_paid,
+                        "custom_is_paid": 1 if new_paid >= flt(installment.total_payment) else 0,
                         "custom_payment_reference": self.name,
                         "custom_payment_date_actual": self.posting_date
-                    }
+                    },
+                    update_modified=False
                 )
 
-                remaining_amount -= payment_for_installment
+                remaining_amount -= payment_now
 
                 frappe.logger().info(
-                    f"✅ Updated installment {installment.payment_date}: "
-                    f"Paid {new_paid_amount}/{installment.total_payment}, "
-                    f"Is_Paid: {1 if new_paid_amount >= flt(installment.total_payment) else 0}"
+                    f"✅ Payment Entry {self.name}: Marked installment {installment.payment_date} "
+                    f"as paid: {new_paid}/{installment.total_payment}"
                 )
 
             frappe.db.commit()
 
             frappe.msgprint(
-                _("تم تحديث جدول سداد القرض بنجاح للقرض {0}").format(
-                    frappe.bold(loan_name)
+                _("Repayment Schedule updated for Payment Entry {0}").format(
+                    frappe.bold(self.name)
                 ),
                 alert=True,
                 indicator="green"
@@ -677,12 +552,7 @@ class CustomPaymentEntry(PaymentEntry):
         except Exception as e:
             frappe.log_error(
                 message=frappe.get_traceback(),
-                title=f"خطأ في تحديث جدول القرض لـ {loan_name}"
-            )
-            frappe.msgprint(
-                _("تحذير: لم يتم تحديث جدول السداد. تحقق من Error Log."),
-                alert=True,
-                indicator="orange"
+                title=f"Error updating schedule from Payment Entry {self.name}"
             )
 
     def unmark_loan_schedule(self, loan_name, amount_paid, posting_date):
