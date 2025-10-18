@@ -900,12 +900,13 @@ def get_remaining_loan_amount(loan_id):
     # Calculate remaining
     total_payable = flt(loan.total_payment)
     remaining = flt(total_payable) - flt(total_paid)
-
+    company_currency = frappe.db.get_value(
+        "Company", loan.company, "default_currency")
     return {
         "total_payable": total_payable,
         "total_paid": total_paid,
         "remaining": max(0, remaining),  # ✅ لا يمكن أن يكون سالب
-        "currency": loan.currency or frappe.defaults.get_defaults().currency
+        "currency": company_currency or frappe.defaults.get_global_default("currency")
     }
 
 
