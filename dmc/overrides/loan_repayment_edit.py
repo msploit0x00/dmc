@@ -687,7 +687,10 @@ class CustomLoanRepayment(LoanRepayment):
                                 "payment_entry", None)
 
     def update_repayment_schedule_on_manual_payment(self):
-        """✅ Update Repayment Schedule when manual payment is made"""
+        """
+        ✅ FIXED: Update Loan Repayment Schedule (not Loan document)
+        عند السداد اليدوي
+        """
         if not self.against_loan:
             return
 
@@ -712,42 +715,49 @@ class CustomLoanRepayment(LoanRepayment):
                 )
                 return
 
-            # Get the schedule document
-            schedule_doc = frappe.get_doc(
-                "Loan Repayment Schedule", active_schedules[0].name)
+            schedule_name = active_schedules[0].name
+            frappe.logger().info(f"✅ Found active schedule: {schedule_name}")
 
-            if not hasattr(schedule_doc, "repayment_schedule") or not schedule_doc.repayment_schedule:
-                frappe.log_error(
-                    title=f"No Repayment Rows in Schedule {schedule_doc.name}",
-                    message=f"Loan Repayment {self.name} - Schedule has no payment rows"
-                )
+            # ✅ Get unpaid installments from Loan Repayment Schedule (not Loan)
+            unpaid_installments = frappe.db.sql("""
+                SELECT 
+                    rs.name,
+                    rs.payment_date,
+                    rs.total_payment,
+                    IFNULL(rs.custom_paid_amount, 0) as paid_amount,
+                    IFNULL(rs.custom_is_paid, 0) as is_paid
+                FROM `tabRepayment Schedule` rs
+                WHERE rs.parent = %s
+                AND rs.parenttype = 'Loan Repayment Schedule'
+                AND (rs.custom_is_paid IS NULL OR rs.custom_is_paid = 0)
+                AND (rs.total_payment > IFNULL(rs.custom_paid_amount, 0))
+                ORDER BY rs.payment_date ASC
+            """, schedule_name, as_dict=1)
+
+            if not unpaid_installments:
+                frappe.logger().info(
+                    f"⚠️ No unpaid installments in schedule {schedule_name}")
                 return
 
             amount_to_allocate = flt(self.amount_paid)
 
-            # Sort by payment date
-            schedules = sorted(
-                schedule_doc.repayment_schedule,
-                key=lambda x: getdate(
-                    x.payment_date) if x.payment_date else getdate("1900-01-01")
-            )
-
-            for schedule_row in schedules:
+            # ✅ Update each installment
+            for installment in unpaid_installments:
                 if amount_to_allocate <= 0:
                     break
 
-                paid_existing = flt(schedule_row.custom_paid_amount)
-                total_due = flt(schedule_row.total_payment)
+                paid_existing = flt(installment.paid_amount)
+                total_due = flt(installment.total_payment)
 
-                if flt(paid_existing) >= total_due:
+                if paid_existing >= total_due:
                     continue
 
                 paid_now = min(amount_to_allocate, total_due - paid_existing)
 
-                # ✅ Update the child table row
+                # ✅ Update the child table row in Loan Repayment Schedule
                 frappe.db.set_value(
                     "Repayment Schedule",
-                    schedule_row.name,
+                    installment.name,
                     {
                         "custom_paid_amount": paid_existing + paid_now,
                         "custom_is_paid": 1 if (paid_existing + paid_now) >= total_due else 0,
@@ -758,11 +768,16 @@ class CustomLoanRepayment(LoanRepayment):
 
                 amount_to_allocate -= paid_now
 
+                frappe.logger().info(
+                    f"✅ Updated installment {installment.payment_date}: "
+                    f"Paid {paid_existing + paid_now}/{total_due}"
+                )
+
             frappe.db.commit()
 
             frappe.msgprint(
                 _("Repayment Schedule {0} updated for manual payment.").format(
-                    frappe.bold(schedule_doc.name)
+                    frappe.bold(schedule_name)
                 ),
                 alert=True,
                 indicator="green"
@@ -777,18 +792,31 @@ class CustomLoanRepayment(LoanRepayment):
                 _("Failed to update Repayment Schedule. Check Error Log."))
 
     def revert_repayment_schedule_on_cancel(self):
-        """✅ Revert Repayment Schedule when cancelling manual payment"""
+        """
+        ✅ FIXED: Revert Loan Repayment Schedule (not Loan document)
+        عند إلغاء السداد اليدوي
+        """
         if not self.against_loan:
             return
 
         try:
-            # ✅ Find all schedules linked to this repayment
+            # ✅ Find schedules linked to this repayment in Loan Repayment Schedule
             schedules = frappe.db.sql("""
-                SELECT rs.name, rs.parent, rs.total_payment, rs.custom_paid_amount
+                SELECT 
+                    rs.name, 
+                    rs.parent as schedule_name,
+                    rs.total_payment, 
+                    IFNULL(rs.custom_paid_amount, 0) as paid_amount,
+                    rs.custom_payment_reference
                 FROM `tabRepayment Schedule` rs
+                INNER JOIN `tabLoan Repayment Schedule` lrs ON lrs.name = rs.parent
                 WHERE rs.parenttype = 'Loan Repayment Schedule'
+                AND lrs.loan = %s
+                AND lrs.status = 'Active'
+                AND lrs.docstatus = 1
                 AND rs.custom_payment_reference = %s
-            """, self.name, as_dict=1)
+                ORDER BY rs.payment_date DESC
+            """, (self.against_loan, self.name), as_dict=1)
 
             if not schedules:
                 frappe.log_error(
@@ -797,19 +825,33 @@ class CustomLoanRepayment(LoanRepayment):
                 )
                 return
 
-            for schedule in schedules:
-                new_paid = max(
-                    0, flt(schedule.custom_paid_amount) - flt(self.amount_paid))
+            amount_to_deduct = flt(self.amount_paid)
 
+            for schedule in schedules:
+                if amount_to_deduct <= 0:
+                    break
+
+                # Calculate amount to deduct from this installment
+                deduction = min(amount_to_deduct, flt(schedule.paid_amount))
+                new_paid = max(0, flt(schedule.paid_amount) - deduction)
+
+                # ✅ Update in Loan Repayment Schedule
                 frappe.db.set_value(
                     "Repayment Schedule",
                     schedule.name,
                     {
                         "custom_paid_amount": new_paid,
-                        "custom_is_paid": 1 if new_paid >= flt(schedule.total_payment) else 0,
+                        "custom_is_paid": 0 if new_paid < flt(schedule.total_payment) else 1,
                         "custom_payment_reference": None,
                         "custom_payment_date_actual": None
                     }
+                )
+
+                amount_to_deduct -= deduction
+
+                frappe.logger().info(
+                    f"✅ Reverted installment in schedule {schedule.schedule_name}: "
+                    f"New paid amount: {new_paid}/{schedule.total_payment}"
                 )
 
             frappe.db.commit()
@@ -1092,13 +1134,25 @@ def get_monthly_repayment_amount(loan_id):
 
 
 # ========================================
-# 🔥 Salary Slip Functions
+# 🔥 Salary Slip Functions (FIXED VERSION)
 # ========================================
 
 def prevent_duplicate_loan_deduction(doc, method):
-    """Hide loans that are not for this employee or already fully repaid."""
+    """
+    ✅ CRITICAL FIX: منع إنشاء Loan Repayment Entry للقروض المسددة
+
+    يشتغل على:
+    - validate: قبل الحفظ (لتنظيف الجدول)
+    - before_save: قبل الحفظ مباشرة (لضبط الـ flag)
+    """
     if not doc.employee:
         return
+
+    # 🔍 Log current state
+    frappe.logger().info(
+        f"🔍 prevent_duplicate_loan_deduction called for {doc.name} "
+        f"(method: {method}, docstatus: {doc.docstatus})"
+    )
 
     # Get all active loans for this employee
     active_loans = frappe.get_all(
@@ -1117,44 +1171,50 @@ def prevent_duplicate_loan_deduction(doc, method):
         doc.total_principal_amount = 0
         doc.total_interest_amount = 0
         doc.total_loan_repayment = 0
-
-        # ✅ Recalculate Net Pay after clearing loans
         doc.calculate_net_pay()
 
-        # 🚫 CRITICAL: Skip loan repayment entry
-        doc.flags.skip_loan_repayment_entry = True
-        doc.flags.loans_cleaned = True
+        # 🔥 CRITICAL: Set flag to prevent Loan Repayment creation
+        doc.custom_skip_loan_repayment_creation = 1
 
         frappe.logger().info(
-            f"🚫 Salary Slip {doc.name}: No active loans - skip_loan_repayment_entry = True"
+            f"🚫 {doc.name}: No active loans - skip flag set"
         )
-
         return
 
-    # ✅ Filter valid loans only (not fully paid + has pending amount)
+    # ✅ Filter valid loans only
     valid_rows = []
+    removed_loans = []
 
     for row in doc.loans:
         if row.loan not in active_loans:
+            removed_loans.append(row.loan)
             continue
 
         loan = frappe.get_doc("Loan", row.loan)
 
-        # Calculate total paid
+        # 🔥 CRITICAL: Calculate ACTUAL remaining amount
         total_paid = frappe.db.sql("""
             SELECT IFNULL(SUM(amount_paid), 0)
             FROM `tabLoan Repayment`
             WHERE against_loan = %s AND docstatus = 1
         """, row.loan)[0][0]
 
-        loan_total = loan.total_payment
+        loan_total = flt(loan.total_payment)
         remaining = flt(loan_total) - flt(total_paid)
 
-        # ✅ Loan fully paid
-        if remaining <= 0:
+        frappe.logger().info(
+            f"💰 Loan {row.loan}: Total={loan_total}, Paid={total_paid}, Remaining={remaining}"
+        )
+
+        # ✅ Loan fully paid - REMOVE from deductions
+        if remaining <= 0.01:  # Allow 1 cent tolerance
+            removed_loans.append(row.loan)
             frappe.msgprint(
-                _("Loan {0} is fully paid — removed from Salary Slip.").format(
-                    frappe.bold(row.loan)),
+                _("Loan {0} is fully paid (Total Paid: {1}) — removed from Salary Slip.").format(
+                    frappe.bold(row.loan),
+                    frappe.bold(frappe.format_value(
+                        total_paid, {"fieldtype": "Currency"}))
+                ),
                 alert=True,
                 indicator="orange"
             )
@@ -1163,8 +1223,10 @@ def prevent_duplicate_loan_deduction(doc, method):
         # ✅ Adjust overpaid amounts
         if flt(row.total_payment) > remaining:
             frappe.msgprint(
-                _("Loan {0}: Adjusted payment to remaining balance ({1}).").format(
+                _("Loan {0}: Payment adjusted from {1} to remaining balance {2}.").format(
                     frappe.bold(row.loan),
+                    frappe.bold(frappe.format_value(
+                        row.total_payment, {"fieldtype": "Currency"})),
                     frappe.bold(frappe.format_value(
                         remaining, {"fieldtype": "Currency"}))
                 ),
@@ -1177,10 +1239,10 @@ def prevent_duplicate_loan_deduction(doc, method):
 
         valid_rows.append(row)
 
-    # ✅ Update valid loans
+    # ✅ Update loans table
     doc.set("loans", valid_rows)
 
-    # ✅ If no valid loans remain → clear and skip repayment
+    # ✅ If no valid loans remain
     if not valid_rows:
         doc.set("loans", [])
         doc.total_principal_amount = 0
@@ -1188,59 +1250,176 @@ def prevent_duplicate_loan_deduction(doc, method):
         doc.total_loan_repayment = 0
         doc.calculate_net_pay()
 
-        doc.flags.skip_loan_repayment_entry = True
-        doc.flags.loans_cleaned = True
+        # 🔥 CRITICAL: Set skip flag
+        doc.custom_skip_loan_repayment_creation = 1
 
         frappe.logger().info(
-            f"🚫 Salary Slip {doc.name}: All loans fully paid - skip_loan_repayment_entry = True"
+            f"🚫 {doc.name}: All loans paid - skip flag set. Removed: {removed_loans}"
         )
 
         frappe.msgprint(
-            _("No active or unpaid loans to deduct — loan section will be hidden."),
+            _("No active or unpaid loans to deduct — loan section cleared."),
             alert=True,
             indicator="blue"
         )
     else:
-        doc.flags.skip_loan_repayment_entry = False
-        doc.flags.loans_cleaned = False
+        # 🔥 IMPORTANT: Clear skip flag if there ARE unpaid loans
+        doc.custom_skip_loan_repayment_creation = 0
 
         frappe.logger().info(
-            f"✅ Salary Slip {doc.name}: Has {len(valid_rows)} active loans - will create repayment entry"
+            f"✅ {doc.name}: Has {len(valid_rows)} unpaid loans - will create repayment. "
+            f"Removed: {removed_loans if removed_loans else 'none'}"
+        )
+
+
+def persist_skip_flag_on_submit(doc, method):
+    """
+    ✅ CRITICAL: Persist skip flag in database after submit
+
+    Problem: 
+    - prevent_duplicate_loan_deduction sets doc.custom_skip_loan_repayment_creation
+    - But changes might not persist to DB after submit
+
+    Solution:
+    - Explicitly save the flag to database after submit
+    - This ensures it survives page refresh
+    """
+    if doc.get("custom_skip_loan_repayment_creation") == 1:
+        frappe.logger().info(
+            f"💾 Persisting skip flag for {doc.name} after submit"
+        )
+
+        # ✅ Force update in database (without triggering validation)
+        frappe.db.set_value(
+            "Salary Slip",
+            doc.name,
+            "custom_skip_loan_repayment_creation",
+            1,
+            update_modified=False  # Don't update modified timestamp
+        )
+
+        frappe.db.commit()
+
+        frappe.logger().info(
+            f"✅ Skip flag persisted for {doc.name}"
         )
 
 
 def custom_make_loan_repayment_entry(doc):
     """
-    Custom wrapper to skip loan repayment entry
-    when the Salary Slip has no active loans.
+    ✅ CRITICAL FIX: Triple-check before creating Loan Repayment
+
+    Prevents duplicate repayments by:
+    1. Checking custom_skip_loan_repayment_creation flag
+    2. Verifying loans table is not empty
+    3. Re-validating each loan is NOT fully paid
     """
-    if getattr(doc.flags, "skip_loan_repayment_entry", False):
+
+    # 🔥 CHECK 1: Skip flag
+    if doc.get("custom_skip_loan_repayment_creation") == 1:
         frappe.logger().info(
-            f"🚫 Skipping Loan Repayment Entry for Salary Slip {doc.name} - "
-            f"No active loans or all loans fully paid"
+            f"🚫 SKIP: Loan Repayment Entry for {doc.name} - skip flag is set"
         )
-
-        if not getattr(doc.flags, "skip_message_shown", False):
-            frappe.msgprint(
-                _("No Loan Repayment Entry created - employee has no active unpaid loans."),
-                alert=True,
-                indicator="blue"
-            )
-            doc.flags.skip_message_shown = True
-
+        frappe.msgprint(
+            _("No Loan Repayment Entry created - employee has no active unpaid loans."),
+            alert=True,
+            indicator="blue"
+        )
         return None
 
+    # 🔥 CHECK 2: Empty loans table
     if not doc.get("loans") or len(doc.loans) == 0:
         frappe.logger().info(
-            f"🚫 Skipping Loan Repayment Entry for Salary Slip {doc.name} - "
-            f"loans table is empty"
+            f"🚫 SKIP: Loan Repayment Entry for {doc.name} - loans table is empty"
         )
         return None
 
+    # 🔥 CHECK 3: Verify EACH loan is NOT fully paid (prevent race condition)
+    loans_to_process = []
+
+    for loan_row in doc.loans:
+        try:
+            # Get fresh data from database
+            total_paid = frappe.db.sql("""
+                SELECT IFNULL(SUM(amount_paid), 0)
+                FROM `tabLoan Repayment`
+                WHERE against_loan = %s AND docstatus = 1
+            """, loan_row.loan)[0][0]
+
+            loan = frappe.get_doc("Loan", loan_row.loan)
+            loan_total = flt(loan.total_payment)
+            remaining = flt(loan_total) - flt(total_paid)
+
+            frappe.logger().info(
+                f"🔍 Pre-creation check - Loan {loan_row.loan}: "
+                f"Total={loan_total}, Paid={total_paid}, Remaining={remaining}"
+            )
+
+            # ✅ Only process if there's remaining balance
+            if remaining > 0.01:  # 1 cent tolerance
+                loans_to_process.append(loan_row.loan)
+            else:
+                frappe.logger().warning(
+                    f"⚠️ PREVENTED duplicate repayment for PAID loan {loan_row.loan} "
+                    f"(Total Paid: {total_paid}/{loan_total})"
+                )
+                frappe.msgprint(
+                    _("Warning: Loan {0} is already fully paid - skipped from repayment creation.").format(
+                        frappe.bold(loan_row.loan)
+                    ),
+                    alert=True,
+                    indicator="orange"
+                )
+
+        except Exception as e:
+            frappe.log_error(
+                message=f"Error checking loan {loan_row.loan}: {str(e)}\n{frappe.get_traceback()}",
+                title=f"Loan Repayment Pre-Check Error"
+            )
+            continue
+
+    # 🔥 CHECK 4: If NO loans need processing after validation
+    if not loans_to_process:
+        frappe.logger().warning(
+            f"🚫 PREVENTED: All loans in {doc.name} are fully paid - "
+            f"Loan Repayment Entry creation cancelled"
+        )
+
+        # Update skip flag in database
+        frappe.db.set_value(
+            "Salary Slip",
+            doc.name,
+            "custom_skip_loan_repayment_creation",
+            1,
+            update_modified=False
+        )
+        frappe.db.commit()
+
+        return None
+
+    # ✅ All checks passed - create repayment
     frappe.logger().info(
-        f"✅ Creating Loan Repayment Entry for Salary Slip {doc.name} - "
-        f"Has {len(doc.loans)} active loan(s)"
+        f"✅ CREATING Loan Repayment Entry for {doc.name} - "
+        f"Processing {len(loans_to_process)} loan(s): {loans_to_process}"
     )
 
     from erpnext.payroll.doctype.salary_slip.salary_slip import make_loan_repayment_entry
-    return make_loan_repayment_entry(doc)
+
+    try:
+        result = make_loan_repayment_entry(doc)
+
+        if result:
+            frappe.logger().info(
+                f"✅ SUCCESS: Created Loan Repayment Entry for {doc.name}"
+            )
+
+        return result
+
+    except Exception as e:
+        frappe.log_error(
+            message=f"Error creating loan repayment: {str(e)}\n{frappe.get_traceback()}",
+            title=f"Loan Repayment Creation Error - {doc.name}"
+        )
+        frappe.throw(
+            _("Failed to create Loan Repayment Entry. Check Error Log for details.")
+        )
