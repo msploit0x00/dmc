@@ -386,7 +386,7 @@
 #         )
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import flt, getdate, nowdate
 from frappe.model.mapper import get_mapped_doc
 from lending.loan_management.doctype.loan_repayment.loan_repayment import LoanRepayment
 
@@ -871,3 +871,147 @@ def custom_make_loan_repayment_entry(doc):
 
     # Run normal ERPNext logic otherwise
     return make_loan_repayment_entry(doc)
+
+
+# ==========================================
+# ✅ Whitelisted Functions للـ Client Script
+# ==========================================
+
+@frappe.whitelist()
+def get_remaining_loan_amount(loan_id):
+    """
+    ✅ حساب الباقي من القرض
+    يستخدم في Client Script لعرض المعلومات
+    """
+    if not loan_id:
+        frappe.throw(_("Loan ID is required"))
+
+    # Get loan document
+    loan = frappe.get_doc("Loan", loan_id)
+
+    # Calculate total paid
+    total_paid = frappe.db.sql("""
+        SELECT IFNULL(SUM(amount_paid), 0)
+        FROM `tabLoan Repayment`
+        WHERE against_loan = %s 
+        AND docstatus = 1
+    """, loan_id)[0][0]
+
+    # Calculate remaining
+    total_payable = flt(loan.total_payment)
+    remaining = flt(total_payable) - flt(total_paid)
+
+    return {
+        "total_payable": total_payable,
+        "total_paid": total_paid,
+        "remaining": max(0, remaining),  # ✅ لا يمكن أن يكون سالب
+        "currency": loan.currency or frappe.defaults.get_defaults().currency
+    }
+
+
+@frappe.whitelist()
+def make_payment_entry(source_name):
+    """
+    ✅ إنشاء Payment Entry من Loan Repayment
+    """
+    from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+    loan_repayment = frappe.get_doc("Loan Repayment", source_name)
+
+    # ✅ التحقق من أن Payment Entry غير موجود
+    if loan_repayment.payment_entry:
+        frappe.throw(_("Payment Entry {0} already exists for this Loan Repayment").format(
+            frappe.bold(loan_repayment.payment_entry)
+        ))
+
+    # ✅ التحقق من أنه manual payment
+    if not loan_repayment.check_is_manual_payment():
+        frappe.throw(
+            _("Payment Entry can only be created for manual loan repayments (not from Salary Slip)"))
+
+    # Get loan document
+    loan = frappe.get_doc("Loan", loan_repayment.against_loan)
+
+    # ✅ Create Payment Entry manually
+    pe = frappe.new_doc("Payment Entry")
+    pe.payment_type = "Receive"
+    pe.posting_date = loan_repayment.posting_date or nowdate()
+    pe.company = loan.company
+
+    # Party details
+    pe.party_type = loan.applicant_type
+    pe.party = loan.applicant
+
+    # Amount
+    pe.paid_amount = flt(loan_repayment.amount_paid)
+    pe.received_amount = flt(loan_repayment.amount_paid)
+
+    # ✅ Accounts
+    # Paid To (Debit) - Cash/Bank Account
+    pe.paid_to = frappe.db.get_value(
+        "Company", loan.company, "default_cash_account")
+    if not pe.paid_to:
+        frappe.throw(
+            _("Please set Default Cash Account in Company {0}").format(loan.company))
+
+    pe.paid_to_account_currency = frappe.db.get_value(
+        "Account", pe.paid_to, "account_currency")
+
+    # Paid From (Credit) - Loan Account
+    pe.paid_from = loan.loan_account
+    pe.paid_from_account_currency = frappe.db.get_value(
+        "Account", loan.loan_account, "account_currency")
+
+    # Reference
+    pe.append("references", {
+        "reference_doctype": "Loan Repayment",
+        "reference_name": loan_repayment.name,
+        "allocated_amount": flt(loan_repayment.amount_paid)
+    })
+
+    # Link back to Loan Repayment
+    frappe.db.set_value("Loan Repayment", loan_repayment.name,
+                        "payment_entry", pe.name)
+
+    return pe.as_dict()
+
+
+@frappe.whitelist()
+def get_monthly_repayment_amount(loan_id):
+    """
+    ✅ حساب قيمة القسط الشهري من Loan Repayment Schedule
+    """
+    if not loan_id:
+        return 0
+
+    # Get latest active schedule
+    active_schedule = frappe.get_all(
+        "Loan Repayment Schedule",
+        filters={
+            "loan": loan_id,
+            "status": "Active",
+            "docstatus": 1
+        },
+        fields=["name"],
+        order_by="posting_date desc",
+        limit=1
+    )
+
+    if not active_schedule:
+        return 0
+
+    # Get first unpaid row
+    schedule_doc = frappe.get_doc(
+        "Loan Repayment Schedule", active_schedule[0].name)
+
+    for row in schedule_doc.repayment_schedule:
+        paid = flt(row.custom_paid_amount) if hasattr(
+            row, 'custom_paid_amount') else 0
+        total = flt(row.total_payment)
+
+        if paid < total:
+            # Return unpaid amount for this row
+            return total - paid
+
+    # All paid
+    return 0
