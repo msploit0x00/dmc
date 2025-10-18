@@ -146,26 +146,25 @@ override_doctype_class = {
 # Hook on document methods and events
 
 
-doc_events = {
-    "Salary Slip": {
-        "before_submit": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction"
+# doc_events = {
+#     "Salary Slip": {
+#         "before_submit": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction"
 
 
-
-    }
-}
+#     }
+# }
 
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"dmc.tasks.all"
 # 	],
-# 	"daily": [
-# 		"dmc.tasks.daily"
-# 	],
+	"daily": [
+		"dmc.tasks.daily"
+	],
 # 	"hourly": [
 # 		"dmc.tasks.hourly"
 # 	],
@@ -175,7 +174,7 @@ doc_events = {
 # 	"monthly": [
 # 		"dmc.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------
