@@ -439,8 +439,21 @@ class CustomLoanRepayment(LoanRepayment):
         })
 
         if has_gl_entry:
-            super(CustomLoanRepayment, self).on_cancel()
+            # From Salary Slip - call parent with error handling
+            try:
+                super(CustomLoanRepayment, self).on_cancel()
+            except TypeError as e:
+                # Handle NPA status update error from parent class
+                if "update_all_linked_loan_customer_npa_status" in str(e):
+                    frappe.logger().warning(
+                        f"NPA status update error in parent on_cancel for {self.name}: {str(e)}"
+                    )
+                    # Try to update NPA status manually
+                    self.update_npa_status_on_cancel()
+                else:
+                    raise
         else:
+            # Manual payment
             self.update_paid_amount_in_loan()
             self.set_status_in_loan()
             self.revert_repayment_schedule_on_cancel()
@@ -552,16 +565,35 @@ class CustomLoanRepayment(LoanRepayment):
             )
 
     def update_npa_status_on_cancel(self):
+        """
+        Update NPA status when cancelling loan repayments
+        Handles both old and new versions of the function
+        """
         try:
             from lending.loan_management.doctype.loan_repayment.loan_repayment import (
                 update_all_linked_loan_customer_npa_status
             )
-            update_all_linked_loan_customer_npa_status(
-                loan=self.against_loan, posting_date=self.posting_date
-            )
+
+            # Try with posting_date first (newer version)
+            try:
+                update_all_linked_loan_customer_npa_status(
+                    loan=self.against_loan,
+                    posting_date=self.posting_date
+                )
+            except TypeError:
+                # Fallback to older version without posting_date
+                frappe.logger().info(
+                    f"Using legacy NPA status update for {self.name}"
+                )
+                update_all_linked_loan_customer_npa_status(
+                    loan=self.against_loan
+                )
+
         except Exception as e:
             frappe.log_error(
-                f"NPA Status Update Failed for {self.name}", str(e))
+                title=f"NPA Status Update Failed for {self.name}",
+                message=frappe.get_traceback()
+            )
 
     def make_gl_entries(self, cancel=0, adv_adj=0):
         """✅ Prevent GL Entry for manual payments"""
