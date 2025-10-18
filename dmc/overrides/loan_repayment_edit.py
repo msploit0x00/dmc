@@ -648,21 +648,16 @@ class CustomLoanRepayment(LoanRepayment):
 
         # ✅ Validate manual payment amount doesn't exceed remaining
         if self.check_is_manual_payment() and self.against_loan:
-            # Get total already paid
-            total_paid = frappe.db.sql("""
-                SELECT IFNULL(SUM(amount_paid), 0)
-                FROM `tabLoan Repayment`
-                WHERE against_loan = %s 
-                AND docstatus = 1
-                AND name != %s
-            """, (self.against_loan, self.name))[0][0]
-
-            # Get loan total
+            # Get loan document
             loan = frappe.get_doc("Loan", self.against_loan)
-            remaining = flt(loan.total_payment) - flt(total_paid)
 
-            # Check if amount exceeds remaining
-            if flt(self.amount_paid) > remaining:
+            # ✅ Get correct totals
+            total_payable = flt(loan.total_payment)  # 5,000
+            total_paid = flt(loan.total_amount_paid)  # 1,250
+            remaining = total_payable - total_paid  # 3,750
+
+            # ✅ Check if amount exceeds remaining
+            if flt(self.amount_paid) > (remaining + 0.01):
                 frappe.throw(
                     _("Payment amount {0} exceeds remaining loan balance {1}.<br><br>"
                       "Loan Total: {2}<br>"
@@ -673,8 +668,8 @@ class CustomLoanRepayment(LoanRepayment):
                             self.amount_paid, {"fieldtype": "Currency"})),
                         frappe.bold(frappe.format_value(
                             remaining, {"fieldtype": "Currency"})),
-                        frappe.format_value(loan.total_payment, {
-                                            "fieldtype": "Currency"}),
+                        frappe.format_value(
+                            total_payable, {"fieldtype": "Currency"}),
                         frappe.format_value(
                             total_paid, {"fieldtype": "Currency"}),
                         frappe.format_value(
@@ -683,18 +678,6 @@ class CustomLoanRepayment(LoanRepayment):
                             remaining, {"fieldtype": "Currency"}))
                     ),
                     title=_("Overpayment Not Allowed")
-                )
-
-        if self.payment_entry and self.docstatus == 0:
-            pe_status = frappe.db.get_value(
-                "Payment Entry", self.payment_entry, "docstatus")
-            if pe_status == 1:
-                frappe.msgprint(
-                    _("Linked Payment Entry {0} already submitted.").format(
-                        frappe.bold(self.payment_entry)
-                    ),
-                    alert=True,
-                    indicator="orange"
                 )
 
     def check_is_manual_payment(self):
