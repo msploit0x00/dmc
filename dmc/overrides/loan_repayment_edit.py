@@ -709,22 +709,54 @@ def prevent_duplicate_loan_deduction(doc, method):
 
         valid_rows.append(row)
 
-    # ✅ STEP 5: Update document
-    doc.set("loans", valid_rows)
-
+    # ✅ STEP 5: Update document and force clear loans table
     if not valid_rows:
+        # ✅ CRITICAL: Clear loans table completely
+        doc.loans = []
         doc.set("loans", [])
+
+        # ✅ Reset all loan totals
         doc.total_principal_amount = 0
         doc.total_interest_amount = 0
         doc.total_loan_repayment = 0
-        doc.calculate_net_pay()
+
+        # ✅ Set skip flag
         doc.custom_skip_loan_repayment_creation = 1
+
+        # ✅ Force recalculate net pay
+        doc.calculate_net_pay()
 
         frappe.logger().info(
             f"🚫 {doc.name}: All loans removed after validation - skip flag set"
         )
+
+        # ✅ Only show message once (not 3 times)
+        if method == "validate":
+            frappe.msgprint(
+                _("No unpaid loan installments in salary period {0} to {1}.").format(
+                    frappe.bold(doc.start_date),
+                    frappe.bold(doc.end_date)
+                ),
+                alert=True,
+                indicator="blue"
+            )
     else:
+        # ✅ Keep only valid loans
+        doc.set("loans", valid_rows)
+
+        # ✅ Clear skip flag
         doc.custom_skip_loan_repayment_creation = 0
+
+        # ✅ Recalculate loan totals
+        doc.total_principal_amount = sum(
+            [flt(loan.principal_amount) for loan in doc.loans])
+        doc.total_interest_amount = sum(
+            [flt(loan.interest_amount) for loan in doc.loans])
+        doc.total_loan_repayment = sum(
+            [flt(loan.total_payment) for loan in doc.loans])
+
+        # ✅ Force recalculate net pay
+        doc.calculate_net_pay()
 
         frappe.logger().info(
             f"✅ {doc.name}: {len(valid_rows)} loan(s) with unpaid installments - will create repayment"

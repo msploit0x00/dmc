@@ -13,6 +13,7 @@ class CustomSalarySlip(SalarySlip):
     def get_loan_details(self):
         """
         ✅ Override: جلب تفاصيل القروض ولكن تجاهل الأقساط المدفوعة يدوياً
+        ✅ NEW: Clean up fully paid loans BEFORE adding to table
         """
         # 🔥 Logging محسّن
         frappe.logger().info(
@@ -60,6 +61,10 @@ class CustomSalarySlip(SalarySlip):
                 frappe.logger().info(
                     f"⏭️ Skipping loan {loan_info.loan} - no pending installments in this period"
                 )
+
+        # ✅ NEW: After adding loans, clean up again using prevent_duplicate_loan_deduction
+        from dmc.overrides.loan_repayment_edit import prevent_duplicate_loan_deduction
+        prevent_duplicate_loan_deduction(self, method="get_loan_details")
 
     def get_pending_loan_installments(self, loan_name, from_date, to_date):
         """
