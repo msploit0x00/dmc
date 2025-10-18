@@ -149,7 +149,6 @@ override_doctype_class = {
 
 doc_events = {
     "Salary Slip": {
-        # ✅ استخدم الدالة الموجودة في loan_repayment_edit.py
         "validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
         "before_save": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
         "on_submit": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction"
@@ -188,7 +187,7 @@ scheduler_events = {
 #
 override_whitelisted_methods = {
     "erpnext.payroll.doctype.salary_slip.salary_slip.make_loan_repayment_entry":
-    "dmc.overrides.salary_slip_edit.custom_make_loan_repayment_entry"
+    "dmc.overrides.loan_repayment_edit.custom_make_loan_repayment_entry"
 }
 #
 # each overriding function accepts a `data` argument;
