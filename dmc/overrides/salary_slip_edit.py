@@ -1,5 +1,5 @@
 # ========================================
-# الملف: your_app_name/overrides/salary_slip.py
+# الملف: dmc/overrides/salary_slip.py
 # ========================================
 
 import frappe
@@ -18,6 +18,9 @@ class CustomSalarySlip(SalarySlip):
         """
         ✅ Override: جلب تفاصيل القروض ولكن تجاهل الأقساط المدفوعة يدوياً
         """
+        frappe.logger().info(
+            f"🔍 Getting loan details for employee {self.employee}")
+
         # الحصول على القروض النشطة للموظف
         loans = frappe.db.sql("""
             SELECT 
@@ -35,9 +38,11 @@ class CustomSalarySlip(SalarySlip):
                 l.applicant = %s
                 AND l.company = %s
                 AND l.docstatus = 1
-                AND l.status = 'Disbursed'
+                AND l.status IN ('Disbursed', 'Partially Disbursed')
                 AND l.repayment_method IN ('Repay Over Number of Periods', 'Repay Fixed Amount per Period')
         """, (self.employee, self.company), as_dict=True)
+
+        frappe.logger().info(f"📋 Found {len(loans)} active loans")
 
         for loan_info in loans:
             # ✅ الحصول على الأقساط غير المدفوعة فقط في هذه الفترة
@@ -48,60 +53,100 @@ class CustomSalarySlip(SalarySlip):
             )
 
             if pending_installments:
+                frappe.logger().info(
+                    f"✅ Adding loan {loan_info.loan} with {len(pending_installments)} pending installments"
+                )
                 # إضافة القرض للخصومات
                 self.add_loan_to_salary_slip(loan_info, pending_installments)
+            else:
+                frappe.logger().info(
+                    f"⏭️ Skipping loan {loan_info.loan} - no pending installments in this period"
+                )
 
     def get_pending_loan_installments(self, loan_name, from_date, to_date):
         """
         ✅ الحصول على الأقساط غير المدفوعة فقط في فترة الراتب الحالية
-
-        CRITICAL: يتحقق من custom_is_paid
+        FIXED: يستخدم Loan Repayment Schedule مش Loan document
+        CRITICAL: يتحقق من custom_is_paid و custom_paid_amount
         """
         try:
-            loan = frappe.get_doc("Loan", loan_name)
-
-            # التحقق من وجود repayment_schedule
-            if not hasattr(loan, 'repayment_schedule') or not loan.repayment_schedule:
-                frappe.logger().info(
-                    f"Loan {loan_name} has no repayment_schedule")
-                return []
-
-            pending_installments = []
             from_date = getdate(from_date)
             to_date = getdate(to_date)
 
-            for schedule in loan.repayment_schedule:
+            frappe.logger().info(
+                f"🔎 Checking installments for loan {loan_name} between {from_date} and {to_date}"
+            )
+
+            # ✅ الحصول على جدول السداد النشط
+            active_schedule = frappe.db.sql("""
+                SELECT name
+                FROM `tabLoan Repayment Schedule`
+                WHERE loan = %s
+                AND status = 'Active'
+                AND docstatus = 1
+                ORDER BY posting_date DESC
+                LIMIT 1
+            """, loan_name, as_dict=1)
+
+            if not active_schedule:
+                frappe.logger().warning(
+                    f"⚠️ No active Loan Repayment Schedule found for {loan_name}"
+                )
+                return []
+
+            schedule_name = active_schedule[0].name
+            frappe.logger().info(f"📋 Found schedule: {schedule_name}")
+
+            # ✅ الحصول على الأقساط غير المدفوعة في الفترة
+            installments = frappe.db.sql("""
+                SELECT 
+                    rs.payment_date,
+                    rs.principal_amount,
+                    rs.interest_amount,
+                    rs.total_payment,
+                    rs.balance_loan_amount,
+                    IFNULL(rs.custom_paid_amount, 0) as paid_amount,
+                    IFNULL(rs.custom_is_paid, 0) as is_paid
+                FROM `tabRepayment Schedule` rs
+                WHERE rs.parent = %s
+                AND rs.parenttype = 'Loan Repayment Schedule'
+                AND rs.payment_date BETWEEN %s AND %s
+                ORDER BY rs.payment_date ASC
+            """, (schedule_name, from_date, to_date), as_dict=1)
+
+            pending_installments = []
+
+            for schedule in installments:
                 payment_date = getdate(schedule.payment_date)
+                total_payment = flt(schedule.total_payment)
+                paid_amount = flt(schedule.paid_amount)
+                is_paid = schedule.is_paid
 
-                # التحقق إذا كان القسط في فترة الراتب الحالية
-                if from_date <= payment_date <= to_date:
-                    # ✅ CRITICAL: التحقق من custom_is_paid
-                    is_paid = schedule.get('custom_is_paid', 0)
-                    paid_amount = flt(schedule.get('custom_paid_amount', 0))
-                    total_payment = flt(schedule.total_payment)
+                frappe.logger().info(
+                    f"📅 Installment {payment_date}: Total={total_payment}, "
+                    f"Paid={paid_amount}, Is_Paid={is_paid}"
+                )
 
-                    # إضافة فقط إذا لم يتم دفعه بالكامل
-                    if not is_paid and paid_amount < total_payment:
-                        outstanding = total_payment - paid_amount
+                # ✅ CRITICAL: إضافة فقط إذا لم يتم دفعه بالكامل
+                if not is_paid and paid_amount < total_payment:
+                    outstanding = total_payment - paid_amount
 
-                        pending_installments.append({
-                            'payment_date': schedule.payment_date,
-                            'principal_amount': flt(schedule.principal_amount),
-                            'interest_amount': flt(schedule.interest_amount),
-                            'total_payment': outstanding,  # المبلغ المتبقي فقط
-                            'balance_loan_amount': flt(schedule.balance_loan_amount)
-                        })
+                    pending_installments.append({
+                        'payment_date': schedule.payment_date,
+                        'principal_amount': flt(schedule.principal_amount),
+                        'interest_amount': flt(schedule.interest_amount),
+                        'total_payment': outstanding,  # المبلغ المتبقي فقط
+                        'balance_loan_amount': flt(schedule.balance_loan_amount)
+                    })
 
-                        frappe.logger().info(
-                            f"✅ Salary Slip {self.name}: Adding unpaid installment "
-                            f"for {loan_name} - Date: {payment_date}, Amount: {outstanding}"
-                        )
-                    else:
-                        frappe.logger().info(
-                            f"⏭️  Salary Slip {self.name}: Skipping paid installment "
-                            f"for {loan_name} - Date: {payment_date}, "
-                            f"custom_is_paid: {is_paid}, paid: {paid_amount}/{total_payment}"
-                        )
+                    frappe.logger().info(
+                        f"✅ Added unpaid installment: Date={payment_date}, Amount={outstanding}"
+                    )
+                else:
+                    frappe.logger().info(
+                        f"⏭️ Skipped paid installment: Date={payment_date}, "
+                        f"Paid={paid_amount}/{total_payment}"
+                    )
 
             return pending_installments
 
@@ -161,8 +206,9 @@ class CustomSalarySlip(SalarySlip):
                 })
 
                 frappe.logger().info(
-                    f"✅ Added loan {loan_info.get('loan')} to Salary Slip {self.name}: "
-                    f"Principal: {total_principal}, Interest: {total_interest}"
+                    f"✅ Added loan {loan_info.get('loan')} to Salary Slip: "
+                    f"Principal={total_principal}, Interest={total_interest}, "
+                    f"Total={total_principal + total_interest}"
                 )
 
         except Exception as e:
@@ -193,6 +239,7 @@ class CustomSalarySlip(SalarySlip):
                 })
                 doc.insert(ignore_permissions=True)
                 component = doc.name
+                frappe.logger().info("✅ Created new Salary Component: Loan Repayment")
             except Exception as e:
                 frappe.log_error(
                     message=frappe.get_traceback(),
@@ -211,6 +258,9 @@ class CustomSalarySlip(SalarySlip):
             total_loan_amount = sum([flt(loan.total_payment)
                                     for loan in self.loans])
             frappe.logger().info(
-                f"Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
+                f"💵 Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
                 f"from {len(self.loans)} loan(s)"
             )
+        else:
+            frappe.logger().info(
+                f"📭 Salary Slip {self.name} - No loans to deduct")

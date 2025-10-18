@@ -139,6 +139,7 @@ override_doctype_class = {
     "Loan Repayment": "dmc.overrides.loan_repayment_edit.CustomLoanRepayment",
     "Payment Entry": "dmc.overrides.payment_entry_edit.CustomPaymentEntry",
     "Purchase Receipt": "dmc.overrides.buying_controller_edit.CustomBuyingController",
+    "Salary Slip": "dmc.overrides.salary_slip_edit.CustomSalarySlip"
 }
 
 # Document Events
@@ -146,34 +147,34 @@ override_doctype_class = {
 # Hook on document methods and events
 
 
-# doc_events = {
-#     "Salary Slip": {
-#         "before_submit": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction"
-
-
-#     }
-# }
+doc_events = {
+    "Salary Slip": {
+        "validate": "dmc.overrides.salary_slip_edit.prevent_duplicate_loan_deduction",
+        "before_save": "dmc.overrides.salary_slip_edit.prevent_duplicate_loan_deduction",
+        "on_submit": "dmc.overrides.salary_slip_edit.prevent_duplicate_loan_deduction"
+    }
+}
 
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-# 	"all": [
-# 		"dmc.tasks.all"
-# 	],
-	"daily": [
-		"dmc.tasks.daily"
-	],
-# 	"hourly": [
-# 		"dmc.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"dmc.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"dmc.tasks.monthly"
-# 	],
+    # 	"all": [
+    # 		"dmc.tasks.all"
+    # 	],
+    "daily": [
+        "dmc.tasks.daily"
+    ],
+    # 	"hourly": [
+    # 		"dmc.tasks.hourly"
+    # 	],
+    # 	"weekly": [
+    # 		"dmc.tasks.weekly"
+    # 	],
+    # 	"monthly": [
+    # 		"dmc.tasks.monthly"
+    # 	],
 }
 
 # Testing
