@@ -149,9 +149,12 @@ override_doctype_class = {
 
 doc_events = {
     "Salary Slip": {
+        # ✅ Clean loans table and set skip flag before save
         "validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
         "before_save": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
-        "on_submit": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction"
+
+        # ✅ Persist skip flag after submit (CRITICAL FIX)
+        "on_submit": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit"
     }
 }
 
