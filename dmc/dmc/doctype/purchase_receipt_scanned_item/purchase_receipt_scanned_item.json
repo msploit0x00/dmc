@@ -15,6 +15,7 @@
   "received_qty",
   "received_stock_qty",
   "stock_qty",
+  "warehouse",
   "barcode"
  ],
  "fields": [
@@ -88,13 +89,19 @@
    "fieldtype": "Data",
    "label": "Barcode",
    "read_only": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-15 10:50:40.881768",
+ "modified": "2025-10-19 15:06:09.119311",
  "modified_by": "Administrator",
  "module": "Dmc",
  "name": "Purchase Receipt Scanned Item",
