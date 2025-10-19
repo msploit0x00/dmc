@@ -558,6 +558,46 @@ frappe.ui.form.on('Purchase Receipt', {
             }
         });
     },
+    set_warehouse: function (frm) {
+        if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
+            return;
+        }
+
+        const newWarehouse = frm.doc.set_warehouse;
+
+        // Update warehouse for all scanned items
+        frm.doc.custom_scanned_items.forEach(scannedItem => {
+            if (newWarehouse) {
+                scannedItem.warehouse = newWarehouse;
+            } else {
+                // If set_warehouse is cleared, fetch item's default warehouse
+                frappe.call({
+                    method: 'frappe.client.get',
+                    args: {
+                        doctype: 'Item',
+                        name: scannedItem.item_code
+                    },
+                    async: false,
+                    callback: function (response) {
+                        if (response.message && response.message.item_defaults) {
+                            const itemDefault = response.message.item_defaults.find(d => d.company === frm.doc.company);
+                            if (itemDefault && itemDefault.default_warehouse) {
+                                scannedItem.warehouse = itemDefault.default_warehouse;
+                            } else {
+                                scannedItem.warehouse = '';
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        frm.refresh_field('custom_scanned_items');
+
+        // Also update the main items table
+        aggregate_scanned_to_items(frm);
+        frm.refresh_field('items');
+    },
 
     items_add: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
@@ -639,45 +679,129 @@ function store_purchase_invoice_reference(frm) {
     }
 }
 
+// function process_scanned_item(frm, itemData) {
+//     const { barcode, batchNo, itemCode, uom, conversionRate, expiryDate } = itemData;
+
+//     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
+//         const itemName = r.item_name;
+
+//         let existingScannedRow = null;
+//         if (frm.doc.custom_scanned_items && frm.doc.custom_scanned_items.length > 0) {
+//             existingScannedRow = frm.doc.custom_scanned_items.find(item =>
+//                 String(item.item_code).trim() === String(itemCode).trim() &&
+//                 String(item.batch_no).trim() === String(batchNo).trim() &&
+//                 String(item.uom).trim() === String(uom).trim()
+//             );
+//         }
+
+//         if (existingScannedRow) {
+//             let newReceivedQty = flt(existingScannedRow.received_qty) + 1;
+//             let newReceivedStockQty = newReceivedQty * conversionRate;
+
+//             existingScannedRow.received_qty = newReceivedQty;
+//             existingScannedRow.received_stock_qty = newReceivedStockQty;
+//             existingScannedRow.stock_qty = newReceivedStockQty;
+//         } else {
+//             frm.add_child('custom_scanned_items', {
+//                 item_code: itemCode,
+//                 item_name: itemName,
+//                 batch_no: batchNo,
+//                 uom: uom,
+//                 conversion_factor: conversionRate,
+//                 received_qty: 1,
+//                 received_stock_qty: 1 * conversionRate,
+//                 stock_qty: 1 * conversionRate,
+//                 barcode: barcode
+//             });
+//         }
+
+//         frm.set_value('scan_barcode', '');
+
+//         debounced_aggregate_and_refresh(frm);
+//     });
+// }
 function process_scanned_item(frm, itemData) {
     const { barcode, batchNo, itemCode, uom, conversionRate, expiryDate } = itemData;
 
-    frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
-        const itemName = r.item_name;
+    // Get the full Item document to access defaults
+    frappe.call({
+        method: 'frappe.client.get',
+        args: {
+            doctype: 'Item',
+            name: itemCode
+        },
+        callback: function (response) {
+            if (!response.message) {
+                frappe.msgprint(__("Could not fetch Item details."));
+                frm.set_value('scan_barcode', '');
+                return;
+            }
 
-        let existingScannedRow = null;
-        if (frm.doc.custom_scanned_items && frm.doc.custom_scanned_items.length > 0) {
-            existingScannedRow = frm.doc.custom_scanned_items.find(item =>
-                String(item.item_code).trim() === String(itemCode).trim() &&
-                String(item.batch_no).trim() === String(batchNo).trim() &&
-                String(item.uom).trim() === String(uom).trim()
-            );
+            const item = response.message;
+            const itemName = item.item_name;
+
+            // Find default warehouse for the current company
+            let defaultWarehouse = '';
+            if (item.item_defaults && item.item_defaults.length > 0) {
+                const itemDefault = item.item_defaults.find(d => d.company === frm.doc.company);
+                if (itemDefault && itemDefault.default_warehouse) {
+                    defaultWarehouse = itemDefault.default_warehouse;
+                }
+            }
+
+            // Determine which warehouse to use (for receiving)
+            const warehouseToUse = frm.doc.set_warehouse || defaultWarehouse || '';
+
+            // Determine which accepted warehouse to use
+            // Assuming you have a field like 'custom_set_accepted_warehouse' in Purchase Receipt
+            const acceptedWarehouseToUse = frm.doc.custom_set_accepted_warehouse || defaultWarehouse || '';
+
+            let existingScannedRow = null;
+            if (frm.doc.custom_scanned_items && frm.doc.custom_scanned_items.length > 0) {
+                existingScannedRow = frm.doc.custom_scanned_items.find(item =>
+                    String(item.item_code).trim() === String(itemCode).trim() &&
+                    String(item.batch_no).trim() === String(batchNo).trim() &&
+                    String(item.uom).trim() === String(uom).trim()
+                );
+            }
+
+            if (existingScannedRow) {
+                let newReceivedQty = flt(existingScannedRow.received_qty) + 1;
+                let newReceivedStockQty = newReceivedQty * conversionRate;
+
+                existingScannedRow.received_qty = newReceivedQty;
+                existingScannedRow.received_stock_qty = newReceivedStockQty;
+                existingScannedRow.stock_qty = newReceivedStockQty;
+
+                // Update warehouse if it's different
+                if (warehouseToUse) {
+                    existingScannedRow.warehouse = warehouseToUse;
+                }
+
+                // Update accepted warehouse if it's different
+                if (acceptedWarehouseToUse) {
+                    existingScannedRow.accepted_warehouse = acceptedWarehouseToUse;
+                }
+            } else {
+                frm.add_child('custom_scanned_items', {
+                    item_code: itemCode,
+                    item_name: itemName,
+                    batch_no: batchNo,
+                    uom: uom,
+                    conversion_factor: conversionRate,
+                    received_qty: 1,
+                    received_stock_qty: 1 * conversionRate,
+                    stock_qty: 1 * conversionRate,
+                    barcode: barcode,
+                    warehouse: warehouseToUse,
+                    accepted_warehouse: acceptedWarehouseToUse
+                });
+            }
+
+            frm.set_value('scan_barcode', '');
+
+            debounced_aggregate_and_refresh(frm);
         }
-
-        if (existingScannedRow) {
-            let newReceivedQty = flt(existingScannedRow.received_qty) + 1;
-            let newReceivedStockQty = newReceivedQty * conversionRate;
-
-            existingScannedRow.received_qty = newReceivedQty;
-            existingScannedRow.received_stock_qty = newReceivedStockQty;
-            existingScannedRow.stock_qty = newReceivedStockQty;
-        } else {
-            frm.add_child('custom_scanned_items', {
-                item_code: itemCode,
-                item_name: itemName,
-                batch_no: batchNo,
-                uom: uom,
-                conversion_factor: conversionRate,
-                received_qty: 1,
-                received_stock_qty: 1 * conversionRate,
-                stock_qty: 1 * conversionRate,
-                barcode: barcode
-            });
-        }
-
-        frm.set_value('scan_barcode', '');
-
-        debounced_aggregate_and_refresh(frm);
     });
 }
 
@@ -694,6 +818,48 @@ function debounced_aggregate_and_refresh(frm) {
         }, 100);
     }, 400);
 }
+
+// function aggregate_scanned_to_items(frm) {
+//     if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
+//         return;
+//     }
+
+//     if (!frm.doc.items || frm.doc.items.length === 0) {
+//         return;
+//     }
+
+//     const aggregateMap = {};
+
+//     frm.doc.custom_scanned_items.forEach(scannedItem => {
+//         const key = `${scannedItem.item_code}_${scannedItem.batch_no}`;
+
+//         if (!aggregateMap[key]) {
+//             aggregateMap[key] = {
+//                 item_code: scannedItem.item_code,
+//                 batch_no: scannedItem.batch_no,
+//                 total_received_stock_qty: 0
+//             };
+//         }
+
+//         aggregateMap[key].total_received_stock_qty += flt(scannedItem.received_stock_qty);
+//     });
+
+//     frm.doc.items.forEach(item => {
+//         const key = `${item.item_code}_${item.batch_no}`;
+
+//         if (aggregateMap[key]) {
+//             const aggregatedReceivedQty = aggregateMap[key].total_received_stock_qty;
+
+//             item.received_stock_qty = aggregatedReceivedQty;
+
+//             if (item.conversion_factor && item.conversion_factor > 0) {
+//                 item.received_qty = aggregatedReceivedQty / item.conversion_factor;
+//             }
+//         }
+//     });
+
+//     return true;
+// }
 
 function aggregate_scanned_to_items(frm) {
     if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
@@ -731,12 +897,24 @@ function aggregate_scanned_to_items(frm) {
             if (item.conversion_factor && item.conversion_factor > 0) {
                 item.received_qty = aggregatedReceivedQty / item.conversion_factor;
             }
+
+            // Update warehouse and accepted_warehouse from scanned items
+            const scannedItem = frm.doc.custom_scanned_items.find(si =>
+                si.item_code === item.item_code && si.batch_no === item.batch_no
+            );
+            if (scannedItem) {
+                if (scannedItem.warehouse) {
+                    item.warehouse = scannedItem.warehouse;
+                }
+                if (scannedItem.accepted_warehouse) {
+                    item.accepted_warehouse = scannedItem.accepted_warehouse;
+                }
+            }
         }
     });
 
     return true;
 }
-
 function validate_purchase_receipt(frm) {
     return new Promise((resolve, reject) => {
         let purchaseInvoice = get_purchase_invoice_reference(frm);
