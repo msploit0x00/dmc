@@ -149,10 +149,10 @@ override_doctype_class = {
 
 doc_events = {
     "Salary Slip": {
-        "before_validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
-        "validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
-        "before_save": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit",
-        "on_submit": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit",
+        # "before_validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
+        "validate": "dmc.overrides.salary_slip_edit.prevent_duplicate_loan_deduction",
+        # "before_save": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit",
+        "on_submit": "dmc.overrides.salary_slip_edit.persist_skip_flag_on_submit",
     },
 }
 
