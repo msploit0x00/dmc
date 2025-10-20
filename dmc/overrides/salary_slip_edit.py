@@ -17,26 +17,44 @@ class CustomSalarySlip(SalarySlip):
     """
 
     def validate(self):
-        """Override validate مع تحقق نهائي"""
         super(CustomSalarySlip, self).validate()
 
-        # ✅ CRITICAL: Force check if loans table is empty
+        # ✅ Check if loans table exists and handle accordingly
         if not self.loans or len(self.loans) == 0:
+            # No loans → zero all totals
             self.total_loan_repayment = 0
             self.total_principal_amount = 0
             self.total_interest_amount = 0
 
             frappe.logger().info(
-                f"✅ {self.name}: No loans - forcing totals to ZERO"
+                f"✅ {self.name}: No loans found - totals reset to ZERO"
             )
         else:
-            # تسجيل تفاصيل القروض للـ debugging
+            # There are active loans → calculate totals
             total_loan_amount = sum([flt(loan.total_payment)
                                     for loan in self.loans])
             frappe.logger().info(
                 f"💵 Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
                 f"from {len(self.loans)} loan(s)"
             )
+
+            # Optional: ensure field consistency if needed
+            self.total_loan_repayment = total_loan_amount
+
+        # ✅ Safety check (redundant but ensures correct totals even if loans cleared later)
+        if not self.get("loans") or len(self.loans) == 0:
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+            frappe.logger().info(
+                f"✅ {self.name}: Loan totals reset to 0 (no active loans)")
+
+        # Optional: if you want to ensure net pay recalculated properly
+        try:
+            self.calculate_net_pay()
+        except Exception as e:
+            frappe.logger().warning(
+                f"⚠️ {self.name}: Failed to recalc net pay after loan reset - {str(e)}")
 
     def on_submit(self):
         # ✅ Ensure Net Pay > 0
