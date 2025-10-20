@@ -1,7 +1,3 @@
-# ========================================
-# الملف: dmc/overrides/salary_slip_edit.py
-# ========================================
-
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate
@@ -151,10 +147,6 @@ class CustomSalarySlip(SalarySlip):
                             f"⏭️ Skipped FULLY PAID installment: Date={payment_date}, "
                             f"Paid={paid_amount}/{total_payment}, Ref={payment_ref}"
                         )
-                    else:
-                        frappe.logger().info(
-                            f"⏭️ Skipped installment: Date={payment_date}"
-                        )
 
             return pending_installments
 
@@ -221,7 +213,6 @@ class CustomSalarySlip(SalarySlip):
         )
 
         if not component:
-            # إنشاء إذا لم يكن موجوداً
             try:
                 doc = frappe.get_doc({
                     "doctype": "Salary Component",
@@ -232,14 +223,13 @@ class CustomSalarySlip(SalarySlip):
                 })
                 doc.insert(ignore_permissions=True)
                 component = doc.name
-                frappe.logger().info(
-                    "✅ Created new Salary Component: Loan Repayment")
+                frappe.logger().info("✅ Created new Salary Component: Loan Repayment")
             except Exception as e:
                 frappe.log_error(
                     message=frappe.get_traceback(),
                     title="Error creating Loan Repayment component"
                 )
-                component = "Loan Repayment"  # Fallback
+                component = "Loan Repayment"
 
         return component
 
@@ -247,10 +237,9 @@ class CustomSalarySlip(SalarySlip):
         """Override validate لإضافة تحققات مخصصة"""
         super(CustomSalarySlip, self).validate()
 
-        # تسجيل تفاصيل القروض للـ debugging
         if self.loans:
             total_loan_amount = sum([flt(loan.total_payment)
-                                     for loan in self.loans])
+                                    for loan in self.loans])
             frappe.logger().info(
                 f"💵 Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
                 f"from {len(self.loans)} loan(s)"
@@ -258,3 +247,30 @@ class CustomSalarySlip(SalarySlip):
         else:
             frappe.logger().info(
                 f"📭 Salary Slip {self.name} - No loans to deduct")
+
+    def on_submit(self):
+        """
+        ✅ CRITICAL OVERRIDE: Use custom loan repayment logic
+        """
+        # ✅ Validation
+        if self.net_pay < 0:
+            frappe.throw(_("Net Pay cannot be less than 0"))
+
+        # ✅ Set status
+        self.set_status()
+        self.update_status(self.name)
+
+        # ✅ CRITICAL: Use our custom function instead of ERPNext's
+        from dmc.overrides.loan_repayment_edit import custom_make_loan_repayment_entry
+        custom_make_loan_repayment_entry(self)
+
+        # ✅ Email salary slip
+        if not frappe.flags.via_payroll_entry and not frappe.flags.in_patch:
+            email_salary_slip = frappe.db.get_single_value(
+                "Payroll Settings", "email_salary_slip_to_employee"
+            )
+            if email_salary_slip:
+                self.email_salary_slip()
+
+        # ✅ Update payment status
+        self.update_payment_status_for_gratuity_and_leave_encashment()
