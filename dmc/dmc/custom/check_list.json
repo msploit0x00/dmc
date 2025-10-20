@@ -17,7 +17,7 @@
    "field_name": "amount",
    "idx": 0,
    "is_system_generated": 0,
-   "modified": "2025-09-30 12:53:15.675227",
+   "modified": "2025-10-15 10:45:00.612100",
    "modified_by": "Administrator",
    "module": null,
    "name": "Check List-amount-mandatory_depends_on",
