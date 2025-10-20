@@ -189,7 +189,7 @@ class CustomSalarySlip(SalarySlip):
         """
         try:
             from lending.loan_management.doctype.loan_repayment.loan_repayment import create_repayment_entry
-            from erpnext.payroll.doctype.payroll_entry.payroll_entry import get_payroll_payable_account
+            from hrms.payroll.doctype.payroll_entry.payroll_entry import get_payroll_payable_account
 
             payroll_payable_account = get_payroll_payable_account(
                 self.company, self.payroll_entry
