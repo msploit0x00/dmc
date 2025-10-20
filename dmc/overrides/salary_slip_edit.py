@@ -250,27 +250,26 @@ class CustomSalarySlip(SalarySlip):
 
     def on_submit(self):
         """
-        ✅ CRITICAL OVERRIDE: Use custom loan repayment logic
+        ✅ Override on_submit - intercept loan repayment, but call parent for everything else
         """
-        # ✅ Validation
-        if self.net_pay < 0:
-            frappe.throw(_("Net Pay cannot be less than 0"))
-
-        # ✅ Set status
-        self.set_status()
-        self.update_status(self.name)
-
-        # ✅ CRITICAL: Use our custom function instead of ERPNext's
+        # ✅ Temporarily replace the make_loan_repayment_entry method
         from dmc.overrides.loan_repayment_edit import custom_make_loan_repayment_entry
-        custom_make_loan_repayment_entry(self)
 
-        # ✅ Email salary slip
-        if not frappe.flags.via_payroll_entry and not frappe.flags.in_patch:
-            email_salary_slip = frappe.db.get_single_value(
-                "Payroll Settings", "email_salary_slip_to_employee"
-            )
-            if email_salary_slip:
-                self.email_salary_slip()
+        # Store original method
+        original_make_loan_repayment = None
+        if hasattr(SalarySlip, 'make_loan_repayment_entry'):
+            original_make_loan_repayment = SalarySlip.make_loan_repayment_entry
 
-        # ✅ Update payment status
-        self.update_payment_status_for_gratuity_and_leave_encashment()
+            # Replace with custom implementation
+            def custom_wrapper(self):
+                custom_make_loan_repayment_entry(self)
+
+            SalarySlip.make_loan_repayment_entry = custom_wrapper
+
+        try:
+            # ✅ Call parent's on_submit (this handles everything including gratuity/leave encashment)
+            super(CustomSalarySlip, self).on_submit()
+        finally:
+            # ✅ Restore original method
+            if original_make_loan_repayment:
+                SalarySlip.make_loan_repayment_entry = original_make_loan_repayment
