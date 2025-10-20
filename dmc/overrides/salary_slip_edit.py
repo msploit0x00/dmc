@@ -1,3 +1,7 @@
+# ========================================
+# الملف: dmc/overrides/salary_slip_edit.py
+# ========================================
+
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate
@@ -12,15 +16,16 @@ class CustomSalarySlip(SalarySlip):
 
     def get_loan_details(self):
         """
-        ✅ Override: جلب تفاصيل القروض ولكن تجاهل الأقساط المدفوعة يدوياً
+        ✅ ULTIMATE FIX: Override - جلب القروض من ACTIVE Schedule فقط
+        ✅ تجاهل الأقساط المدفوعة يدوياً (عن طريق Payment Entry)
         """
         frappe.logger().info(
             f"🔍 Getting loan details for employee {self.employee}"
         )
 
-        # الحصول على القروض النشطة للموظف
-        loans = frappe.db.sql("""
-            SELECT 
+        # ✅ STEP 1: جلب القروض اللي عندها ACTIVE Schedule فقط
+        loans_with_active_schedule = frappe.db.sql("""
+            SELECT DISTINCT
                 l.name as loan,
                 l.total_payment,
                 l.total_amount_paid,
@@ -29,19 +34,24 @@ class CustomSalarySlip(SalarySlip):
                 l.loan_account,
                 l.repayment_method,
                 l.repayment_start_date,
-                l.penalty_income_account
+                l.penalty_income_account,
+                lrs.name as schedule_name
             FROM `tabLoan` l
+            INNER JOIN `tabLoan Repayment Schedule` lrs ON lrs.loan = l.name
             WHERE 
                 l.applicant = %s
                 AND l.company = %s
                 AND l.docstatus = 1
-                AND l.status IN ('Disbursed', 'Partially Disbursed')
+                AND lrs.status = 'Active'
+                AND lrs.docstatus = 1
                 AND l.repayment_method IN ('Repay Over Number of Periods', 'Repay Fixed Amount per Period')
         """, (self.employee, self.company), as_dict=True)
 
-        frappe.logger().info(f"📋 Found {len(loans)} active loans")
+        frappe.logger().info(
+            f"📋 Found {len(loans_with_active_schedule)} loans with Active schedules")
 
-        for loan_info in loans:
+        # ✅ STEP 2: لكل قرض، تحقق من وجود أقساط غير مدفوعة
+        for loan_info in loans_with_active_schedule:
             # ✅ الحصول على الأقساط غير المدفوعة فقط في هذه الفترة
             pending_installments = self.get_pending_loan_installments(
                 loan_info.loan,
@@ -57,12 +67,13 @@ class CustomSalarySlip(SalarySlip):
                 self.add_loan_to_salary_slip(loan_info, pending_installments)
             else:
                 frappe.logger().info(
-                    f"⏭️ Skipping loan {loan_info.loan} - no pending installments in this period"
+                    f"⏭️ Skipping loan {loan_info.loan} - no pending installments in this period "
+                    f"(all marked as paid via Payment Entry or Salary Slip)"
                 )
 
     def get_pending_loan_installments(self, loan_name, from_date, to_date):
         """
-        ✅ الحصول على الأقساط غير المدفوعة فقط في فترة الراتب الحالية
+        ✅ ULTIMATE FIX: الحصول على الأقساط غير المدفوعة من ACTIVE Schedule فقط
         CRITICAL: يتحقق من custom_is_paid و custom_paid_amount
         """
         try:
@@ -93,7 +104,7 @@ class CustomSalarySlip(SalarySlip):
             schedule_name = active_schedule[0].name
             frappe.logger().info(f"📋 Found schedule: {schedule_name}")
 
-            # ✅ الحصول على الأقساط غير المدفوعة في الفترة
+            # ✅ CRITICAL: الحصول على الأقساط غير المدفوعة في الفترة
             installments = frappe.db.sql("""
                 SELECT 
                     rs.name,
@@ -127,6 +138,7 @@ class CustomSalarySlip(SalarySlip):
                 )
 
                 # ✅ CRITICAL: إضافة فقط إذا لم يتم دفعه بالكامل
+                # سواء كان دفع يدوي (Payment Entry) أو من Salary Slip
                 if not is_paid and paid_amount < total_payment:
                     outstanding = total_payment - paid_amount
 
@@ -143,9 +155,14 @@ class CustomSalarySlip(SalarySlip):
                     )
                 else:
                     if is_paid:
+                        ref_type = "Payment Entry" if payment_ref and "PAY-" in payment_ref else "Salary Slip"
                         frappe.logger().info(
                             f"⏭️ Skipped FULLY PAID installment: Date={payment_date}, "
-                            f"Paid={paid_amount}/{total_payment}, Ref={payment_ref}"
+                            f"Paid={paid_amount}/{total_payment}, Ref={payment_ref} ({ref_type})"
+                        )
+                    else:
+                        frappe.logger().info(
+                            f"⏭️ Skipped installment: Date={payment_date}"
                         )
 
             return pending_installments
@@ -213,6 +230,7 @@ class CustomSalarySlip(SalarySlip):
         )
 
         if not component:
+            # إنشاء إذا لم يكن موجوداً
             try:
                 doc = frappe.get_doc({
                     "doctype": "Salary Component",
@@ -223,53 +241,35 @@ class CustomSalarySlip(SalarySlip):
                 })
                 doc.insert(ignore_permissions=True)
                 component = doc.name
-                frappe.logger().info("✅ Created new Salary Component: Loan Repayment")
+                frappe.logger().info(
+                    "✅ Created new Salary Component: Loan Repayment")
             except Exception as e:
                 frappe.log_error(
                     message=frappe.get_traceback(),
                     title="Error creating Loan Repayment component"
                 )
-                component = "Loan Repayment"
+                component = "Loan Repayment"  # Fallback
 
         return component
 
     def validate(self):
-        """Override validate لإضافة تحققات مخصصة"""
+        """Override validate مع تحقق نهائي"""
         super(CustomSalarySlip, self).validate()
 
-        if self.loans:
+        # ✅ CRITICAL: Force check if loans table is empty
+        if not self.loans or len(self.loans) == 0:
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+
+            frappe.logger().info(
+                f"✅ {self.name}: No loans - forcing totals to ZERO"
+            )
+        else:
+            # تسجيل تفاصيل القروض للـ debugging
             total_loan_amount = sum([flt(loan.total_payment)
                                     for loan in self.loans])
             frappe.logger().info(
                 f"💵 Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
                 f"from {len(self.loans)} loan(s)"
             )
-        else:
-            frappe.logger().info(
-                f"📭 Salary Slip {self.name} - No loans to deduct")
-
-    def on_submit(self):
-        """
-        ✅ Override on_submit - intercept loan repayment, but call parent for everything else
-        """
-        # ✅ Temporarily replace the make_loan_repayment_entry method
-        from dmc.overrides.loan_repayment_edit import custom_make_loan_repayment_entry
-
-        # Store original method
-        original_make_loan_repayment = None
-        if hasattr(SalarySlip, 'make_loan_repayment_entry'):
-            original_make_loan_repayment = SalarySlip.make_loan_repayment_entry
-
-            # Replace with custom implementation
-            def custom_wrapper(self):
-                custom_make_loan_repayment_entry(self)
-
-            SalarySlip.make_loan_repayment_entry = custom_wrapper
-
-        try:
-            # ✅ Call parent's on_submit (this handles everything including gratuity/leave encashment)
-            super(CustomSalarySlip, self).on_submit()
-        finally:
-            # ✅ Restore original method
-            if original_make_loan_repayment:
-                SalarySlip.make_loan_repayment_entry = original_make_loan_repayment
