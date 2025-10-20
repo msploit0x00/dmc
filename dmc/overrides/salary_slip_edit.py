@@ -39,14 +39,11 @@ class CustomSalarySlip(SalarySlip):
             )
 
     def on_submit(self):
-        """
-        🔥 CRITICAL OVERRIDE: منع إنشاء Loan Repayment Entry للقروض المدفوعة يدوياً
-        """
-        # ✅ التحقق من Net Pay
+        # ✅ Ensure Net Pay > 0
         if self.net_pay < 0:
             frappe.throw(_("Net Pay cannot be less than 0"))
 
-        # ✅ تحديث الحالة
+        # ✅ Update status
         self.set_status()
         self.update_status(self.name)
 
@@ -55,15 +52,13 @@ class CustomSalarySlip(SalarySlip):
 
         if should_create_loan_repayment:
             frappe.logger().info(
-                f"✅ Creating Loan Repayment Entry for {self.name}"
-            )
+                f"✅ Creating Loan Repayment Entry for {self.name}")
             self._make_loan_repayment_entry()
         else:
             frappe.logger().info(
-                f"🚫 SKIPPED Loan Repayment Entry creation for {self.name}"
-            )
+                f"🚫 SKIPPED Loan Repayment Entry creation for {self.name}")
 
-        # ✅ إرسال الإيميل (إذا مطلوب)
+        # ✅ Email slip if required
         if not frappe.flags.via_payroll_entry and not frappe.flags.in_patch:
             email_salary_slip = cint(
                 frappe.db.get_single_value(
@@ -72,8 +67,9 @@ class CustomSalarySlip(SalarySlip):
             if email_salary_slip:
                 self.email_salary_slip()
 
-        # ✅ تحديث حالة الدفع
-        self.update_payment_status_for_gratuity_and_leave_encashment()
+        # ✅ Skip missing method gracefully
+        if hasattr(super(), "update_payment_status_for_gratuity_and_leave_encashment"):
+            super().update_payment_status_for_gratuity_and_leave_encashment()
 
     def _should_create_loan_repayment_entry(self):
         """
