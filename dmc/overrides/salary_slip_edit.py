@@ -11,9 +11,11 @@ from hrms.payroll.doctype.salary_slip.salary_slip import SalarySlip
 class CustomSalarySlip(SalarySlip):
     """
     Salary Slip مخصص
-    الهدف: 
+    الهدف:
     1. تجاهل الأقساط المدفوعة يدوياً (custom_is_paid = 1)
     2. منع إنشاء Loan Repayment Entry للقروض المدفوعة يدوياً
+    3. ضمان تصفير الحقول المتعلقة بالقروض عند عدم وجود قروض
+    4. حماية ضد double posting ورفع لوج واضح
     """
 
     def validate(self):
@@ -37,13 +39,46 @@ class CustomSalarySlip(SalarySlip):
                 f"💵 Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
                 f"from {len(self.loans)} loan(s)"
             )
+            # تأكد من الاتساق في الحقول اذا كانت معبأة من مكان آخر
+            try:
+                # تجميع مشابه لما يظهر في Slip (مجاميع principal/interest إن وُجدت)
+                total_principal = sum(
+                    [flt(getattr(loan, "principal_amount", 0)) for loan in self.loans])
+                total_interest = sum(
+                    [flt(getattr(loan, "interest_amount", 0)) for loan in self.loans])
+                self.total_principal_amount = total_principal
+                self.total_interest_amount = total_interest
+                self.total_loan_repayment = flt(
+                    total_principal + total_interest)
+            except Exception:
+                # لا تهدر العملية اذا فشل التجميع
+                pass
+
+        # ✅ Safety check (redundant but ensures correct totals even if loans cleared later)
+        if not self.get("loans") or len(self.loans) == 0:
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+            frappe.logger().info(
+                f"✅ {self.name}: Loan totals reset to 0 (no active loans)")
+
+        # Optional: if you want to ensure net pay recalculated properly
+        try:
+            # إعادة حساب net pay بعد أي تغيير على الحقول
+            self.calculate_net_pay()
+        except Exception as e:
+            frappe.logger().warning(
+                f"⚠️ {self.name}: Failed to recalc net pay after loan reset - {str(e)}")
 
     def on_submit(self):
-        # ✅ Ensure Net Pay > 0
+        """
+        🔥 CRITICAL OVERRIDE: منع إنشاء Loan Repayment Entry للقروض المدفوعة يدوياً
+        """
+        # ✅ التحقق من Net Pay
         if self.net_pay < 0:
             frappe.throw(_("Net Pay cannot be less than 0"))
 
-        # ✅ Update status
+        # ✅ تحديث الحالة
         self.set_status()
         self.update_status(self.name)
 
@@ -52,24 +87,37 @@ class CustomSalarySlip(SalarySlip):
 
         if should_create_loan_repayment:
             frappe.logger().info(
-                f"✅ Creating Loan Repayment Entry for {self.name}")
+                f"✅ Creating Loan Repayment Entry for {self.name}"
+            )
             self._make_loan_repayment_entry()
         else:
             frappe.logger().info(
-                f"🚫 SKIPPED Loan Repayment Entry creation for {self.name}")
+                f"🚫 SKIPPED Loan Repayment Entry creation for {self.name}"
+            )
 
-        # ✅ Email slip if required
+        # ✅ إرسال الإيميل (إذا مطلوب)
         if not frappe.flags.via_payroll_entry and not frappe.flags.in_patch:
             email_salary_slip = cint(
                 frappe.db.get_single_value(
                     "Payroll Settings", "email_salary_slip_to_employee")
             )
             if email_salary_slip:
-                self.email_salary_slip()
+                try:
+                    self.email_salary_slip()
+                except Exception:
+                    frappe.logger().warning(
+                        f"⚠️ {self.name}: Failed to send salary slip email")
 
-        # ✅ Skip missing method gracefully
-        if hasattr(super(), "update_payment_status_for_gratuity_and_leave_encashment"):
-            super().update_payment_status_for_gratuity_and_leave_encashment()
+        # ✅ تحديث حالة الدفع — call base method only if exists on base SalarySlip
+        if hasattr(SalarySlip, "update_payment_status_for_gratuity_and_leave_encashment"):
+            try:
+                # call the base implementation if present
+                super(
+                    CustomSalarySlip, self).update_payment_status_for_gratuity_and_leave_encashment()
+            except Exception:
+                # don't break payroll submit if this fails
+                frappe.logger().warning(
+                    f"⚠️ {self.name}: update_payment_status_for_gratuity_and_leave_encashment() failed or not applicable")
 
     def _should_create_loan_repayment_entry(self):
         """
@@ -188,42 +236,72 @@ class CustomSalarySlip(SalarySlip):
         🔥 إنشاء Loan Repayment Entry (نسخة معدلة من الكود الأصلي)
         """
         try:
+            # create_repayment_entry is defined in lending app (loan_management)
             from lending.loan_management.doctype.loan_repayment.loan_repayment import create_repayment_entry
+        except Exception:
+            create_repayment_entry = None
+            frappe.logger().warning(
+                f"⚠️ {self.name}: lending.loan_management.create_repayment_entry import failed")
+
+        # Safe import for get_payroll_payable_account (HRMS v16 vs older ERPNext)
+        get_payroll_payable_account = None
+        try:
             from hrms.payroll.doctype.salary_slip.salary_slip import get_payroll_payable_account
+        except Exception:
+            try:
+                from erpnext.payroll.doctype.payroll_entry.payroll_entry import get_payroll_payable_account
+            except Exception:
+                get_payroll_payable_account = None
+        # if imported successfully, variable is function; otherwise None
 
-            payroll_payable_account = get_payroll_payable_account(
-                self.company, self.payroll_entry
-            )
+        payroll_payable_account = None
+        if get_payroll_payable_account:
+            try:
+                payroll_payable_account = get_payroll_payable_account(
+                    self.company, self.payroll_entry)
+            except Exception:
+                frappe.logger().warning(
+                    f"⚠️ {self.name}: get_payroll_payable_account() failed")
 
-            process_payroll_accounting_entry_based_on_employee = frappe.db.get_single_value(
-                "Payroll Settings", "process_payroll_accounting_entry_based_on_employee"
-            )
+        process_payroll_accounting_entry_based_on_employee = frappe.db.get_single_value(
+            "Payroll Settings", "process_payroll_accounting_entry_based_on_employee"
+        )
 
-            if not self.get("loans"):
-                return
+        if not self.get("loans"):
+            # safety: ensure totals are zero
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+            return
 
-            for loan in self.get("loans", []):
-                if not loan.total_payment:
-                    continue
+        for loan in self.get("loans", []):
+            if not loan.total_payment:
+                continue
 
-                # ✅ التحقق النهائي قبل إنشاء كل Loan Repayment
-                has_manual_payment = frappe.db.sql("""
-                    SELECT COUNT(*) as count
-                    FROM `tabLoan Repayment` lr
-                    INNER JOIN `tabPayment Entry` pe ON pe.name = lr.payment_entry
-                    WHERE lr.against_loan = %s
-                    AND lr.docstatus = 1
-                    AND pe.docstatus = 1
-                    AND pe.custom_is_manual_loan_payment = 1
-                """, loan.loan)[0][0] or 0
+            # ✅ التحقق النهائي قبل إنشاء كل Loan Repayment
+            has_manual_payment = frappe.db.sql("""
+                SELECT COUNT(*) as count
+                FROM `tabLoan Repayment` lr
+                INNER JOIN `tabPayment Entry` pe ON pe.name = lr.payment_entry
+                WHERE lr.against_loan = %s
+                AND lr.docstatus = 1
+                AND pe.docstatus = 1
+                AND pe.custom_is_manual_loan_payment = 1
+            """, loan.loan)[0][0] or 0
 
-                if has_manual_payment > 0:
-                    frappe.logger().warning(
-                        f"⚠️ SKIP: Loan {loan.loan} has manual payment - not creating repayment entry"
-                    )
-                    continue
+            if has_manual_payment > 0:
+                frappe.logger().warning(
+                    f"⚠️ SKIP: Loan {loan.loan} has manual payment - not creating repayment entry"
+                )
+                continue
 
-                # ✅ إنشاء Loan Repayment Entry
+            if not create_repayment_entry:
+                frappe.logger().warning(
+                    f"⚠️ {self.name}: create_repayment_entry not available; skipping creation for {loan.loan}")
+                continue
+
+            # ✅ إنشاء Loan Repayment Entry
+            try:
                 repayment_entry = create_repayment_entry(
                     loan.loan,
                     self.employee,
@@ -239,27 +317,58 @@ class CustomSalarySlip(SalarySlip):
                 )
 
                 repayment_entry.save()
-                repayment_entry.submit()
+                # Submit — the create_repayment_entry might already submit depending on implementation,
+                # but we call submit to ensure docstatus changes if required.
+                try:
+                    repayment_entry.submit()
+                except Exception:
+                    # If submit fails because already submitted or for another reason, log and continue
+                    frappe.logger().warning(
+                        f"⚠️ {self.name}: repayment_entry.submit() warning for {repayment_entry.name}")
 
-                frappe.db.set_value(
-                    "Salary Slip Loan",
-                    loan.name,
-                    "loan_repayment_entry",
-                    repayment_entry.name
-                )
+                # Persist link to salary slip loan row
+                try:
+                    frappe.db.set_value(
+                        "Salary Slip Loan",
+                        loan.name,
+                        "loan_repayment_entry",
+                        repayment_entry.name
+                    )
+                except Exception:
+                    frappe.logger().warning(
+                        f"⚠️ {self.name}: Failed to link Loan Repayment Entry to Salary Slip Loan row {loan.name}")
 
                 frappe.logger().info(
                     f"✅ Created Loan Repayment Entry {repayment_entry.name} for loan {loan.loan}"
                 )
 
-        except Exception as e:
-            frappe.log_error(
-                message=frappe.get_traceback(),
-                title=f"Error creating Loan Repayment Entry for {self.name}"
-            )
-            frappe.throw(
-                _("Failed to create Loan Repayment Entry. Check Error Log for details.")
-            )
+            except Exception:
+                frappe.log_error(
+                    message=frappe.get_traceback(),
+                    title=f"Error creating Loan Repayment Entry for {self.name}"
+                )
+                # don't throw to avoid breaking entire payroll submit; communicate in logs
+                frappe.logger().error(
+                    f"❌ {self.name}: Failed to create repayment for loan {loan.loan}")
+
+        # After processing loans ensure totals reflect current loans list (safety)
+        try:
+            if not self.get("loans") or len(self.loans) == 0:
+                self.total_loan_repayment = 0
+                self.total_principal_amount = 0
+                self.total_interest_amount = 0
+            else:
+                # recalc from loans table
+                total_principal = sum(
+                    [flt(getattr(r, "principal_amount", 0)) for r in self.loans])
+                total_interest = sum(
+                    [flt(getattr(r, "interest_amount", 0)) for r in self.loans])
+                self.total_principal_amount = total_principal
+                self.total_interest_amount = total_interest
+                self.total_loan_repayment = flt(
+                    total_principal + total_interest)
+        except Exception:
+            pass
 
     def get_loan_details(self):
         """
@@ -546,7 +655,11 @@ def prevent_duplicate_loan_deduction(doc, method):
         doc.total_principal_amount = 0
         doc.total_interest_amount = 0
         doc.total_loan_repayment = 0
-        doc.calculate_net_pay()
+        try:
+            doc.calculate_net_pay()
+        except Exception:
+            frappe.logger().warning(
+                f"⚠️ {doc.name}: calculate_net_pay failed inside hook")
         doc.custom_skip_loan_repayment_creation = 1
 
         if manual_loan_set:
@@ -574,7 +687,11 @@ def prevent_duplicate_loan_deduction(doc, method):
             doc.total_principal_amount = 0
             doc.total_interest_amount = 0
             doc.total_loan_repayment = 0
-            doc.calculate_net_pay()
+            try:
+                doc.calculate_net_pay()
+            except Exception:
+                frappe.logger().warning(
+                    f"⚠️ {doc.name}: calculate_net_pay failed inside hook (post-update)")
             doc.custom_skip_loan_repayment_creation = 1
         else:
             doc.custom_skip_loan_repayment_creation = 0
