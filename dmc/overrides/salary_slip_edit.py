@@ -19,56 +19,37 @@ class CustomSalarySlip(SalarySlip):
     """
 
     def validate(self):
-        """Override validate مع تحقق نهائي"""
-        super(CustomSalarySlip, self).validate()
+        """Override validate مع final safety check"""
 
-        # ✅ CRITICAL: Force check if loans table is empty
-        if not self.loans or len(self.loans) == 0:
-            self.total_loan_repayment = 0
-            self.total_principal_amount = 0
-            self.total_interest_amount = 0
-
-            frappe.logger().info(
-                f"✅ {self.name}: No loans - forcing totals to ZERO"
-            )
-        else:
-            # تسجيل تفاصيل القروض للـ debugging
-            total_loan_amount = sum([flt(loan.total_payment)
-                                    for loan in self.loans])
-            frappe.logger().info(
-                f"💵 Salary Slip {self.name} - Total Loan Deductions: {total_loan_amount} "
-                f"from {len(self.loans)} loan(s)"
-            )
-            # تأكد من الاتساق في الحقول اذا كانت معبأة من مكان آخر
-            try:
-                # تجميع مشابه لما يظهر في Slip (مجاميع principal/interest إن وُجدت)
-                total_principal = sum(
-                    [flt(getattr(loan, "principal_amount", 0)) for loan in self.loans])
-                total_interest = sum(
-                    [flt(getattr(loan, "interest_amount", 0)) for loan in self.loans])
-                self.total_principal_amount = total_principal
-                self.total_interest_amount = total_interest
-                self.total_loan_repayment = flt(
-                    total_principal + total_interest)
-            except Exception:
-                # لا تهدر العملية اذا فشل التجميع
-                pass
-
-        # ✅ Safety check (redundant but ensures correct totals even if loans cleared later)
+        # ✅ PRE-CHECK: Force reset قبل أي حاجة
         if not self.get("loans") or len(self.loans) == 0:
             self.total_loan_repayment = 0
             self.total_principal_amount = 0
             self.total_interest_amount = 0
-            frappe.logger().info(
-                f"✅ {self.name}: Loan totals reset to 0 (no active loans)")
 
-        # Optional: if you want to ensure net pay recalculated properly
-        try:
-            # إعادة حساب net pay بعد أي تغيير على الحقول
-            self.calculate_net_pay()
-        except Exception as e:
-            frappe.logger().warning(
-                f"⚠️ {self.name}: Failed to recalc net pay after loan reset - {str(e)}")
+        # استدعاء validate الأصلي
+        super(CustomSalarySlip, self).validate()
+
+        # ✅ POST-CHECK: Verify بعد كل الvalidations
+        if not self.get("loans") or len(self.loans) == 0:
+            if (self.total_loan_repayment != 0 or
+                self.total_principal_amount != 0 or
+                    self.total_interest_amount != 0):
+
+                # Force reset
+                self.total_loan_repayment = 0
+                self.total_principal_amount = 0
+                self.total_interest_amount = 0
+
+                # Recalculate net pay
+                try:
+                    self.calculate_net_pay()
+                except Exception:
+                    self.set_net_pay()
+
+                frappe.logger().warning(
+                    f"⚠️ {self.name}: FORCED loan reset in validate() - post-check"
+                )
 
     def on_submit(self):
         """
@@ -118,6 +99,47 @@ class CustomSalarySlip(SalarySlip):
                 # don't break payroll submit if this fails
                 frappe.logger().warning(
                     f"⚠️ {self.name}: update_payment_status_for_gratuity_and_leave_encashment() failed or not applicable")
+
+    def set_loan_repayment(self):
+        """
+        ✅ Override - منع إعادة حساب القروض إذا تم تصفيرها
+        """
+        # CHECK 1: إذا تم تعيين skip flag، تجاهل حساب القروض
+        if flt(self.get("custom_skip_loan_repayment_creation")) == 1:
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+            frappe.logger().info(
+                f"🚫 {self.name}: Loan recalculation BLOCKED by skip flag"
+            )
+            return
+
+        # CHECK 2: إذا تم تفريغ جدول loans يدويًا، احترم هذا
+        if not self.get("loans") or len(self.loans) == 0:
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+            frappe.logger().info(
+                f"🚫 {self.name}: Loans table empty - keeping totals at ZERO"
+            )
+            return
+
+        # إذا وصلنا هنا، يعني فيه قروض فعلية، استخدم الكود الأصلي
+        try:
+            # استدعاء الدالة الأصلية من الـ parent class
+            from hrms.payroll.doctype.salary_slip.salary_slip_loan_utils import set_loan_repayment as original_set_loan_repayment
+            original_set_loan_repayment(self)
+        except Exception:
+            # Fallback: حساب يدوي من جدول loans
+            self.total_principal_amount = sum(
+                [flt(d.principal_amount) for d in self.loans])
+            self.total_interest_amount = sum(
+                [flt(d.interest_amount) for d in self.loans])
+            self.total_loan_repayment = self.total_principal_amount + self.total_interest_amount
+
+        frappe.logger().info(
+            f"✅ {self.name}: Loan totals calculated - {self.total_loan_repayment}"
+        )
 
     def _should_create_loan_repayment_entry(self):
         """
@@ -591,10 +613,45 @@ class CustomSalarySlip(SalarySlip):
 
         return component
 
+    def calculate_net_pay(self, skip_tax_breakup_computation: bool = False):
+        """
+        ✅ Override - ضمان تصفير القروض قبل الحساب
+        """
+        # CRITICAL: Force reset loan totals إذا تم تفريغ جدول loans
+        if not self.get("loans") or len(self.loans) == 0:
+            self.total_loan_repayment = 0
+            self.total_principal_amount = 0
+            self.total_interest_amount = 0
+            frappe.logger().info(
+                f"✅ {self.name}: Force reset loan totals to ZERO before net pay calculation"
+            )
+
+        # استدعاء الدالة الأصلية
+        super(CustomSalarySlip, self).calculate_net_pay(
+            skip_tax_breakup_computation)
+
+        # CRITICAL: Verify after calculation
+        if not self.get("loans") or len(self.loans) == 0:
+            if (self.total_loan_repayment != 0 or
+                self.total_principal_amount != 0 or
+                    self.total_interest_amount != 0):
+
+                # إعادة التصفير إذا تم إعادة حساب القروض بالخطأ
+                self.total_loan_repayment = 0
+                self.total_principal_amount = 0
+                self.total_interest_amount = 0
+
+                # إعادة حساب Net Pay بعد التصفير
+                self.set_net_pay()
+
+                frappe.logger().warning(
+                    f"⚠️ {self.name}: Loan totals were recalculated incorrectly - FORCED reset again!"
+                )
 
 # ========================================
 # 🔥 Salary Slip Hooks
 # ========================================
+
 
 def prevent_duplicate_loan_deduction(doc, method):
     """
@@ -651,17 +708,56 @@ def prevent_duplicate_loan_deduction(doc, method):
     ]
 
     if not loans_with_unpaid:
+        # ✅ STEP 1: Clear loans table
         doc.set("loans", [])
+
+        # ✅ STEP 2: Force ZERO on all loan fields
+        doc.total_loan_repayment = 0
         doc.total_principal_amount = 0
         doc.total_interest_amount = 0
-        doc.total_loan_repayment = 0
+
+        # ✅ STEP 3: Set skip flag (critical!)
+        doc.custom_skip_loan_repayment_creation = 1
+        doc.flags.skip_loan_repayment_entry = True
+
+        # ✅ STEP 4: Lock the flag in DB immediately (prevent race conditions)
+        if doc.name:  # إذا كان الdoc محفوظ بالفعل
+            frappe.db.set_value(
+                "Salary Slip",
+                doc.name,
+                {
+                    "custom_skip_loan_repayment_creation": 1,
+                    "total_loan_repayment": 0,
+                    "total_principal_amount": 0,
+                    "total_interest_amount": 0
+                },
+                update_modified=False
+            )
+
+        # ✅ STEP 5: Recalculate net pay
         try:
             doc.calculate_net_pay()
-        except Exception:
+        except Exception as e:
             frappe.logger().warning(
-                f"⚠️ {doc.name}: calculate_net_pay failed inside hook")
-        doc.custom_skip_loan_repayment_creation = 1
+                f"⚠️ {doc.name}: calculate_net_pay failed - {str(e)}"
+            )
 
+        # ✅ STEP 6: Verify final values
+        if (doc.total_loan_repayment != 0 or
+            doc.total_principal_amount != 0 or
+                doc.total_interest_amount != 0):
+
+            # Force reset again if needed
+            doc.total_loan_repayment = 0
+            doc.total_principal_amount = 0
+            doc.total_interest_amount = 0
+            doc.set_net_pay()
+
+            frappe.logger().error(
+                f"❌ {doc.name}: CRITICAL - Loan totals not zero after calculation! Forced reset."
+            )
+
+        # ✅ STEP 7: Show message
         if manual_loan_set:
             frappe.msgprint(
                 _("⚠️ القروض التالية تم دفعها يدوياً ولن يتم خصمها:<br>{0}").format(
@@ -672,6 +768,7 @@ def prevent_duplicate_loan_deduction(doc, method):
                 indicator="blue",
                 title=_("Loans Paid Manually")
             )
+
         return
 
     # Update loans table
