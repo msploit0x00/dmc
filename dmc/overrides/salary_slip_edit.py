@@ -613,39 +613,41 @@ class CustomSalarySlip(SalarySlip):
 
         return component
 
-    def calculate_net_pay(self, skip_tax_breakup_computation: bool = False):
+    def calculate_net_pay(self):
         """
-        ✅ Override - ضمان تصفير القروض قبل الحساب
+        ✅ Override - لضمان تصفير القروض قبل حساب صافي المرتب (Net Pay)
+        يعمل بشكل متوافق مع HRMS v16+
         """
-        # CRITICAL: Force reset loan totals إذا تم تفريغ جدول loans
+
+        # --- تصفير القروض لو الجدول فاضي ---
         if not self.get("loans") or len(self.loans) == 0:
             self.total_loan_repayment = 0
             self.total_principal_amount = 0
             self.total_interest_amount = 0
             frappe.logger().info(
-                f"✅ {self.name}: Force reset loan totals to ZERO before net pay calculation"
+                f"✅ {self.name}: No loans found → loan totals reset to ZERO before net pay calculation"
             )
 
-        # استدعاء الدالة الأصلية
-        super(CustomSalarySlip, self).calculate_net_pay(
-            skip_tax_breakup_computation)
+        # --- استدعاء الدالة الأصلية بدون أي arguments ---
+        super(CustomSalarySlip, self).calculate_net_pay()
 
-        # CRITICAL: Verify after calculation
+        # --- تأكيد بعد الحساب إن القروض متصفّرة فعلاً ---
         if not self.get("loans") or len(self.loans) == 0:
-            if (self.total_loan_repayment != 0 or
-                self.total_principal_amount != 0 or
-                    self.total_interest_amount != 0):
-
-                # إعادة التصفير إذا تم إعادة حساب القروض بالخطأ
+            if (
+                self.total_loan_repayment != 0
+                or self.total_principal_amount != 0
+                or self.total_interest_amount != 0
+            ):
+                # إعادة التصفير لو حصل أي إعادة حساب خطأ
                 self.total_loan_repayment = 0
                 self.total_principal_amount = 0
                 self.total_interest_amount = 0
 
-                # إعادة حساب Net Pay بعد التصفير
+                # إعادة حساب الـ Net Pay بعد التصفير
                 self.set_net_pay()
 
                 frappe.logger().warning(
-                    f"⚠️ {self.name}: Loan totals were recalculated incorrectly - FORCED reset again!"
+                    f"⚠️ {self.name}: Loan totals recalculated incorrectly → forced reset again!"
                 )
 
 # ========================================
