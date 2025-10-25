@@ -1,7 +1,5 @@
-
-
 // ========================================
-// MAIN PURCHASE RECEIPT SCRIPT - WITH FULL VALIDATION
+// MAIN PURCHASE RECEIPT SCRIPT - WITH CASE-INSENSITIVE BATCH VALIDATION
 // ========================================
 
 let aggregateTimeout = null;
@@ -57,8 +55,8 @@ frappe.ui.form.on('Purchase Receipt', {
                             frm._pi_name = purchaseInvoice;
 
                             const matchedPIItem = frm._pi_items.find(item =>
-                                item.batch_no.trim().toUpperCase() === batchNo.trim().toUpperCase() && item.item_code === itemCode
-
+                                item.batch_no.trim().toUpperCase() === batchNo.trim().toUpperCase() &&
+                                item.item_code === itemCode
                             );
 
                             if (!matchedPIItem) {
@@ -71,15 +69,23 @@ frappe.ui.form.on('Purchase Receipt', {
                                 return;
                             }
 
+                            // Use the correct batch number from PI (preserves case)
+                            const correctBatchNo = matchedPIItem.batch_no;
+
                             process_scanned_item(frm, {
-                                barcode, batchNo, itemCode, uom, conversionRate, expiryDate
+                                barcode,
+                                batchNo: correctBatchNo,  // Use correct batch from system
+                                itemCode,
+                                uom,
+                                conversionRate,
+                                expiryDate
                             });
                         }
                     });
                 } else {
                     const matchedPIItem = frm._pi_items.find(item =>
-                        item.batch_no.trim().toUpperCase() === batchNo.trim().toUpperCase() && item.item_code === itemCode
-
+                        item.batch_no.trim().toUpperCase() === batchNo.trim().toUpperCase() &&
+                        item.item_code === itemCode
                     );
 
                     if (!matchedPIItem) {
@@ -92,8 +98,16 @@ frappe.ui.form.on('Purchase Receipt', {
                         return;
                     }
 
+                    // Use the correct batch number from PI (preserves case)
+                    const correctBatchNo = matchedPIItem.batch_no;
+
                     process_scanned_item(frm, {
-                        barcode, batchNo, itemCode, uom, conversionRate, expiryDate
+                        barcode,
+                        batchNo: correctBatchNo,  // Use correct batch from system
+                        itemCode,
+                        uom,
+                        conversionRate,
+                        expiryDate
                     });
                 }
             }
@@ -220,47 +234,6 @@ function store_purchase_invoice_reference(frm) {
     }
 }
 
-// function process_scanned_item(frm, itemData) {
-//     const { barcode, batchNo, itemCode, uom, conversionRate, expiryDate } = itemData;
-
-//     frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
-//         const itemName = r.item_name;
-
-//         let existingScannedRow = null;
-//         if (frm.doc.custom_scanned_items && frm.doc.custom_scanned_items.length > 0) {
-//             existingScannedRow = frm.doc.custom_scanned_items.find(item =>
-//                 String(item.item_code).trim() === String(itemCode).trim() &&
-//                 String(item.batch_no).trim() === String(batchNo).trim() &&
-//                 String(item.uom).trim() === String(uom).trim()
-//             );
-//         }
-
-//         if (existingScannedRow) {
-//             let newReceivedQty = flt(existingScannedRow.received_qty) + 1;
-//             let newReceivedStockQty = newReceivedQty * conversionRate;
-
-//             existingScannedRow.received_qty = newReceivedQty;
-//             existingScannedRow.received_stock_qty = newReceivedStockQty;
-//             existingScannedRow.stock_qty = newReceivedStockQty;
-//         } else {
-//             frm.add_child('custom_scanned_items', {
-//                 item_code: itemCode,
-//                 item_name: itemName,
-//                 batch_no: batchNo,
-//                 uom: uom,
-//                 conversion_factor: conversionRate,
-//                 received_qty: 1,
-//                 received_stock_qty: 1 * conversionRate,
-//                 stock_qty: 1 * conversionRate,
-//                 barcode: barcode
-//             });
-//         }
-
-//         frm.set_value('scan_barcode', '');
-
-//         debounced_aggregate_and_refresh(frm);
-//     });
-// }
 function process_scanned_item(frm, itemData) {
     const { barcode, batchNo, itemCode, uom, conversionRate, expiryDate } = itemData;
 
@@ -294,14 +267,13 @@ function process_scanned_item(frm, itemData) {
             const warehouseToUse = frm.doc.set_warehouse || defaultWarehouse || '';
 
             // Determine which accepted warehouse to use
-            // Assuming you have a field like 'custom_set_accepted_warehouse' in Purchase Receipt
             const acceptedWarehouseToUse = frm.doc.custom_set_accepted_warehouse || defaultWarehouse || '';
 
             let existingScannedRow = null;
             if (frm.doc.custom_scanned_items && frm.doc.custom_scanned_items.length > 0) {
                 existingScannedRow = frm.doc.custom_scanned_items.find(item =>
                     String(item.item_code).trim() === String(itemCode).trim() &&
-                    String(item.batch_no).trim() === String(batchNo).trim() &&
+                    String(item.batch_no).trim().toUpperCase() === String(batchNo).trim().toUpperCase() &&
                     String(item.uom).trim() === String(uom).trim()
                 );
             }
@@ -313,6 +285,9 @@ function process_scanned_item(frm, itemData) {
                 existingScannedRow.received_qty = newReceivedQty;
                 existingScannedRow.received_stock_qty = newReceivedStockQty;
                 existingScannedRow.stock_qty = newReceivedStockQty;
+
+                // Update batch_no to match system (fix case)
+                existingScannedRow.batch_no = batchNo;
 
                 // Update warehouse if it's different
                 if (warehouseToUse) {
@@ -327,7 +302,7 @@ function process_scanned_item(frm, itemData) {
                 frm.add_child('custom_scanned_items', {
                     item_code: itemCode,
                     item_name: itemName,
-                    batch_no: batchNo,
+                    batch_no: batchNo,  // This now has the correct case from PI
                     uom: uom,
                     conversion_factor: conversionRate,
                     received_qty: 1,
@@ -360,48 +335,6 @@ function debounced_aggregate_and_refresh(frm) {
     }, 400);
 }
 
-// function aggregate_scanned_to_items(frm) {
-//     if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
-//         return;
-//     }
-
-//     if (!frm.doc.items || frm.doc.items.length === 0) {
-//         return;
-//     }
-
-//     const aggregateMap = {};
-
-//     frm.doc.custom_scanned_items.forEach(scannedItem => {
-//         const key = `${scannedItem.item_code}_${scannedItem.batch_no}`;
-
-//         if (!aggregateMap[key]) {
-//             aggregateMap[key] = {
-//                 item_code: scannedItem.item_code,
-//                 batch_no: scannedItem.batch_no,
-//                 total_received_stock_qty: 0
-//             };
-//         }
-
-//         aggregateMap[key].total_received_stock_qty += flt(scannedItem.received_stock_qty);
-//     });
-
-//     frm.doc.items.forEach(item => {
-//         const key = `${item.item_code}_${item.batch_no}`;
-
-//         if (aggregateMap[key]) {
-//             const aggregatedReceivedQty = aggregateMap[key].total_received_stock_qty;
-
-//             item.received_stock_qty = aggregatedReceivedQty;
-
-//             if (item.conversion_factor && item.conversion_factor > 0) {
-//                 item.received_qty = aggregatedReceivedQty / item.conversion_factor;
-//             }
-//         }
-//     });
-
-//     return true;
-// }
-
 function aggregate_scanned_to_items(frm) {
     if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
         return;
@@ -414,7 +347,7 @@ function aggregate_scanned_to_items(frm) {
     const aggregateMap = {};
 
     frm.doc.custom_scanned_items.forEach(scannedItem => {
-        const key = `${scannedItem.item_code}_${scannedItem.batch_no}`;
+        const key = `${scannedItem.item_code}_${scannedItem.batch_no.toUpperCase()}`;
 
         if (!aggregateMap[key]) {
             aggregateMap[key] = {
@@ -428,7 +361,7 @@ function aggregate_scanned_to_items(frm) {
     });
 
     frm.doc.items.forEach(item => {
-        const key = `${item.item_code}_${item.batch_no}`;
+        const key = `${item.item_code}_${item.batch_no.toUpperCase()}`;
 
         if (aggregateMap[key]) {
             const aggregatedReceivedQty = aggregateMap[key].total_received_stock_qty;
@@ -441,7 +374,8 @@ function aggregate_scanned_to_items(frm) {
 
             // Update warehouse and accepted_warehouse from scanned items
             const scannedItem = frm.doc.custom_scanned_items.find(si =>
-                si.item_code === item.item_code && si.batch_no === item.batch_no
+                si.item_code === item.item_code &&
+                si.batch_no.toUpperCase() === item.batch_no.toUpperCase()
             );
             if (scannedItem) {
                 if (scannedItem.warehouse) {
@@ -456,6 +390,7 @@ function aggregate_scanned_to_items(frm) {
 
     return true;
 }
+
 function validate_purchase_receipt(frm) {
     return new Promise((resolve, reject) => {
         let purchaseInvoice = get_purchase_invoice_reference(frm);
@@ -491,8 +426,8 @@ function validate_purchase_receipt(frm) {
                     }
 
                     if (batchNo) {
-                        piItemMap[itemCode].batches.push(batchNo);
-                        piBatchMap[batchNo] = itemCode;
+                        piItemMap[itemCode].batches.push(batchNo.toUpperCase());
+                        piBatchMap[batchNo.toUpperCase()] = itemCode;
                     }
                 });
 
@@ -518,7 +453,7 @@ function validate_purchase_receipt(frm) {
                         continue;
                     }
 
-                    if (batchNo && !piBatchMap[batchNo]) {
+                    if (batchNo && !piBatchMap[batchNo.toUpperCase()]) {
                         validationErrors.push(`Row ${i + 1}: Batch No ${batchNo} is not in Purchase Invoice`);
                     }
                 }
@@ -592,7 +527,8 @@ function validate_batch_on_change(frm, cdt, cdn) {
             if (!response.message || !response.message.items) return;
 
             const validBatch = response.message.items.find(
-                item => item.batch_no === row.batch_no && item.item_code === row.item_code
+                item => item.batch_no.toUpperCase() === row.batch_no.toUpperCase() &&
+                    item.item_code === row.item_code
             );
 
             if (!validBatch) {
