@@ -346,280 +346,280 @@ function process_scanned_item(frm, itemData) {
             });
         }
     })
+}
 
-    function debounced_aggregate_and_refresh(frm) {
-        if (aggregateTimeout) clearTimeout(aggregateTimeout);
+function debounced_aggregate_and_refresh(frm) {
+    if (aggregateTimeout) clearTimeout(aggregateTimeout);
 
-        aggregateTimeout = setTimeout(() => {
-            aggregate_scanned_to_items(frm);
+    aggregateTimeout = setTimeout(() => {
+        aggregate_scanned_to_items(frm);
 
-            if (refreshTimeout) clearTimeout(refreshTimeout);
-            refreshTimeout = setTimeout(() => {
-                frm.refresh_field('custom_scanned_items');
-                frm.refresh_field('items');
-            }, 100);
-        }, 400);
+        if (refreshTimeout) clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+            frm.refresh_field('custom_scanned_items');
+            frm.refresh_field('items');
+        }, 100);
+    }, 400);
+}
+
+function aggregate_scanned_to_items(frm) {
+    if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
+        return;
     }
 
-    function aggregate_scanned_to_items(frm) {
-        if (!frm.doc.custom_scanned_items || frm.doc.custom_scanned_items.length === 0) {
-            return;
+    if (!frm.doc.items || frm.doc.items.length === 0) {
+        return;
+    }
+
+    const aggregateMap = {};
+
+    frm.doc.custom_scanned_items.forEach(scannedItem => {
+        const key = `${scannedItem.item_code}_${scannedItem.batch_no.toUpperCase()}`;
+
+        if (!aggregateMap[key]) {
+            aggregateMap[key] = {
+                item_code: scannedItem.item_code,
+                batch_no: scannedItem.batch_no,
+                total_received_stock_qty: 0
+            };
         }
 
-        if (!frm.doc.items || frm.doc.items.length === 0) {
-            return;
-        }
+        aggregateMap[key].total_received_stock_qty += flt(scannedItem.received_stock_qty);
+    });
 
-        const aggregateMap = {};
+    frm.doc.items.forEach(item => {
+        const key = `${item.item_code}_${item.batch_no.toUpperCase()}`;
 
-        frm.doc.custom_scanned_items.forEach(scannedItem => {
-            const key = `${scannedItem.item_code}_${scannedItem.batch_no.toUpperCase()}`;
+        if (aggregateMap[key]) {
+            const aggregatedReceivedQty = aggregateMap[key].total_received_stock_qty;
 
-            if (!aggregateMap[key]) {
-                aggregateMap[key] = {
-                    item_code: scannedItem.item_code,
-                    batch_no: scannedItem.batch_no,
-                    total_received_stock_qty: 0
-                };
+            item.received_stock_qty = aggregatedReceivedQty;
+
+            if (item.conversion_factor && item.conversion_factor > 0) {
+                item.received_qty = aggregatedReceivedQty / item.conversion_factor;
             }
 
-            aggregateMap[key].total_received_stock_qty += flt(scannedItem.received_stock_qty);
-        });
-
-        frm.doc.items.forEach(item => {
-            const key = `${item.item_code}_${item.batch_no.toUpperCase()}`;
-
-            if (aggregateMap[key]) {
-                const aggregatedReceivedQty = aggregateMap[key].total_received_stock_qty;
-
-                item.received_stock_qty = aggregatedReceivedQty;
-
-                if (item.conversion_factor && item.conversion_factor > 0) {
-                    item.received_qty = aggregatedReceivedQty / item.conversion_factor;
+            // Update warehouse and accepted_warehouse from scanned items
+            const scannedItem = frm.doc.custom_scanned_items.find(si =>
+                si.item_code === item.item_code &&
+                si.batch_no.toUpperCase() === item.batch_no.toUpperCase()
+            );
+            if (scannedItem) {
+                if (scannedItem.warehouse) {
+                    item.warehouse = scannedItem.warehouse;
                 }
-
-                // Update warehouse and accepted_warehouse from scanned items
-                const scannedItem = frm.doc.custom_scanned_items.find(si =>
-                    si.item_code === item.item_code &&
-                    si.batch_no.toUpperCase() === item.batch_no.toUpperCase()
-                );
-                if (scannedItem) {
-                    if (scannedItem.warehouse) {
-                        item.warehouse = scannedItem.warehouse;
-                    }
-                    if (scannedItem.accepted_warehouse) {
-                        item.accepted_warehouse = scannedItem.accepted_warehouse;
-                    }
+                if (scannedItem.accepted_warehouse) {
+                    item.accepted_warehouse = scannedItem.accepted_warehouse;
                 }
-            }
-        });
-
-        return true;
-    }
-
-    function validate_purchase_receipt(frm) {
-        return new Promise((resolve, reject) => {
-            let purchaseInvoice = get_purchase_invoice_reference(frm);
-
-            if (!purchaseInvoice) {
-                resolve();
-                return;
-            }
-
-            frappe.call({
-                method: "frappe.client.get",
-                args: {
-                    doctype: "Purchase Invoice",
-                    name: purchaseInvoice
-                },
-                callback: function (response) {
-                    if (!response.message || !response.message.items) {
-                        frappe.msgprint(__("Could not fetch Purchase Invoice details for validation."));
-                        reject();
-                        return;
-                    }
-
-                    const piItems = response.message.items;
-                    const piItemMap = {};
-                    const piBatchMap = {};
-
-                    piItems.forEach(item => {
-                        const itemCode = item.item_code;
-                        const batchNo = item.batch_no;
-
-                        if (!piItemMap[itemCode]) {
-                            piItemMap[itemCode] = { batches: [] };
-                        }
-
-                        if (batchNo) {
-                            piItemMap[itemCode].batches.push(batchNo.toUpperCase());
-                            piBatchMap[batchNo.toUpperCase()] = itemCode;
-                        }
-                    });
-
-                    let validationErrors = [];
-
-                    if (!frm.doc.items || frm.doc.items.length === 0) {
-                        frappe.msgprint({
-                            title: __('No Items'),
-                            message: __(`Purchase Receipt has no items.`),
-                            indicator: 'red'
-                        });
-                        reject();
-                        return;
-                    }
-
-                    for (let i = 0; i < frm.doc.items.length; i++) {
-                        const item = frm.doc.items[i];
-                        const itemCode = item.item_code;
-                        const batchNo = item.batch_no;
-
-                        if (!piItemMap[itemCode]) {
-                            validationErrors.push(`Row ${i + 1}: Item ${itemCode} is not in Purchase Invoice`);
-                            continue;
-                        }
-
-                        if (batchNo && !piBatchMap[batchNo.toUpperCase()]) {
-                            validationErrors.push(`Row ${i + 1}: Batch No ${batchNo} is not in Purchase Invoice`);
-                        }
-                    }
-
-                    if (validationErrors.length > 0) {
-                        frappe.msgprint({
-                            title: __('Validation Failed'),
-                            message: validationErrors.join('<br><br>'),
-                            indicator: 'red'
-                        });
-                        reject();
-                        return;
-                    }
-
-                    resolve();
-                },
-                error: function (err) {
-                    frappe.msgprint(__("Error fetching Purchase Invoice."));
-                    reject();
-                }
-            });
-        });
-    }
-
-    function validate_item_against_pi(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        const purchaseInvoice = get_purchase_invoice_reference(frm);
-
-        if (!purchaseInvoice || !row.item_code) {
-            return;
-        }
-
-        frappe.call({
-            method: "frappe.client.get",
-            args: {
-                doctype: "Purchase Invoice",
-                name: purchaseInvoice
-            },
-            callback: function (response) {
-                if (!response.message || !response.message.items) return;
-
-                const piItem = response.message.items.find(item => item.item_code === row.item_code);
-
-                if (!piItem) {
-                    frappe.model.set_value(cdt, cdn, 'item_code', '');
-                    frappe.msgprint({
-                        title: __('Invalid Item'),
-                        message: __(`Item <b>${row.item_code}</b> is not in Purchase Invoice <b>${purchaseInvoice}</b>.`),
-                        indicator: 'red'
-                    });
-                }
-            }
-        });
-    }
-
-    function validate_batch_on_change(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        let purchaseInvoice = get_purchase_invoice_reference(frm);
-
-        if (!purchaseInvoice || !row.batch_no || !row.item_code) {
-            return;
-        }
-
-        frappe.call({
-            method: "frappe.client.get",
-            args: {
-                doctype: "Purchase Invoice",
-                name: purchaseInvoice
-            },
-            callback: function (response) {
-                if (!response.message || !response.message.items) return;
-
-                const validBatch = response.message.items.find(
-                    item => item.batch_no.toUpperCase() === row.batch_no.toUpperCase() &&
-                        item.item_code === row.item_code
-                );
-
-                if (!validBatch) {
-                    const invalidBatch = row.batch_no;
-                    const invalidItem = row.item_code;
-
-                    frappe.model.clear_doc(cdt, cdn);
-                    frm.refresh_field('items');
-
-                    frappe.msgprint({
-                        title: __('Invalid Batch Number'),
-                        message: __(`Batch No <b>${invalidBatch}</b> is not valid for item <b>${invalidItem}</b> in Purchase Invoice <b>${purchaseInvoice}</b>.`),
-                        indicator: 'red'
-                    });
-                }
-            }
-        });
-    }
-
-    frappe.ui.form.on('Purchase Receipt Item', {
-        item_code: function (frm, cdt, cdn) {
-            const row = locals[cdt][cdn];
-            const purchaseInvoice = get_purchase_invoice_reference(frm);
-
-            if (purchaseInvoice) {
-                validate_item_against_pi(frm, cdt, cdn);
-                if (row.batch_no) {
-                    validate_batch_on_change(frm, cdt, cdn);
-                }
-            }
-        },
-
-        batch_no: function (frm, cdt, cdn) {
-            const purchaseInvoice = get_purchase_invoice_reference(frm);
-            if (purchaseInvoice) {
-                validate_batch_on_change(frm, cdt, cdn);
             }
         }
     });
 
-    frappe.ui.form.on('Purchase Receipt Scanned Item', {
-        received_qty: function (frm, cdt, cdn) {
-            const row = locals[cdt][cdn];
-
-            if (row.conversion_factor && row.conversion_factor > 0) {
-                const newReceivedStockQty = flt(row.received_qty) * flt(row.conversion_factor);
-
-                row.received_stock_qty = newReceivedStockQty;
-                row.stock_qty = newReceivedStockQty;
-            }
-
-            debounced_aggregate_and_refresh(frm);
-        },
-
-        received_stock_qty: function (frm, cdt, cdn) {
-            const row = locals[cdt][cdn];
-
-            if (row.conversion_factor && row.conversion_factor > 0) {
-                const newReceivedQty = flt(row.received_stock_qty) / flt(row.conversion_factor);
-
-                row.received_qty = newReceivedQty;
-                row.stock_qty = flt(row.received_stock_qty);
-            }
-
-            debounced_aggregate_and_refresh(frm);
-        }
-    })
+    return true;
 }
+
+function validate_purchase_receipt(frm) {
+    return new Promise((resolve, reject) => {
+        let purchaseInvoice = get_purchase_invoice_reference(frm);
+
+        if (!purchaseInvoice) {
+            resolve();
+            return;
+        }
+
+        frappe.call({
+            method: "frappe.client.get",
+            args: {
+                doctype: "Purchase Invoice",
+                name: purchaseInvoice
+            },
+            callback: function (response) {
+                if (!response.message || !response.message.items) {
+                    frappe.msgprint(__("Could not fetch Purchase Invoice details for validation."));
+                    reject();
+                    return;
+                }
+
+                const piItems = response.message.items;
+                const piItemMap = {};
+                const piBatchMap = {};
+
+                piItems.forEach(item => {
+                    const itemCode = item.item_code;
+                    const batchNo = item.batch_no;
+
+                    if (!piItemMap[itemCode]) {
+                        piItemMap[itemCode] = { batches: [] };
+                    }
+
+                    if (batchNo) {
+                        piItemMap[itemCode].batches.push(batchNo.toUpperCase());
+                        piBatchMap[batchNo.toUpperCase()] = itemCode;
+                    }
+                });
+
+                let validationErrors = [];
+
+                if (!frm.doc.items || frm.doc.items.length === 0) {
+                    frappe.msgprint({
+                        title: __('No Items'),
+                        message: __(`Purchase Receipt has no items.`),
+                        indicator: 'red'
+                    });
+                    reject();
+                    return;
+                }
+
+                for (let i = 0; i < frm.doc.items.length; i++) {
+                    const item = frm.doc.items[i];
+                    const itemCode = item.item_code;
+                    const batchNo = item.batch_no;
+
+                    if (!piItemMap[itemCode]) {
+                        validationErrors.push(`Row ${i + 1}: Item ${itemCode} is not in Purchase Invoice`);
+                        continue;
+                    }
+
+                    if (batchNo && !piBatchMap[batchNo.toUpperCase()]) {
+                        validationErrors.push(`Row ${i + 1}: Batch No ${batchNo} is not in Purchase Invoice`);
+                    }
+                }
+
+                if (validationErrors.length > 0) {
+                    frappe.msgprint({
+                        title: __('Validation Failed'),
+                        message: validationErrors.join('<br><br>'),
+                        indicator: 'red'
+                    });
+                    reject();
+                    return;
+                }
+
+                resolve();
+            },
+            error: function (err) {
+                frappe.msgprint(__("Error fetching Purchase Invoice."));
+                reject();
+            }
+        });
+    });
+}
+
+function validate_item_against_pi(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+    const purchaseInvoice = get_purchase_invoice_reference(frm);
+
+    if (!purchaseInvoice || !row.item_code) {
+        return;
+    }
+
+    frappe.call({
+        method: "frappe.client.get",
+        args: {
+            doctype: "Purchase Invoice",
+            name: purchaseInvoice
+        },
+        callback: function (response) {
+            if (!response.message || !response.message.items) return;
+
+            const piItem = response.message.items.find(item => item.item_code === row.item_code);
+
+            if (!piItem) {
+                frappe.model.set_value(cdt, cdn, 'item_code', '');
+                frappe.msgprint({
+                    title: __('Invalid Item'),
+                    message: __(`Item <b>${row.item_code}</b> is not in Purchase Invoice <b>${purchaseInvoice}</b>.`),
+                    indicator: 'red'
+                });
+            }
+        }
+    });
+}
+
+function validate_batch_on_change(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+    let purchaseInvoice = get_purchase_invoice_reference(frm);
+
+    if (!purchaseInvoice || !row.batch_no || !row.item_code) {
+        return;
+    }
+
+    frappe.call({
+        method: "frappe.client.get",
+        args: {
+            doctype: "Purchase Invoice",
+            name: purchaseInvoice
+        },
+        callback: function (response) {
+            if (!response.message || !response.message.items) return;
+
+            const validBatch = response.message.items.find(
+                item => item.batch_no.toUpperCase() === row.batch_no.toUpperCase() &&
+                    item.item_code === row.item_code
+            );
+
+            if (!validBatch) {
+                const invalidBatch = row.batch_no;
+                const invalidItem = row.item_code;
+
+                frappe.model.clear_doc(cdt, cdn);
+                frm.refresh_field('items');
+
+                frappe.msgprint({
+                    title: __('Invalid Batch Number'),
+                    message: __(`Batch No <b>${invalidBatch}</b> is not valid for item <b>${invalidItem}</b> in Purchase Invoice <b>${purchaseInvoice}</b>.`),
+                    indicator: 'red'
+                });
+            }
+        }
+    });
+}
+
+frappe.ui.form.on('Purchase Receipt Item', {
+    item_code: function (frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        const purchaseInvoice = get_purchase_invoice_reference(frm);
+
+        if (purchaseInvoice) {
+            validate_item_against_pi(frm, cdt, cdn);
+            if (row.batch_no) {
+                validate_batch_on_change(frm, cdt, cdn);
+            }
+        }
+    },
+
+    batch_no: function (frm, cdt, cdn) {
+        const purchaseInvoice = get_purchase_invoice_reference(frm);
+        if (purchaseInvoice) {
+            validate_batch_on_change(frm, cdt, cdn);
+        }
+    }
+});
+
+frappe.ui.form.on('Purchase Receipt Scanned Item', {
+    received_qty: function (frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+
+        if (row.conversion_factor && row.conversion_factor > 0) {
+            const newReceivedStockQty = flt(row.received_qty) * flt(row.conversion_factor);
+
+            row.received_stock_qty = newReceivedStockQty;
+            row.stock_qty = newReceivedStockQty;
+        }
+
+        debounced_aggregate_and_refresh(frm);
+    },
+
+    received_stock_qty: function (frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+
+        if (row.conversion_factor && row.conversion_factor > 0) {
+            const newReceivedQty = flt(row.received_stock_qty) / flt(row.conversion_factor);
+
+            row.received_qty = newReceivedQty;
+            row.stock_qty = flt(row.received_stock_qty);
+        }
+
+        debounced_aggregate_and_refresh(frm);
+    }
+})
