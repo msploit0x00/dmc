@@ -37,7 +37,7 @@ doctype_js = {
     "Purchase Receipt": "public/js/purchase_receipt_edit.js",
     "Delivery Note": "public/js/delivery_note_edit.js",
     "Supply order": "public/js/supply_order_edit.js",
-    "Loan Repayment": "public/js/loan_repayment_edit.js"
+    "Loan Repayment": "public/js/loan_repayment_edit.js",
 
     # "Employee Checkin": "public/js/employee_checkin_edit.js"
 
@@ -127,10 +127,13 @@ doctype_js = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 
-# DocType Class
-# ---------------
-# Override standard doctype classes
+permission_query_conditions = {
+    "Salary Slip": "dmc.overrides.salary_slip_permission_edit.salary_slip_permission_query_conditions",
+}
 
+has_permission = {
+    "Salary Slip": "dmc.overrides.salary_slip_permission_edit.has_permission_salary_slip",
+}
 
 override_doctype_class = {
     "Material Request": "dmc.material_request.CustomPurchaseRequest",
@@ -154,6 +157,7 @@ doc_events = {
         # "before_save": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit",
         "on_submit": "dmc.overrides.salary_slip_edit.persist_skip_flag_on_submit",
     },
+
 }
 
 
