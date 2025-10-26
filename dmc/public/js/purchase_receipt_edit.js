@@ -25,48 +25,43 @@ frappe.ui.form.on('Purchase Receipt', {
             callback: function (response) {
                 // ✅ VALIDATION 1: Check if barcode exists
                 if (!response || !response.message) {
-                    frappe.msgprint(__("Invalid barcode. Could not fetch details."));
-                    return;
-                }
-
-                // ✅ VALIDATION 2: Check if barcode data is complete
-                // Make sure we have the required arrays from API
-                if (!response.message.barcode_uom || !response.message.barcode_uom[0] ||
-                    !response.message.item_code || !response.message.item_code[0] ||
-                    !response.message.conversion_factor || !response.message.conversion_factor[0]) {
                     frappe.msgprint({
-                        title: __('Incomplete Barcode Data'),
-                        message: __(`❌ <b>Barcode setup is incomplete!</b><br><br>
-                                    Barcode: <b>${barcode}</b><br><br>
-                                    Please check the barcode configuration in Item master.`),
+                        title: __('Invalid Barcode'),
+                        message: __(`❌ <b>Barcode not found!</b><br><br>
+                                    Scanned Barcode: <b>${barcode}</b><br><br>
+                                    Please check the barcode and try again.`),
                         indicator: 'red'
                     });
                     return;
                 }
 
-                const uom = response.message.barcode_uom[0]['uom'];
+                // Get data with safe access
+                const uom = response.message.barcode_uom?.[0]?.['uom'];
                 const batchNo = response.message.batch_id;
-                const itemCode = response.message.item_code[0]['parent'];
+                const itemCode = response.message.item_code?.[0]?.['parent'];
                 const expiryDate = response.message.formatted_date;
-                const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
+                const conversionRate = response.message.conversion_factor?.[0]?.['conversion_factor'];
 
-                // ✅ VALIDATION 3: Check if conversion factor exists and is valid
-                // THIS IS THE CRITICAL CHECK - prevents adding items without conversion factor
-                if (!conversionRate || conversionRate <= 0) {
+                // ✅ VALIDATION 2: Check if all required data exists
+                if (!uom || !itemCode || !conversionRate || conversionRate <= 0) {
                     frappe.msgprint({
-                        title: __('Missing Conversion Factor'),
-                        message: __(`⚠️ <b>Cannot scan this barcode!</b><br><br>
-                                    Item: <b>${itemCode}</b><br>
-                                    UOM: <b>${uom}</b><br><br>
-                                    ❌ This UOM does not have a conversion factor defined.<br><br>
-                                    📋 Please go to the Item master and add the conversion factor for this UOM before scanning.`),
+                        title: __('Cannot Scan Barcode'),
+                        message: __(`⚠️ <b>Barcode configuration is incomplete!</b><br><br>
+                                    Scanned Barcode: <b>${barcode}</b><br>
+                                    Item: <b>${itemCode || 'Not Found'}</b><br>
+                                    UOM: <b>${uom || 'Not Found'}</b><br>
+                                    Conversion Factor: <b>${conversionRate || 'Not Defined'}</b><br><br>
+                                    ❌ This barcode cannot be used because:<br>
+                                    • UOM is missing, OR<br>
+                                    • Conversion Factor is not defined<br><br>
+                                    📋 Please go to Item master and complete the barcode setup.`),
                         indicator: 'red',
-                        primary_action: {
+                        primary_action: itemCode ? {
                             label: __('Open Item'),
                             action: function () {
                                 frappe.set_route('Form', 'Item', itemCode);
                             }
-                        }
+                        } : null
                     });
                     return;
                 }
