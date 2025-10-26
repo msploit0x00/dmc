@@ -23,27 +23,22 @@ frappe.ui.form.on('Purchase Receipt', {
             method: 'dmc.barcode_details.get_barcode_details',
             args: { barcode },
             callback: function (response) {
-                // ✅ VALIDATION 1: Check if barcode is valid
-                if (!response.message) {
-                    frappe.msgprint({
-                        title: __('Invalid Barcode'),
-                        message: __(`❌ <b>Barcode not found!</b><br><br>
-                                    Barcode: <b>${barcode}</b><br><br>
-                                    Please scan a valid barcode.`),
-                        indicator: 'red'
-                    });
+                // ✅ VALIDATION 1: Check if barcode exists
+                if (!response || !response.message) {
+                    frappe.msgprint(__("Invalid barcode. Could not fetch details."));
                     return;
                 }
 
-                // ✅ VALIDATION 2: Check if all required data exists
+                // ✅ VALIDATION 2: Check if barcode data is complete
+                // Make sure we have the required arrays from API
                 if (!response.message.barcode_uom || !response.message.barcode_uom[0] ||
                     !response.message.item_code || !response.message.item_code[0] ||
                     !response.message.conversion_factor || !response.message.conversion_factor[0]) {
                     frappe.msgprint({
                         title: __('Incomplete Barcode Data'),
-                        message: __(`❌ <b>Barcode data is incomplete!</b><br><br>
+                        message: __(`❌ <b>Barcode setup is incomplete!</b><br><br>
                                     Barcode: <b>${barcode}</b><br><br>
-                                    Missing required information. Please check the barcode setup.`),
+                                    Please check the barcode configuration in Item master.`),
                         indicator: 'red'
                     });
                     return;
@@ -55,20 +50,8 @@ frappe.ui.form.on('Purchase Receipt', {
                 const expiryDate = response.message.formatted_date;
                 const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
 
-                // ✅ VALIDATION 3: Check if UOM exists
-                if (!uom || uom.trim() === '') {
-                    frappe.msgprint({
-                        title: __('Missing UOM'),
-                        message: __(`❌ <b>UOM is missing!</b><br><br>
-                                    Item: <b>${itemCode}</b><br>
-                                    Barcode: <b>${barcode}</b><br><br>
-                                    Please add a UOM to this barcode.`),
-                        indicator: 'red'
-                    });
-                    return;
-                }
-
-                // ✅ VALIDATION 4: Check if conversion factor exists
+                // ✅ VALIDATION 3: Check if conversion factor exists and is valid
+                // THIS IS THE CRITICAL CHECK - prevents adding items without conversion factor
                 if (!conversionRate || conversionRate <= 0) {
                     frappe.msgprint({
                         title: __('Missing Conversion Factor'),
@@ -307,17 +290,6 @@ function store_purchase_invoice_reference(frm) {
 function process_scanned_item(frm, itemData) {
     const { barcode, batchNo, itemCode, uom, conversionRate, expiryDate } = itemData;
 
-    // ✅ VALIDATION: Double-check all required fields before processing
-    if (!itemCode || !batchNo || !uom || !conversionRate || conversionRate <= 0) {
-        frappe.msgprint({
-            title: __('Invalid Data'),
-            message: __(`❌ <b>Cannot process scanned item!</b><br><br>
-                        Missing or invalid data. Please check the barcode setup.`),
-            indicator: 'red'
-        });
-        return;
-    }
-
     frappe.call({
         method: 'frappe.client.get_list',
         args: {
@@ -349,13 +321,7 @@ function process_scanned_item(frm, itemData) {
                 },
                 callback: function (response) {
                     if (!response.message) {
-                        frappe.msgprint({
-                            title: __('Item Not Found'),
-                            message: __(`❌ <b>Item does not exist!</b><br><br>
-                                        Item Code: <b>${itemCode}</b><br><br>
-                                        Please check if the item exists in the system.`),
-                            indicator: 'red'
-                        });
+                        frappe.msgprint(__("Could not fetch Item details."));
                         return;
                     }
 
