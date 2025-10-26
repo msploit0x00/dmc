@@ -355,10 +355,6 @@ function sync_scanned_to_main_items(frm) {
         return;
     }
 
-    if (!frm.doc.items || frm.doc.items.length === 0) {
-        return;
-    }
-
     // Create a map of scanned items grouped by item_code + batch_no
     const scannedMap = {};
 
@@ -368,6 +364,7 @@ function sync_scanned_to_main_items(frm) {
         if (!scannedMap[key]) {
             scannedMap[key] = {
                 item_code: scannedItem.item_code,
+                item_name: scannedItem.item_name,
                 batch_no: scannedItem.batch_no,
                 uom: scannedItem.uom,
                 conversion_factor: scannedItem.conversion_factor,
@@ -382,9 +379,17 @@ function sync_scanned_to_main_items(frm) {
         scannedMap[key].total_received_stock_qty += flt(scannedItem.received_stock_qty);
     });
 
+    // Initialize items array if empty
+    if (!frm.doc.items) {
+        frm.doc.items = [];
+    }
+
+    // Track which scanned items were found in main table
+    const processedKeys = new Set();
+
     // Update existing items in main table with scanned quantities
     frm.doc.items.forEach(item => {
-        const key = `${item.item_code}_${item.batch_no.toUpperCase()}`;
+        const key = `${item.item_code}_${(item.batch_no || '').toUpperCase()}`;
 
         if (scannedMap[key]) {
             const scannedData = scannedMap[key];
@@ -401,6 +406,37 @@ function sync_scanned_to_main_items(frm) {
             if (scannedData.accepted_warehouse) {
                 item.accepted_warehouse = scannedData.accepted_warehouse;
             }
+
+            // Mark this scanned item as processed
+            processedKeys.add(key);
+        }
+    });
+
+    // Add new items that don't exist in main table yet
+    Object.keys(scannedMap).forEach(key => {
+        if (!processedKeys.has(key)) {
+            const scannedData = scannedMap[key];
+
+            const newItem = {
+                item_code: scannedData.item_code,
+                item_name: scannedData.item_name,
+                batch_no: scannedData.batch_no,
+                uom: scannedData.uom,
+                conversion_factor: scannedData.conversion_factor,
+                qty: scannedData.total_received_qty,
+                received_qty: scannedData.total_received_qty,
+                stock_qty: scannedData.total_received_stock_qty,
+                received_stock_qty: scannedData.total_received_stock_qty,
+                warehouse: scannedData.warehouse,
+                accepted_warehouse: scannedData.accepted_warehouse
+            };
+
+            // Set purchase order if available
+            if (frm.doc.custom_purchase_order_name) {
+                newItem.purchase_order = frm.doc.custom_purchase_order_name;
+            }
+
+            frm.doc.items.push(newItem);
         }
     });
 
