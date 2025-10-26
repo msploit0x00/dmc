@@ -11,6 +11,9 @@ frappe.ui.form.on('Purchase Receipt', {
 
         const barcode = frm.doc.scan_barcode;
 
+        // Prevent Frappe from auto-adding items to main table
+        frm._scanning = true;
+
         frappe.call({
             method: 'dmc.barcode_details.get_barcode_details',
             args: { barcode },
