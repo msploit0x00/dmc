@@ -11,16 +11,41 @@ frappe.ui.form.on('Purchase Receipt', {
 
         const barcode = frm.doc.scan_barcode;
 
-        // Prevent Frappe from auto-adding items to main table
+        // ✅ CRITICAL: Prevent Frappe from auto-adding to main items table
         frm._scanning = true;
+
+        // Clear the barcode field immediately to prevent default behavior
+        setTimeout(() => {
+            frm.set_value('scan_barcode', '');
+        }, 50);
 
         frappe.call({
             method: 'dmc.barcode_details.get_barcode_details',
             args: { barcode },
             callback: function (response) {
+                // ✅ VALIDATION 1: Check if barcode is valid
                 if (!response.message) {
-                    frappe.msgprint(__("Invalid barcode. Could not fetch details."));
-                    frm.set_value('scan_barcode', '');
+                    frappe.msgprint({
+                        title: __('Invalid Barcode'),
+                        message: __(`❌ <b>Barcode not found!</b><br><br>
+                                    Barcode: <b>${barcode}</b><br><br>
+                                    Please scan a valid barcode.`),
+                        indicator: 'red'
+                    });
+                    return;
+                }
+
+                // ✅ VALIDATION 2: Check if all required data exists
+                if (!response.message.barcode_uom || !response.message.barcode_uom[0] ||
+                    !response.message.item_code || !response.message.item_code[0] ||
+                    !response.message.conversion_factor || !response.message.conversion_factor[0]) {
+                    frappe.msgprint({
+                        title: __('Incomplete Barcode Data'),
+                        message: __(`❌ <b>Barcode data is incomplete!</b><br><br>
+                                    Barcode: <b>${barcode}</b><br><br>
+                                    Missing required information. Please check the barcode setup.`),
+                        indicator: 'red'
+                    });
                     return;
                 }
 
@@ -29,6 +54,39 @@ frappe.ui.form.on('Purchase Receipt', {
                 const itemCode = response.message.item_code[0]['parent'];
                 const expiryDate = response.message.formatted_date;
                 const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
+
+                // ✅ VALIDATION 3: Check if UOM exists
+                if (!uom || uom.trim() === '') {
+                    frappe.msgprint({
+                        title: __('Missing UOM'),
+                        message: __(`❌ <b>UOM is missing!</b><br><br>
+                                    Item: <b>${itemCode}</b><br>
+                                    Barcode: <b>${barcode}</b><br><br>
+                                    Please add a UOM to this barcode.`),
+                        indicator: 'red'
+                    });
+                    return;
+                }
+
+                // ✅ VALIDATION 4: Check if conversion factor exists
+                if (!conversionRate || conversionRate <= 0) {
+                    frappe.msgprint({
+                        title: __('Missing Conversion Factor'),
+                        message: __(`⚠️ <b>Cannot scan this barcode!</b><br><br>
+                                    Item: <b>${itemCode}</b><br>
+                                    UOM: <b>${uom}</b><br><br>
+                                    ❌ This UOM does not have a conversion factor defined.<br><br>
+                                    📋 Please go to the Item master and add the conversion factor for this UOM before scanning.`),
+                        indicator: 'red',
+                        primary_action: {
+                            label: __('Open Item'),
+                            action: function () {
+                                frappe.set_route('Form', 'Item', itemCode);
+                            }
+                        }
+                    });
+                    return;
+                }
 
                 let purchaseInvoice = get_purchase_invoice_reference(frm);
 
@@ -50,7 +108,7 @@ frappe.ui.form.on('Purchase Receipt', {
                         callback: function (piResponse) {
                             if (!piResponse.message || !piResponse.message.items) {
                                 frappe.msgprint(__("Could not fetch Purchase Invoice details."));
-                                frm.set_value('scan_barcode', '');
+                                // Barcode already cleared above
                                 return;
                             }
 
@@ -68,7 +126,7 @@ frappe.ui.form.on('Purchase Receipt', {
                                     message: __(`Scanned Batch No <b>${batchNo}</b> is not in Purchase Invoice <b>${purchaseInvoice}</b>.<br><br>❌ Please scan a valid batch from the Purchase Invoice.`),
                                     indicator: 'red'
                                 });
-                                frm.set_value('scan_barcode', '');
+                                // Barcode already cleared above
                                 return;
                             }
 
@@ -96,7 +154,7 @@ frappe.ui.form.on('Purchase Receipt', {
                             message: __(`Scanned Batch No <b>${batchNo}</b> is not in Purchase Invoice <b>${purchaseInvoice}</b>.<br><br>❌ Please scan a valid batch from the Purchase Invoice.`),
                             indicator: 'red'
                         });
-                        frm.set_value('scan_barcode', '');
+                        // Barcode already cleared above
                         return;
                     }
 
@@ -182,6 +240,14 @@ frappe.ui.form.on('Purchase Receipt', {
 
         frm._pi_items = null;
         frm._pi_name = null;
+
+        // ✅ Prevent Frappe default barcode behavior
+        frm._scanning = false;
+
+        // Override the scan_barcode field to prevent default item addition
+        if (frm.fields_dict.scan_barcode) {
+            frm.fields_dict.scan_barcode.df.onchange = null;
+        }
     },
 
     onload: function (frm) {
@@ -241,6 +307,17 @@ function store_purchase_invoice_reference(frm) {
 function process_scanned_item(frm, itemData) {
     const { barcode, batchNo, itemCode, uom, conversionRate, expiryDate } = itemData;
 
+    // ✅ VALIDATION: Double-check all required fields before processing
+    if (!itemCode || !batchNo || !uom || !conversionRate || conversionRate <= 0) {
+        frappe.msgprint({
+            title: __('Invalid Data'),
+            message: __(`❌ <b>Cannot process scanned item!</b><br><br>
+                        Missing or invalid data. Please check the barcode setup.`),
+            indicator: 'red'
+        });
+        return;
+    }
+
     frappe.call({
         method: 'frappe.client.get_list',
         args: {
@@ -272,8 +349,13 @@ function process_scanned_item(frm, itemData) {
                 },
                 callback: function (response) {
                     if (!response.message) {
-                        frappe.msgprint(__("Could not fetch Item details."));
-                        frm.set_value('scan_barcode', '');
+                        frappe.msgprint({
+                            title: __('Item Not Found'),
+                            message: __(`❌ <b>Item does not exist!</b><br><br>
+                                        Item Code: <b>${itemCode}</b><br><br>
+                                        Please check if the item exists in the system.`),
+                            indicator: 'red'
+                        });
                         return;
                     }
 
@@ -304,6 +386,7 @@ function process_scanned_item(frm, itemData) {
                         let newReceivedQty = flt(existingScannedRow.received_qty) + 1;
                         let newReceivedStockQty = newReceivedQty * conversionRate;
 
+                        // ✅ Update existing row
                         existingScannedRow.received_qty = newReceivedQty;
                         existingScannedRow.received_stock_qty = newReceivedStockQty;
                         existingScannedRow.stock_qty = newReceivedStockQty;
@@ -315,7 +398,13 @@ function process_scanned_item(frm, itemData) {
                         if (acceptedWarehouseToUse) {
                             existingScannedRow.accepted_warehouse = acceptedWarehouseToUse;
                         }
+
+                        frappe.show_alert({
+                            message: __(`✅ Updated: ${itemName} - Qty: ${newReceivedQty}`),
+                            indicator: 'green'
+                        }, 3);
                     } else {
+                        // ✅ Add new row
                         frm.add_child('custom_scanned_items', {
                             item_code: itemCode,
                             item_name: itemName,
@@ -329,6 +418,11 @@ function process_scanned_item(frm, itemData) {
                             warehouse: warehouseToUse,
                             accepted_warehouse: acceptedWarehouseToUse
                         });
+
+                        frappe.show_alert({
+                            message: __(`✅ Added: ${itemName} - Qty: 1`),
+                            indicator: 'green'
+                        }, 3);
                     }
 
                     frm.set_value('scan_barcode', '');
