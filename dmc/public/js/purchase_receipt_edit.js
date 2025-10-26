@@ -1,5 +1,5 @@
 // ========================================
-// PURCHASE RECEIPT SCRIPT - FINAL VERSION
+// PURCHASE RECEIPT SCRIPT - ENHANCED VALIDATION
 // ========================================
 
 let aggregateTimeout = null;
@@ -22,7 +22,7 @@ frappe.ui.form.on('Purchase Receipt', {
             method: 'dmc.barcode_details.get_barcode_details',
             args: { barcode },
             callback: function (response) {
-                // ✅ VALIDATION 1: Check if barcode exists at all
+                // ✅ VALIDATION 1: Check if barcode response exists
                 if (!response || !response.message) {
                     frappe.msgprint({
                         title: __('Barcode Not Found'),
@@ -47,49 +47,114 @@ frappe.ui.form.on('Purchase Receipt', {
                 const batchNo = response.message.batch_id;
                 const expiryDate = response.message.formatted_date;
                 const conversionRate = response.message.conversion_factor?.[0]?.['conversion_factor'];
+                const gtin = response.message.gtin;
 
-                // ✅ VALIDATION 2: Check if item code exists in barcode response
+                // ✅ VALIDATION 2: Item not found - Try GTIN search
                 if (!itemCode) {
-                    frappe.msgprint({
-                        title: __('Barcode Not Registered'),
-                        message: __(`⚠️ <b>This barcode is not registered in the system!</b><br><br>
-                                    Scanned Barcode: <b>${barcode}</b><br><br>
-                                    <b>What to do:</b><br>
-                                    1. Find the item this barcode belongs to<br>
-                                    2. Open the item and go to "Barcodes" section<br>
-                                    3. Add this barcode with correct UOM and Conversion Factor<br><br>
-                                    📋 Click below to search for items.`),
-                        indicator: 'orange',
-                        primary_action: {
-                            label: __('Search Items'),
-                            action: function () {
-                                window.open('/app/item', '_blank');
+                    // Try to find item by GTIN
+                    frappe.call({
+                        method: 'dmc.get_item_code.get_gtin_and_item_code',
+                        args: { gtin: gtin },
+                        callback: function (gtinResponse) {
+                            if (gtinResponse.message && gtinResponse.message.length > 0) {
+                                // Item found by GTIN but barcode not linked
+                                const foundItem = gtinResponse.message[0];
+                                const foundItemCode = foundItem.parent;
+
+                                frappe.call({
+                                    method: 'frappe.client.get',
+                                    args: {
+                                        doctype: 'Item',
+                                        name: foundItemCode
+                                    },
+                                    callback: function (itemResp) {
+                                        const itemName = itemResp.message ? itemResp.message.item_name : foundItemCode;
+
+                                        frappe.msgprint({
+                                            title: __('Barcode Not Linked'),
+                                            message: __(`✅ <b>Item found in system</b><br>
+                                                        ❌ <b>But this barcode is NOT registered</b><br><br>
+                                                        <b>Item Found:</b><br>
+                                                        • Code: <b>${foundItemCode}</b><br>
+                                                        • Name: <b>${itemName}</b><br>
+                                                        • GTIN: <b>${gtin}</b><br><br>
+                                                        <b>Scanned Barcode:</b> <code>${barcode}</code><br><br>
+                                                        📋 <b>What to do:</b><br>
+                                                        1. Click "Open Item" below<br>
+                                                        2. Go to "Barcodes" section<br>
+                                                        3. Add this barcode with UOM and Conversion Factor`),
+                                            indicator: 'orange',
+                                            primary_action: {
+                                                label: __('Open Item & Add Barcode'),
+                                                action: function () {
+                                                    window.open(`/app/item/${foundItemCode}`, '_blank');
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            } else {
+                                // No item found at all
+                                frappe.msgprint({
+                                    title: __('Item Not Found'),
+                                    message: __(`❌ <b>No item found in system</b><br><br>
+                                                <b>Scanned Barcode:</b> <code>${barcode}</code><br>
+                                                <b>Extracted GTIN:</b> <code>${gtin}</code><br><br>
+                                                This item does not exist in the system.<br>
+                                                Please create the item first, then add this barcode.`),
+                                    indicator: 'red',
+                                    primary_action: {
+                                        label: __('Create New Item'),
+                                        action: function () {
+                                            window.open('/app/item/new', '_blank');
+                                        }
+                                    },
+                                    secondary_action: {
+                                        label: __('Go to Item List'),
+                                        action: function () {
+                                            window.open('/app/item', '_blank');
+                                        }
+                                    }
+                                });
                             }
                         }
                     });
                     return;
                 }
 
-                // ✅ VALIDATION 3: Check if UOM and Conversion Factor are complete
+                // ✅ VALIDATION 3: Item found but UOM or Conversion Factor incomplete
                 if (!uom || !conversionRate || conversionRate <= 0) {
-                    frappe.msgprint({
-                        title: __('Cannot Scan Barcode'),
-                        message: __(`⚠️ <b>Barcode configuration is incomplete!</b><br><br>
-                                    Scanned Barcode: <b>${barcode}</b><br>
-                                    Item: <b>${itemCode}</b><br>
-                                    UOM: <b>${uom || 'Not Found'}</b><br>
-                                    Conversion Factor: <b>${conversionRate || 'Not Defined'}</b><br><br>
-                                    ❌ This barcode cannot be used because:<br>
-                                    ${!uom ? '• UOM is missing<br>' : ''}
-                                    ${(!conversionRate || conversionRate <= 0) ? '• Conversion Factor is not defined<br>' : ''}
-                                    <br>
-                                    📋 Please go to Item master and complete the barcode setup.`),
-                        indicator: 'red',
-                        primary_action: {
-                            label: __('Open Item'),
-                            action: function () {
-                                window.open(`/app/item/${itemCode}`, '_blank');
-                            }
+                    frappe.call({
+                        method: 'frappe.client.get',
+                        args: {
+                            doctype: 'Item',
+                            name: itemCode
+                        },
+                        callback: function (itemResp) {
+                            const itemName = itemResp.message ? itemResp.message.item_name : itemCode;
+
+                            frappe.msgprint({
+                                title: __('Barcode Configuration Incomplete'),
+                                message: __(`⚠️ <b>Barcode found but configuration is incomplete!</b><br><br>
+                                            <b>Item:</b><br>
+                                            • Code: <b>${itemCode}</b><br>
+                                            • Name: <b>${itemName}</b><br><br>
+                                            <b>Scanned Barcode:</b> <code>${barcode}</code><br>
+                                            <b>UOM:</b> <b>${uom || '❌ Not Set'}</b><br>
+                                            <b>Conversion Factor:</b> <b>${conversionRate || '❌ Not Defined'}</b><br><br>
+                                            ❌ <b>This barcode cannot be used because:</b><br>
+                                            ${!uom ? '• UOM is missing<br>' : ''}
+                                            ${(!conversionRate || conversionRate <= 0) ? '• Conversion Factor is not defined<br>' : ''}
+                                            <br>
+                                            📋 Please complete the barcode setup in Item master.`),
+                                indicator: 'red',
+                                primary_action: {
+                                    label: __('Fix Configuration'),
+                                    action: function () {
+                                        window.open(`/app/item/${itemCode}`, '_blank');
+                                    }
+                                }
+                            });
                         }
                     });
                     return;
