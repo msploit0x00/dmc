@@ -14,10 +14,9 @@ frappe.ui.form.on('Purchase Receipt', {
         // ✅ CRITICAL: Prevent Frappe from auto-adding to main items table
         frm._scanning = true;
 
-        // Clear the barcode field immediately to prevent default behavior
-        setTimeout(() => {
-            frm.set_value('scan_barcode', '');
-        }, 50);
+        // Stop Frappe's default barcode handler immediately
+        frm.doc.scan_barcode = '';
+        frm.refresh_field('scan_barcode');
 
         frappe.call({
             method: 'dmc.barcode_details.get_barcode_details',
@@ -246,12 +245,21 @@ frappe.ui.form.on('Purchase Receipt', {
         frm._pi_items = null;
         frm._pi_name = null;
 
-        // ✅ Prevent Frappe default barcode behavior
+        // ✅ CRITICAL: Completely disable Frappe's default barcode behavior
         frm._scanning = false;
 
-        // Override the scan_barcode field to prevent default item addition
+        // Disable the default scan_barcode handler
         if (frm.fields_dict.scan_barcode) {
-            frm.fields_dict.scan_barcode.df.onchange = null;
+            frm.fields_dict.scan_barcode.df.onchange = function () {
+                // Do nothing - we handle it in our custom scan_barcode event
+                return false;
+            };
+        }
+
+        // Remove Frappe's barcode scan event
+        if (frm.doc.scan_barcode) {
+            frm.doc.scan_barcode = '';
+            frm.refresh_field('scan_barcode');
         }
     },
 
