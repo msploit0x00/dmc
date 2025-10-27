@@ -36,7 +36,7 @@ frappe.ui.form.on('Sales Order', {
 })
 
 frappe.ui.form.on('Sales Order Item', {
-    rate(frm, cdt, cdn) {
+    price_list_rate(frm, cdt, cdn) {
         rate_validation(frm, cdt, cdn)
     },
     is_free_item: function (frm, cdt, cdn) {
@@ -168,24 +168,33 @@ async function handle_tax_logic_from_address(frm) {
     }
 }
 
-
-
 function rate_validation(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
 
-    // ✅ SKIP VALIDATION IF is_free_item IS CHECKED
+    // ✅ CASE 1: SKIP VALIDATION IF is_free_item IS CHECKED
     if (row.is_free_item) {
         console.log('✅ is_free_item is checked - skipping rate validation');
         return;
     }
 
-    // Skip if no item or invalid rate
-    if (!row.item_code || row.rate === null || row.rate === undefined || row.rate === '') {
+    // ✅ CASE 2: SKIP VALIDATION IF THERE'S A DISCOUNT OR MARGIN (when is_free_item is NOT checked)
+    if (row.discount_percentage > 0 || row.discount_amount > 0) {
+        console.log('✅ Discount applied - skipping rate validation');
         return;
     }
 
-    let rate_value = parseFloat(row.rate);
-    if (isNaN(rate_value)) return;
+    if (row.margin_type && row.margin_type !== '') {
+        console.log('✅ Margin type selected - skipping rate validation');
+        return;
+    }
+
+    // Skip if no item or invalid price_list_rate
+    if (!row.item_code || row.price_list_rate === null || row.price_list_rate === undefined || row.price_list_rate === '') {
+        return;
+    }
+
+    let price_list_rate_value = parseFloat(row.price_list_rate);
+    if (isNaN(price_list_rate_value)) return;
 
     // OPTIONAL: Use Sales Order's price list if available
     let price_list = frm.doc.selling_price_list || 'Standard Selling';
@@ -196,18 +205,58 @@ function rate_validation(frm, cdt, cdn) {
     }, 'price_list_rate').then(r => {
         if (r.message) {
             let actual_price = parseFloat(r.message.price_list_rate);
-            console.log(`Item: ${row.item_code}, Price List Rate: ${actual_price}, Entered Rate: ${rate_value}`);
+            console.log(`Item: ${row.item_code}, Price List Rate: ${actual_price}, Entered Price List Rate: ${price_list_rate_value}`);
 
-            if (rate_value < actual_price) {
+            // Only validate if user manually changed the price_list_rate to be lower
+            if (price_list_rate_value < actual_price) {
                 frappe.msgprint(__('Rate can\'t be lower than the actual price ({0})', [actual_price]));
-                // Optional: Revert to null or actual price
-                frappe.model.set_value(cdt, cdn, 'rate', actual_price);
+                // Revert to actual price
+                frappe.model.set_value(cdt, cdn, 'price_list_rate', actual_price);
             }
         } else {
             frappe.msgprint(__('No price found in Item Price for item {0} and price list {1}', [row.item_code, price_list]));
         }
     });
 }
+
+// function rate_validation(frm, cdt, cdn) {
+//     let row = locals[cdt][cdn];
+
+//     // ✅ SKIP VALIDATION IF is_free_item IS CHECKED
+//     if (row.is_free_item) {
+//         console.log('✅ is_free_item is checked - skipping rate validation');
+//         return;
+//     }
+
+//     // Skip if no item or invalid rate
+//     if (!row.item_code || row.rate === null || row.rate === undefined || row.rate === '') {
+//         return;
+//     }
+
+//     let rate_value = parseFloat(row.rate);
+//     if (isNaN(rate_value)) return;
+
+//     // OPTIONAL: Use Sales Order's price list if available
+//     let price_list = frm.doc.selling_price_list || 'Standard Selling';
+
+//     frappe.db.get_value('Item Price', {
+//         item_code: row.item_code,
+//         price_list: price_list
+//     }, 'price_list_rate').then(r => {
+//         if (r.message) {
+//             let actual_price = parseFloat(r.message.price_list_rate);
+//             console.log(`Item: ${row.item_code}, Price List Rate: ${actual_price}, Entered Rate: ${rate_value}`);
+
+//             if (rate_value < actual_price) {
+//                 frappe.msgprint(__('Rate can\'t be lower than the actual price ({0})', [actual_price]));
+//                 // Optional: Revert to null or actual price
+//                 frappe.model.set_value(cdt, cdn, 'rate', actual_price);
+//             }
+//         } else {
+//             frappe.msgprint(__('No price found in Item Price for item {0} and price list {1}', [row.item_code, price_list]));
+//         }
+//     });
+// }
 function sales_team_add_to_cost_center_allocation(frm, cdt, cdn) {
     const row = locals[cdt][cdn];
     if (!row.sales_person) return;
