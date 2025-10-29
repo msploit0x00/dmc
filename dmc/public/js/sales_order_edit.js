@@ -20,6 +20,7 @@ frappe.ui.form.on('Sales Order', {
                 frm.set_df_property('customer', 'read_only', 1);
             }, 400);
         }
+        handle_tax_logic_from_address(frm);
     },
     after_save(frm) {
         sales_order_type_aftersave(frm);
