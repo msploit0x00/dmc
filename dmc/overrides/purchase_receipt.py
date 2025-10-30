@@ -26,13 +26,13 @@ class CustomPurchaseReceipt(PurchaseReceipt):
                 ).format(d.idx, d.received_qty, val, d.item_code)
                 frappe.throw(msg=message, title=_("Quantity Exceeded"))
 
-    def on_submit(self):
+    # def on_submit(self):
 
-        self.set_in_words()
+    #     self.set_in_words()
 
-    def after_save(self):
+    # def after_save(self):
 
-        self.set_in_words()
+    #     self.set_in_words()
 
     def set_in_words(self):
         """Set amount in words"""
