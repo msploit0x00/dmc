@@ -141,7 +141,7 @@ override_doctype_class = {
     "Delivery Note": "dmc.overrides.delivery_note_override.CustomDeliveryNote",
     "Loan Repayment": "dmc.overrides.loan_repayment_edit.CustomLoanRepayment",
     "Payment Entry": "dmc.overrides.payment_entry_edit.CustomPaymentEntry",
-    # "Purchase Receipt": "dmc.overrides.buying_controller_edit.CustomBuyingController",
+    "Purchase Receipt": "dmc.overrides.buying_controller_edit.CustomBuyingController",
     "Salary Slip": "dmc.overrides.salary_slip_edit.CustomSalarySlip"
 }
 
@@ -157,13 +157,6 @@ doc_events = {
         # "before_save": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit",
         "on_submit": "dmc.overrides.salary_slip_edit.persist_skip_flag_on_submit",
     },
-    # "Purchase Receipt": {
-    #     # "before_validate": "dmc.overrides.loan_repayment_edit.prevent_duplicate_loan_deduction",
-    #     # "validate": "dmc.overrides.salary_slip_edit.prevent_duplicate_loan_deduction",
-    #     # "before_save": "dmc.overrides.loan_repayment_edit.persist_skip_flag_on_submit",
-    #     "on_submit": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt.set_in_words",
-    #     "after_save": "dmc.overrides.purchase_receipt.CustomPurchaseReceipt.set_in_words",
-    # },
 
 }
 

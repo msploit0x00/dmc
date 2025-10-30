@@ -345,8 +345,22 @@ frappe.ui.form.on('Purchase Receipt', {
         frm._pi_name = null;
     },
 
+
     validate: function (frm) {
-        return validate_purchase_receipt(frm);
+        if (frm.doc.grand_total) {
+            frappe.call({
+                method: "dmc.api.money_to_arabic_words",  // full Python path
+                args: {
+                    amount: frm.doc.rounded_total
+                },
+                callback: function (r) {
+                    if (r.message) {
+                        frm.set_value("custom_amount_in_words_arabic", r.message);
+                    }
+                }
+            });
+        }
+        validate_purchase_receipt(frm);
     },
 
     before_save: function (frm) {
