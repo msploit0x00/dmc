@@ -38,6 +38,7 @@ doctype_js = {
     "Delivery Note": "public/js/delivery_note_edit.js",
     "Supply order": "public/js/supply_order_edit.js",
     "Loan Repayment": "public/js/loan_repayment_edit.js",
+    "Quotation": "public/js/quotation_edit.js",
 
     # "Employee Checkin": "public/js/employee_checkin_edit.js"
 
