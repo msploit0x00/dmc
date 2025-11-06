@@ -1,0 +1,107 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"RY3kmN06jy\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\" style=\\\"\\\"><i style=\\\"\\\">Employee </i><i>Operations</i></span>\",\"col\":12}},{\"id\":\"xV-Md8c1A6\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Leave Application\",\"col\":4}},{\"id\":\"dms8-5KxV5\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Permission\",\"col\":4}},{\"id\":\"9NTOU3PExh\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"\u0637\u0644\u0628 \u0645\u0623\u0645\u0648\u0631\u064a\u0629\",\"col\":4}},{\"id\":\"aWE4Xuc8K4\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"hjwsm4sfpf\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Expense Claim\",\"col\":4}},{\"id\":\"aeiwO4pF5S\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Loan application\",\"col\":4}},{\"id\":\"CO8BnFDV0-\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"\u0637\u0644\u0628 \u0639\u0647\u062f\u0647\",\"col\":4}},{\"id\":\"q_QSE4DWPf\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"gMKjAMvy66\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"dtfiV0SVJC\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><i>Employee requests</i></span>\",\"col\":12}},{\"id\":\"rd9KMnFNcV\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0625\u062c\u0627\u0632\u0627\u062a\",\"col\":4}},{\"id\":\"vbeQx9veDw\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0625\u0630\u0646 \u0627\u0644\u0634\u0647\u0631\u064a / \u0627\u0644\u0625\u0636\u0627\u0641\u064a\",\"col\":4}},{\"id\":\"7AJrYPYGdc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0623\u0645\u0648\u0631\u064a\u0629\",\"col\":4}},{\"id\":\"jey7jIHknn\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a\",\"col\":4}},{\"id\":\"_8L_eoCyoF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0633\u064f\u0644\u0641\",\"col\":4}}]",
+ "creation": "2025-02-27 16:00:41.391199",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Permission",
+   "label": "Permission"
+  },
+  {
+   "custom_block_name": "Leave Application",
+   "label": "Leave Application"
+  },
+  {
+   "custom_block_name": "\u0637\u0644\u0628 \u0645\u0623\u0645\u0648\u0631\u064a\u0629",
+   "label": "\u0637\u0644\u0628 \u0645\u0623\u0645\u0648\u0631\u064a\u0629"
+  },
+  {
+   "custom_block_name": "\u0637\u0644\u0628 \u0639\u0647\u062f\u0647",
+   "label": "\u0637\u0644\u0628 \u0639\u0647\u062f\u0647"
+  },
+  {
+   "custom_block_name": "Expense Claim",
+   "label": "Expense Claim"
+  },
+  {
+   "custom_block_name": "Loan application",
+   "label": "Loan application"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "idx": 0,
+ "indicator_color": "cyan",
+ "is_hidden": 0,
+ "label": "Employee Operations",
+ "links": [],
+ "modified": "2025-11-02 16:50:56.602088",
+ "modified_by": "logayn@datasofteg.com",
+ "module": "Dmc",
+ "name": "Employee Operations",
+ "number_cards": [],
+ "owner": "mohamed.hosam@datasofteg.com",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Employee"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "Payroll"
+  }
+ ],
+ "sequence_id": 11.0,
+ "shortcuts": [
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0625\u0630\u0646 \u0627\u0644\u0634\u0647\u0631\u064a / \u0627\u0644\u0625\u0636\u0627\u0641\u064a",
+   "link_to": "Permission",
+   "stats_filter": "[[\"Permission\",\"status\",\"=\",\"Draft\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0635\u0631\u0648\u0641\u0627\u062a",
+   "link_to": "Expense Claim",
+   "stats_filter": "[[\"Expense Claim\",\"status\",\"=\",\"Draft\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0625\u062c\u0627\u0632\u0627\u062a",
+   "link_to": "Leave Application",
+   "stats_filter": "[[\"Leave Application\",\"status\",\"=\",\"Open\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0645\u0623\u0645\u0648\u0631\u064a\u0629",
+   "link_to": "Attendance Request",
+   "stats_filter": "[[\"Attendance Request\",\"reason\",\"=\",\"On Duty\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Red",
+   "doc_view": "List",
+   "label": "\u0637\u0644\u0628\u0627\u062a \u0627\u0644\u0633\u064f\u0644\u0641",
+   "link_to": "Loan Application",
+   "stats_filter": "[[\"Loan Application\",\"status\",\"=\",\"Open\",false]]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Employee Operations"
+}
