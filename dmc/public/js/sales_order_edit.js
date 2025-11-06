@@ -76,6 +76,7 @@ function sales_order_type_onchange(frm) {
 
     // Set Delivery Note Type based on Sales Order Type
     if (type === "أمر بيع -بيان") {
+
         frm.set_value("custom_delivery_note_type", "اذن صرف مبيعات نقدى");
     } else {
         frm.set_value("custom_delivery_note_type", "اذن صرف مبيعات أجلة");
@@ -101,6 +102,7 @@ function apply_tax_visibility_logic(frm, type) {
     frm.set_df_property('taxes_and_charges', 'hidden', hideTaxFields);
 
     if (hideTaxFields) {
+
         frm.clear_table("taxes");
         frm.refresh_field("taxes");
     }
@@ -150,9 +152,12 @@ function toggle_taxes_table(frm) {
 
 async function handle_tax_logic_from_address(frm) {
     if (!frm.doc.customer_address) return;
+    const type = frm.doc.custom_sales_order_type;
 
     const address = await frappe.db.get_doc('Address', frm.doc.customer_address);
-
+    if (type === "أمر بيع -بيان") {
+        frm.set_value("tax_category", "معفي");
+    }
     if (address.custom_without_tax) {
         // معفي (Exempt)
         frm.toggle_display('taxes', false);

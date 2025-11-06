@@ -261,6 +261,7 @@ def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, sh
         "Company", company, "default_currency")
 
     # Convert tax amounts to base currency - KEEP RAW VALUES
+    # Convert tax amounts to base currency - KEEP RAW VALUES
     converted_taxes = {}
     total_tax_amount = 0
 
@@ -275,10 +276,15 @@ def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, sh
         else:
             base_amount = amount  # RAW VALUE
 
-        converted_taxes[expense_account] = {
-            'amount': base_amount,  # RAW VALUE
-            'account_name': tax.account_name or expense_account
-        }
+        # SUM amounts if expense account appears multiple times
+        if expense_account in converted_taxes:
+            # ADD to existing
+            converted_taxes[expense_account]['amount'] += base_amount
+        else:
+            converted_taxes[expense_account] = {
+                'amount': base_amount,  # RAW VALUE
+                'account_name': tax.account_name or expense_account
+            }
         total_tax_amount += base_amount  # RAW ADDITION
 
     # Use applicable_charges but distribute taxes proportionally - RAW VALUES
