@@ -69,11 +69,13 @@ function sales_order_type_onchange(frm) {
 
     // Set Delivery Note Type based on Sales Order Type
     if (type === "أمر بيع -بيان") {
-        frm.set_value("custom_delivery_note_type", "اذن صرف مبيعات نقدى");
+
 
         // ✅ FORCE TAX CATEGORY TO معفي FOR أمر بيع -بيان
         frm.set_value("tax_category", "معفي");
         frm.set_value("custom_delivery_note_status", "معفي");
+        frm.set_value("custom_delivery_note_type", "اذن صرف مبيعات نقدى");
+
 
         // Clear taxes table
         frm.clear_table("taxes");
@@ -144,6 +146,7 @@ async function handle_tax_logic_from_address(frm) {
     if (type === "أمر بيع -بيان") {
         console.log("✅ Sales Order Type is 'أمر بيع -بيان' - Setting tax_category to 'معفي' regardless of Customer");
         frm.set_value("tax_category", "معفي");
+
         frm.set_value("custom_delivery_note_status", "معفي");
         frm.toggle_display('taxes', false);
         frm.clear_table('taxes');
