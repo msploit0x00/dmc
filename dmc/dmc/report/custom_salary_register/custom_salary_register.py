@@ -292,33 +292,23 @@ def get_columns(earning_types, ded_types):
 
 def get_all_earning_and_deduction_types():
     """
-    Get ALL enabled salary components from Salary Component master,
-    sorted by custom_display_order field.
-
-    هيرتب الـ Earnings والـ Deductions بس، الأعمدة الثابتة 
-    (Employee, Department, etc.) هتفضل في مكانها
+    Get ALL enabled salary components sorted by custom_display_order
     """
-    # Fetch all enabled salary components with custom_display_order
-    salary_components = frappe.get_all(
-        "Salary Component",
-        filters={"disabled": 0},
-        fields=["salary_component", "type", "custom_display_order"]
-    )
-
-    # رتب في Python بدل SQL عشان نتحكم أكتر في الـ NULL values
-    def sort_key(component):
-        # لو custom_display_order فاضي أو 0، اديله رقم كبير عشان يروح الآخر
-        order = component.get("custom_display_order")
-        if order is None or order == 0:
-            return (999999, component.salary_component)
-        return (order, component.salary_component)
-
-    salary_components.sort(key=sort_key)
+    # استخدام SQL مباشر عشان نضمن الترتيب صح
+    components = frappe.db.sql("""
+        SELECT 
+            salary_component, 
+            type,
+            IFNULL(custom_display_order, 999999) as display_order
+        FROM `tabSalary Component`
+        WHERE disabled = 0
+        ORDER BY display_order ASC, salary_component ASC
+    """, as_dict=1)
 
     earning_types = []
     deduction_types = []
 
-    for component in salary_components:
+    for component in components:
         if component.type == "Earning":
             earning_types.append(component.salary_component)
         elif component.type == "Deduction":
