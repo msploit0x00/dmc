@@ -266,53 +266,30 @@ def get_columns(earning_types, ded_types):
     return columns
 
 
-# def get_all_earning_and_deduction_types():
-#     """
-#     Get ALL enabled salary components from Salary Component master,
-#     not just those present in the current salary slips
-#     """
-#     earning_types = []
-#     deduction_types = []
-
-#     # Fetch all enabled salary components
-#     salary_components = frappe.get_all(
-#         "Salary Component",
-#         filters={"disabled": 0},
-#         fields=["salary_component", "type"],
-#         order_by="salary_component"
-#     )
-
-#     for component in salary_components:
-#         if component.type == "Earning":
-#             earning_types.append(component.salary_component)
-#         elif component.type == "Deduction":
-#             deduction_types.append(component.salary_component)
-
-#     return earning_types, deduction_types
-
-
 def get_all_earning_and_deduction_types():
-    # Fetch all enabled salary components مع الحقل الجديد
+    """
+    Get ALL enabled salary components from Salary Component master,
+    not just those present in the current salary slips
+    """
+    earning_types = []
+    deduction_types = []
+
+    # Fetch all enabled salary components
     salary_components = frappe.get_all(
         "Salary Component",
         filters={"disabled": 0},
-        fields=["salary_component", "type", "custom_display_order"]
+        fields=["salary_component", "type"],
+        order_by="salary_component",
+        limit=200,
     )
 
-    earning_types = [c for c in salary_components if c.type == "Earning"]
-    ded_types = [c for c in salary_components if c.type == "Deduction"]
+    for component in salary_components:
+        if component.type == "Earning":
+            earning_types.append(component.salary_component)
+        elif component.type == "Deduction":
+            deduction_types.append(component.salary_component)
 
-    # ترتيب الـ earning components حسب custom_display_order أولًا، والباقي أبجدياً
-    earning_types.sort(
-        key=lambda x: x.custom_display_order if x.custom_display_order else 9999)
-    ded_types.sort(
-        key=lambda x: x.custom_display_order if x.custom_display_order else 9999)
-
-    # ارجع بس أسماء الـ components
-    earning_types = [c.salary_component for c in earning_types]
-    ded_types = [c.salary_component for c in ded_types]
-
-    return earning_types, ded_types
+    return earning_types, deduction_types
 
 
 def update_column_width(ss, columns):
