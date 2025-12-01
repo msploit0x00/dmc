@@ -266,20 +266,49 @@ def get_columns(earning_types, ded_types):
     return columns
 
 
+# def get_all_earning_and_deduction_types():
+#     """
+#     Get ALL enabled salary components from Salary Component master,
+#     not just those present in the current salary slips
+#     """
+#     earning_types = []
+#     deduction_types = []
+
+#     # Fetch all enabled salary components
+#     salary_components = frappe.get_all(
+#         "Salary Component",
+#         filters={"disabled": 0},
+#         fields=["salary_component", "type"],
+#         order_by="salary_component"
+#     )
+
+#     for component in salary_components:
+#         if component.type == "Earning":
+#             earning_types.append(component.salary_component)
+#         elif component.type == "Deduction":
+#             deduction_types.append(component.salary_component)
+
+#     return earning_types, deduction_types
+
 def get_all_earning_and_deduction_types():
     """
     Get ALL enabled salary components from Salary Component master,
-    not just those present in the current salary slips
+    sorted by custom_display_order field.
+
+    هيرتب الـ Earnings والـ Deductions بس، الأعمدة الثابتة 
+    (Employee, Department, etc.) هتفضل في مكانها
     """
     earning_types = []
     deduction_types = []
 
-    # Fetch all enabled salary components
+    # Fetch all enabled salary components with custom_display_order
     salary_components = frappe.get_all(
         "Salary Component",
         filters={"disabled": 0},
-        fields=["salary_component", "type"],
-        order_by="salary_component"
+        fields=["salary_component", "type", "custom_display_order"],
+        # ترتيب حسب custom_display_order أولاً (الأقل أول)
+        # لو custom_display_order نفس الرقم أو null، يترتب alphabetically
+        order_by="custom_display_order asc, salary_component asc"
     )
 
     for component in salary_components:
