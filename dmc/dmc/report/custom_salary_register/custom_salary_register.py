@@ -10,6 +10,8 @@ salary_component = frappe.qb.DocType("Salary Component")
 
 
 def execute(filters=None):
+
+    frappe.clear_cache()
     if not filters:
         filters = {}
 
@@ -266,20 +268,45 @@ def get_columns(earning_types, ded_types):
     return columns
 
 
+# def get_all_earning_and_deduction_types():
+#     """
+#     Get ALL enabled salary components from Salary Component master,
+#     not just those present in the current salary slips
+#     """
+#     earning_types = []
+#     deduction_types = []
+
+#     # Fetch all enabled salary components
+#     salary_components = frappe.get_all(
+#         "Salary Component",
+#         filters={"disabled": 0},
+#         fields=["salary_component", "type"],
+#         order_by="salary_component",
+#         limit=200,
+#     )
+
+#     for component in salary_components:
+#         if component.type == "Earning":
+#             earning_types.append(component.salary_component)
+#         elif component.type == "Deduction":
+#             deduction_types.append(component.salary_component)
+
+#     return earning_types, deduction_types
+
 def get_all_earning_and_deduction_types():
     """
     Get ALL enabled salary components from Salary Component master,
-    not just those present in the current salary slips
+    sorted by idx to maintain user's custom ordering
     """
     earning_types = []
     deduction_types = []
 
-    # Fetch all enabled salary components
+    # Fetch all enabled salary components with idx for ordering
     salary_components = frappe.get_all(
         "Salary Component",
         filters={"disabled": 0},
-        fields=["salary_component", "type"],
-        order_by="salary_component",
+        fields=["salary_component", "type", "idx"],
+        order_by="idx asc, salary_component asc",  # هنا التعديل المهم
         limit=200,
     )
 
