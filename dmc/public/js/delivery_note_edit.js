@@ -5,28 +5,7 @@
 // ============================
 
 frappe.ui.form.on('Delivery Note', {
-    // onload: function (frm) {
-    //     console.log('🚀 ONLOAD: Starting initialization...');
 
-    //     // Clear empty initial row
-    //     if (frm.is_new() && frm.doc.items && frm.doc.items.length == 1) {
-    //         if (!frm.doc.items[0].barcode && !frm.doc.items[0].item_code) {
-    //             frm.clear_table("items");
-    //         }
-    //     }
-
-    //     // Initialize scanner state with enhanced timing
-    //     frm._scanning = false;
-    //     frm._scan_queue = [];
-    //     frm._scan_timeout = null; // NEW: Timeout handler for delayed processing
-    //     frm._last_scan_time = 0; // NEW: Track last scan time
-
-    //     // IMMEDIATE check for free scanner - no delay
-    //     check_and_toggle_free_scanner(frm);
-
-    //     // Also auto-add free items if creating from SO
-    //     auto_add_free_items_from_so(frm);
-    // },
     onload: function (frm) {
         console.log('🚀 ONLOAD: Starting initialization...');
 
@@ -228,74 +207,7 @@ frappe.ui.form.on('Delivery Note', {
 
         process_free_scan(frm, barcode);
     }
-    // custom_scan_barcodes: function (frm) {
-    //     if (!frm.doc.custom_scan_barcodes) return;
 
-    //     const barcode = frm.doc.custom_scan_barcodes.trim();
-    //     const currentTime = Date.now();
-
-    //     console.log('📱 SCAN INPUT DETECTED:', barcode, 'Length:', barcode.length);
-
-    //     // NEW: Enhanced validation for complete barcodes
-    //     if (!is_complete_barcode(barcode)) {
-    //         console.log('⏸️ Incomplete barcode detected, waiting for more input...');
-    //         return; // Don't process incomplete barcodes
-    //     }
-
-    //     // NEW: Debounce rapid scans from USB scanners
-    //     if (frm._last_scan_time && (currentTime - frm._last_scan_time) < 100) {
-    //         console.log('⏸️ Too rapid scan detected, ignoring duplicate');
-    //         return;
-    //     }
-
-    //     frm._last_scan_time = currentTime;
-
-    //     // Clear any existing timeout
-    //     if (frm._scan_timeout) {
-    //         clearTimeout(frm._scan_timeout);
-    //         frm._scan_timeout = null;
-    //     }
-
-    //     // NEW: Delayed processing to ensure complete barcode capture
-    //     frm._scan_timeout = setTimeout(() => {
-    //         process_regular_scan(frm, barcode);
-    //     }, 200); // 200ms delay to ensure complete input
-    // },
-
-    // // FREE ITEM SCANNER - USB SCANNER OPTIMIZED
-    // custom_scan_barcodes_for_free_items: function (frm) {
-    //     if (!frm.doc.custom_scan_barcodes_for_free_items) return;
-
-    //     const barcode = frm.doc.custom_scan_barcodes_for_free_items.trim();
-    //     const currentTime = Date.now();
-
-    //     console.log('🎁 FREE SCAN INPUT DETECTED:', barcode, 'Length:', barcode.length);
-
-    //     // NEW: Enhanced validation for complete barcodes
-    //     if (!is_complete_barcode(barcode)) {
-    //         console.log('⏸️ Incomplete free barcode detected, waiting for more input...');
-    //         return;
-    //     }
-
-    //     // NEW: Debounce rapid scans
-    //     if (frm._last_scan_time && (currentTime - frm._last_scan_time) < 100) {
-    //         console.log('⏸️ Too rapid free scan detected, ignoring duplicate');
-    //         return;
-    //     }
-
-    //     frm._last_scan_time = currentTime;
-
-    //     // Clear any existing timeout
-    //     if (frm._scan_timeout) {
-    //         clearTimeout(frm._scan_timeout);
-    //         frm._scan_timeout = null;
-    //     }
-
-    //     // NEW: Delayed processing for free items
-    //     frm._scan_timeout = setTimeout(() => {
-    //         process_free_scan(frm, barcode);
-    //     }, 200);
-    // }
 });
 
 // ===========================
@@ -311,9 +223,6 @@ function is_complete_barcode(barcode) {
     if (barcode.includes('undefined') || barcode.includes('null')) {
         return false;
     }
-
-    // Add more validation as needed based on your barcode format
-    // Example: Check if barcode matches expected format/length
 
     return true;
 }
@@ -355,202 +264,7 @@ function get_barcode_info(barcode) {
 
     return { type, prefix, base, packaging };
 }
-// function get_barcode_info(barcode) {
-//     if (!barcode || barcode.length < 3) {
-//         return { type: 'unknown', prefix: '', base: barcode };
-//     }
 
-//     const prefix = barcode.substring(0, 3);
-//     const base = barcode.substring(3);
-
-//     let type = 'unknown';
-//     if (prefix === '010') {
-//         type = 'unit';
-//     } else if (prefix === '011') {
-//         type = 'box';
-//     } else if (prefix === '012') {
-//         type = 'carton';
-//     }
-
-//     return { type, prefix, base };
-// }
-
-// // NEW: Function to check if two barcodes are for the same physical item
-// function are_related_barcodes(barcode1, barcode2) {
-//     const info1 = get_barcode_info(barcode1);
-//     const info2 = get_barcode_info(barcode2);
-
-//     // They are related if they have the same base part but different prefixes
-//     return info1.base === info2.base && info1.prefix !== info2.prefix;
-// }
-
-// ===========================
-// ENHANCED PROCESSING FUNCTIONS
-// ===========================
-
-// function process_regular_scan(frm, barcode) {
-//     console.log('🔄 PROCESSING REGULAR SCAN:', barcode);
-
-//     // Check if already processing
-//     if (frm._scanning) {
-//         console.log('⏸️ Already scanning, queueing:', barcode);
-//         frm._scan_queue = frm._scan_queue || [];
-//         frm._scan_queue.push({ barcode: barcode, type: 'regular' });
-//         // DON'T clear the field immediately, let the current scan finish
-//         return;
-//     }
-
-//     frm._scanning = true;
-
-//     frappe.call({
-//         method: 'dmc.barcode_details.get_barcode_details',
-//         args: { barcode: barcode },
-//         callback: function (response) {
-//             if (response.message) {
-//                 const uom = response.message.barcode_uom[0]['uom'];
-//                 const batchNo = response.message.batch_id;
-//                 const itemCode = response.message.item_code[0]['parent'];
-//                 const expiryDate = response.message.formatted_date;
-//                 const conversionRate = response.message.conversion_factor[0]['conversion_factor'];
-//                 const so_detail_id = response.message.so_detail_id;
-
-//                 frappe.db.get_value('Item', itemCode, 'item_name', function (r) {
-//                     const itemName = r.item_name;
-
-//                     console.log('🏷️ BARCODE ANALYSIS:', {
-//                         scanned_barcode: barcode,
-//                         barcode_info: get_barcode_info(barcode),
-//                         item_code: itemCode,
-//                         batch_no: batchNo,
-//                         uom: uom,
-//                         conversion_rate: conversionRate
-//                     });
-
-//                     // Look for existing row with EXACT match (item, batch, UOM, and barcode prefix)
-//                     const existingRow = frm.doc.items.find(item => {
-//                         const sameItem = item.item_code === itemCode;
-//                         const sameBatch = item.batch_no === batchNo;
-//                         const sameUom = item.uom === uom;
-//                         const notFree = !item.is_free_item;
-
-//                         // NEW: Allow same item/batch/uom even with different barcode types
-//                         const isCompatible = sameItem && sameBatch && sameUom && notFree;
-
-//                         console.log('🔍 Checking existing row:', {
-//                             row_idx: item.idx,
-//                             existing_barcode: item.barcode,
-//                             existing_barcode_info: get_barcode_info(item.barcode || ''),
-//                             current_barcode: barcode,
-//                             current_barcode_info: get_barcode_info(barcode),
-//                             existing_uom: item.uom,
-//                             current_uom: uom,
-//                             sameItem,
-//                             sameBatch,
-//                             sameUom,
-//                             notFree,
-//                             isCompatible,
-//                             are_related: are_related_barcodes(item.barcode || '', barcode)
-//                         });
-
-//                         return isCompatible;
-//                     });
-
-
-//                     // const existingRow = frm.doc.items.find(item => {
-//                     //     const sameItem = item.item_code === itemCode;
-//                     //     const sameBatch = item.batch_no === batchNo;
-//                     //     const sameUom = item.uom === uom;
-//                     //     const sameBarcode = item.barcode === barcode;
-//                     //     const notFree = !item.is_free_item;
-
-//                     //     console.log('🔍 Checking existing row:', {
-//                     //         row_idx: item.idx,
-//                     //         existing_barcode: item.barcode,
-//                     //         existing_uom: item.uom,
-//                     //         current_barcode: barcode,
-//                     //         current_uom: uom,
-//                     //         sameItem,
-//                     //         sameBatch,
-//                     //         sameUom,
-//                     //         sameBarcode,
-//                     //         notFree,
-//                     //         related_barcodes: are_related_barcodes(item.barcode || '', barcode)
-//                     //     });
-
-//                     //     return sameItem && sameBatch && sameUom && sameBarcode && notFree;
-//                     // });
-
-//                     if (existingRow) {
-//                         console.log('✅ FOUND EXISTING ROW - UPDATING');
-
-//                         const originalRate = existingRow.rate;
-//                         const originalUom = existingRow.uom;
-//                         const originalConversionFactor = existingRow.conversion_factor;
-//                         const currentQty = existingRow.qty || 0;
-//                         const newQty = currentQty + 1;
-
-//                         // Use batch update to prevent field triggers
-//                         frappe.model.set_value(existingRow.doctype, existingRow.name, {
-//                             'qty': newQty,
-//                             'custom_out_qty': newQty,
-//                             'barcode': barcode,
-//                             'uom': originalUom,
-//                             'conversion_factor': originalConversionFactor,
-//                             'rate': originalRate,
-//                             'amount': newQty * originalRate
-//                         });
-
-//                         // Ensure SO details are maintained
-//                         const salesOrder = get_sales_order_reference(frm);
-//                         if (salesOrder) {
-//                             if (!existingRow.against_sales_order) {
-//                                 frappe.model.set_value(existingRow.doctype, existingRow.name, 'against_sales_order', salesOrder);
-//                             }
-//                             set_so_detail(frm, existingRow, itemCode, so_detail_id, false);
-//                         }
-
-//                         finalize_scan(frm, `Updated quantity to ${newQty} for ${itemName}`, 'custom_scan_barcodes');
-
-//                     } else {
-//                         console.log('➕ CREATING NEW ROW');
-
-//                         let newRow = frm.add_child('items', {
-//                             item_code: itemCode,
-//                             item_name: itemName,
-//                             qty: 1,
-//                             custom_out_qty: 1,
-//                             uom: uom,
-//                             conversion_factor: conversionRate,
-//                             batch_no: batchNo,
-//                             custom_expiry_date: expiryDate,
-//                             barcode: barcode
-//                         });
-
-//                         // Set SO references immediately
-//                         const salesOrder = get_sales_order_reference(frm);
-//                         if (salesOrder) {
-//                             frappe.model.set_value(newRow.doctype, newRow.name, 'against_sales_order', salesOrder);
-//                             set_so_detail(frm, newRow, itemCode, so_detail_id, false);
-//                         }
-
-//                         // Let item_code trigger set the rate, then finalize
-//                         frm.script_manager.trigger('item_code', newRow.doctype, newRow.name).then(() => {
-//                             console.log('🎯 ITEM CODE TRIGGERED - RATE SET');
-//                             finalize_scan(frm, `Added 1 ${uom} of ${itemName}`, 'custom_scan_barcodes');
-//                         });
-//                     }
-//                 });
-//             } else {
-//                 frappe.msgprint(__("Barcode not found"));
-//                 finalize_scan(frm, "", 'custom_scan_barcodes');
-//             }
-//         },
-//         error: function () {
-//             console.log('❌ SCAN ERROR');
-//             finalize_scan(frm, "", 'custom_scan_barcodes');
-//         }
-//     });
-// }
 
 
 function process_regular_scan_fixed(frm, barcode) {
@@ -611,12 +325,6 @@ function process_regular_scan_fixed(frm, barcode) {
                         // Manual refresh
                         frm.refresh_field('items');
 
-                        // Set SO details if needed
-                        // const salesOrder = get_sales_order_reference(frm);
-                        // if (salesOrder && !existingRow.against_sales_order) {
-                        //     existingRow.against_sales_order = salesOrder;
-                        //     set_so_detail(frm, existingRow, itemCode, so_detail_id, false);
-                        // }
 
                         const salesOrder = get_sales_order_reference(frm);
                         if (salesOrder) {
@@ -1449,6 +1157,29 @@ function ensure_row_so_links(frm, row, itemCode, is_free, so_detail_id) {
 // ===========================
 
 frappe.ui.form.on('Delivery Note Item', {
+    // custom_out_qty: function (frm, cdt, cdn) {
+    //     const row = locals[cdt][cdn];
+
+    //     // FIXED: Add check to prevent circular triggers
+    //     if (row._updating_qty) return;
+    //     row._updating_qty = true;
+
+    //     console.log('🔄 custom_out_qty triggered:', row.custom_out_qty, 'current qty:', row.qty);
+
+    //     if (row.custom_out_qty !== row.qty) {
+    //         frappe.model.set_value(cdt, cdn, 'qty', row.custom_out_qty || 0);
+    //     }
+
+    //     if (row.is_free_item === 1) {
+    //         frappe.model.set_value(cdt, cdn, 'rate', 0);
+    //         frappe.model.set_value(cdt, cdn, 'amount', 0);
+    //     }
+
+    //     // FIXED: Reset flag after short delay
+    //     setTimeout(() => {
+    //         row._updating_qty = false;
+    //     }, 100);
+    // },
     custom_out_qty: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
 
@@ -1462,6 +1193,13 @@ frappe.ui.form.on('Delivery Note Item', {
             frappe.model.set_value(cdt, cdn, 'qty', row.custom_out_qty || 0);
         }
 
+        // CRITICAL FIX: Calculate stock_qty based on conversion_factor
+        if (row.conversion_factor) {
+            const stock_qty = (row.custom_out_qty || 0) * (row.conversion_factor || 1);
+            frappe.model.set_value(cdt, cdn, 'stock_qty', stock_qty);
+            console.log('📦 Updated stock_qty:', stock_qty, '= qty:', row.custom_out_qty, '× conversion:', row.conversion_factor);
+        }
+
         if (row.is_free_item === 1) {
             frappe.model.set_value(cdt, cdn, 'rate', 0);
             frappe.model.set_value(cdt, cdn, 'amount', 0);
@@ -1472,7 +1210,6 @@ frappe.ui.form.on('Delivery Note Item', {
             row._updating_qty = false;
         }, 100);
     },
-
     qty: function (frm, cdt, cdn) {
         const row = locals[cdt][cdn];
 
