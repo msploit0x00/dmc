@@ -71,9 +71,13 @@ def aggregate_items_by_item_code(items_data):
         )
 
         if key not in aggregated:
-            aggregated[key] = item
+            # Make a copy to avoid mutating original
+            aggregated[key] = item.copy()
+            # Ensure 'landed_cost_amount' exists
+            if "landed_cost_amount" not in aggregated[key]:
+                aggregated[key]["landed_cost_amount"] = 0
         else:
-            # لو تحب تجمع مبلغ الرسوم من الـ landed cost
+            # Safely add landed cost
             aggregated[key]["landed_cost_amount"] += item.get(
                 "landed_cost_amount", 0)
 
