@@ -34,27 +34,48 @@ def execute(filters=None):
     return columns, final_data
 
 
-def aggregate_items_by_item_code(items_data, expense_accounts):
-    """Aggregate expense accounts for duplicate items when shipment filter is applied"""
+# def aggregate_items_by_item_code(items_data, expense_accounts):
+#     """Aggregate expense accounts for duplicate items when shipment filter is applied"""
+#     aggregated = {}
+
+#     for item_data in items_data:
+#         item_code = item_data['item_code']
+
+#         if item_code not in aggregated:
+#             # First occurrence - keep all data
+#             aggregated[item_code] = item_data.copy()
+#             # Initialize expense allocations for summing
+#             aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
+#         else:
+#             # Subsequent occurrences - only sum the expense_allocations
+#             for account_code in expense_accounts.keys():
+#                 aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
+#                     account_code, 0)
+
+#             # Also sum the total_item_tax_share and total_landed_cost
+#             aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
+#             aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
+
+#     return list(aggregated.values())
+def aggregate_items_by_item_code(items_data):
     aggregated = {}
 
-    for item_data in items_data:
-        item_code = item_data['item_code']
+    for item in items_data:
+        key = (
+            item.get("item_code"),
+            item.get("item_name"),
+            item.get("qty"),
+            item.get("uom"),
+            item.get("amount"),
+            item.get("warehouse"),
+        )
 
-        if item_code not in aggregated:
-            # First occurrence - keep all data
-            aggregated[item_code] = item_data.copy()
-            # Initialize expense allocations for summing
-            aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
+        if key not in aggregated:
+            aggregated[key] = item
         else:
-            # Subsequent occurrences - only sum the expense_allocations
-            for account_code in expense_accounts.keys():
-                aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
-                    account_code, 0)
-
-            # Also sum the total_item_tax_share and total_landed_cost
-            aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
-            aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
+            # لو تحب تجمع مبلغ الرسوم من الـ landed cost
+            aggregated[key]["landed_cost_amount"] += item.get(
+                "landed_cost_amount", 0)
 
     return list(aggregated.values())
 
