@@ -685,6 +685,9 @@ def aggregate_items_by_item_code(items_data, expense_accounts):
         del aggregated[item_code]['voucher_names']
 
     return list(aggregated.values())
+
+
+def get_all_expense_accounts(filters):
     """Get all unique expense accounts based on filters"""
     conditions = []
     if filters.get("landed_cost_name"):
