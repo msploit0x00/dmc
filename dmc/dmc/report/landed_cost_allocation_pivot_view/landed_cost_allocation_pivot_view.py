@@ -34,46 +34,29 @@ def execute(filters=None):
     return columns, final_data
 
 
-# def aggregate_items_by_item_code(items_data, expense_accounts):
-#     """Aggregate expense accounts for duplicate items when shipment filter is applied"""
-#     aggregated = {}
-
-#     for item_data in items_data:
-#         item_code = item_data['item_code']
-
-#         if item_code not in aggregated:
-#             # First occurrence - keep all data
-#             aggregated[item_code] = item_data.copy()
-#             # Initialize expense allocations for summing
-#             aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
-#         else:
-#             # Subsequent occurrences - only sum the expense_allocations
-#             for account_code in expense_accounts.keys():
-#                 aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
-#                     account_code, 0)
-
-#             # Also sum the total_item_tax_share and total_landed_cost
-#             aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
-#             aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
-
-#     return list(aggregated.values())
-
 def aggregate_items_by_item_code(items_data, expense_accounts):
-    """Keep only FIRST occurrence of each item when shipment filter is applied
-    This prevents duplicate items from multiple LCVs on same shipment"""
-    seen_items = {}
-    result = []
+    """Aggregate expense accounts for duplicate items when shipment filter is applied"""
+    aggregated = {}
 
     for item_data in items_data:
         item_code = item_data['item_code']
 
-        # Only keep first occurrence of each item_code
-        if item_code not in seen_items:
-            seen_items[item_code] = True
-            result.append(item_data)
-        # Skip subsequent occurrences
+        if item_code not in aggregated:
+            # First occurrence - keep all data
+            aggregated[item_code] = item_data.copy()
+            # Initialize expense allocations for summing
+            aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
+        else:
+            # Subsequent occurrences - only sum the expense_allocations
+            for account_code in expense_accounts.keys():
+                aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
+                    account_code, 0)
 
-    return result
+            # Also sum the total_item_tax_share and total_landed_cost
+            aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
+            aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
+
+    return list(aggregated.values())
 
 
 def get_all_expense_accounts(filters):
@@ -626,4 +609,4 @@ report_config = {
     "report_type": "Script Report",
     "is_standard": "No",
     "disabled": 0
-}
+}y
