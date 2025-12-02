@@ -57,12 +57,45 @@ def execute(filters=None):
 #             aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
 
 #     return list(aggregated.values())
+# def aggregate_items_by_item_code(items_data):
+#     aggregated = {}
+
+#     for item in items_data:
+#         key = (
+#             item.get("item_code"),
+#             item.get("item_name"),
+#             item.get("qty"),
+#             item.get("uom"),
+#             item.get("amount"),
+#             item.get("warehouse"),
+#         )
+
+#         if key not in aggregated:
+#             # Make a copy to avoid mutating original
+#             aggregated[key] = item.copy()
+#             # Ensure 'landed_cost_amount' exists
+#             if "landed_cost_amount" not in aggregated[key]:
+#                 aggregated[key]["landed_cost_amount"] = 0
+#         else:
+#             # Safely add landed cost
+#             aggregated[key]["landed_cost_amount"] += item.get(
+#                 "landed_cost_amount", 0)
+
+#     return list(aggregated.values())
+
 def aggregate_items_by_item_code(items_data):
+    """
+    Aggregate items by item_code and purchase_receipt.
+    Items from different purchase receipts remain separate.
+    Landed cost amounts are summed only for exact duplicates within the same receipt.
+    """
     aggregated = {}
 
     for item in items_data:
         key = (
             item.get("item_code"),
+            # distinguish items from different receipts
+            item.get("purchase_receipt"),
             item.get("item_name"),
             item.get("qty"),
             item.get("uom"),
@@ -77,9 +110,10 @@ def aggregate_items_by_item_code(items_data):
             if "landed_cost_amount" not in aggregated[key]:
                 aggregated[key]["landed_cost_amount"] = 0
         else:
-            # Safely add landed cost
+            # Safely add landed cost for exact duplicates
             aggregated[key]["landed_cost_amount"] += item.get(
-                "landed_cost_amount", 0)
+                "landed_cost_amount", 0
+            )
 
     return list(aggregated.values())
 
