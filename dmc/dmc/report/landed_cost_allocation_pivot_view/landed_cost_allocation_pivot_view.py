@@ -34,27 +34,65 @@ def execute(filters=None):
     return columns, final_data
 
 
+# def aggregate_items_by_item_code(items_data, expense_accounts):
+#     """Aggregate expense accounts for duplicate items when shipment filter is applied"""
+#     aggregated = {}
+
+#     for item_data in items_data:
+#         item_code = item_data['item_code']
+
+#         if item_code not in aggregated:
+#             # First occurrence - keep all data
+#             aggregated[item_code] = item_data.copy()
+#             # Initialize expense allocations for summing
+#             aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
+#         else:
+#             # Subsequent occurrences - only sum the expense_allocations
+#             for account_code in expense_accounts.keys():
+#                 aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
+#                     account_code, 0)
+
+#             # Also sum the total_item_tax_share and total_landed_cost
+#             aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
+#             aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
+
+#     return list(aggregated.values())
+
 def aggregate_items_by_item_code(items_data, expense_accounts):
-    """Aggregate expense accounts for duplicate items when shipment filter is applied"""
+    """Aggregate expense accounts for duplicate items within SAME LCV only
+    This handles cases where same item appears multiple times in one LCV"""
     aggregated = {}
 
     for item_data in items_data:
+        # Use item_code + LCV as key to keep items from different LCVs separate
         item_code = item_data['item_code']
+        lcv_name = item_data['landed_cost_voucher']
+        aggregation_key = f"{item_code}|{lcv_name}"
 
-        if item_code not in aggregated:
+        if aggregation_key not in aggregated:
             # First occurrence - keep all data
-            aggregated[item_code] = item_data.copy()
+            aggregated[aggregation_key] = item_data.copy()
             # Initialize expense allocations for summing
-            aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
+            aggregated[aggregation_key]['expense_allocations'] = item_data['expense_allocations'].copy()
         else:
-            # Subsequent occurrences - only sum the expense_allocations
+            # Subsequent occurrences within SAME item+LCV - sum values
+            aggregated[aggregation_key]['qty'] += item_data['qty']
+            aggregated[aggregation_key]['amount'] += item_data['amount']
+            aggregated[aggregation_key]['usd_amount'] += item_data['usd_amount']
+
+            # Sum expense allocations
             for account_code in expense_accounts.keys():
-                aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
+                aggregated[aggregation_key]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
                     account_code, 0)
 
-            # Also sum the total_item_tax_share and total_landed_cost
-            aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
-            aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
+            # Sum totals
+            aggregated[aggregation_key]['total_item_tax_share'] += item_data['total_item_tax_share']
+            aggregated[aggregation_key]['total_landed_cost'] += item_data['total_landed_cost']
+
+            # Recalculate rate as weighted average
+            if aggregated[aggregation_key]['qty'] > 0:
+                aggregated[aggregation_key]['rate'] = aggregated[aggregation_key]['amount'] / \
+                    aggregated[aggregation_key]['qty']
 
     return list(aggregated.values())
 
