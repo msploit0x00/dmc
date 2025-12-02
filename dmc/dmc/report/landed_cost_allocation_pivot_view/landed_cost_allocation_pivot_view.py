@@ -22,7 +22,7 @@ def execute(filters=None):
 
     # If shipment filter is applied, remove duplicate items by item_code
     if filters.get("shipment_name"):
-        items_data = aggregate_items_by_item_code(items_data, expense_accounts)
+        items_data = aggregate_items_by_item_code(items_data)
 
     # Generate dynamic columns
     columns = generate_horizontal_expense_columns(expense_accounts)
