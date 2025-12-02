@@ -20,6 +20,10 @@ def execute(filters=None):
     if not items_data:
         return [], []
 
+    # If shipment filter is applied, remove duplicate items by item_code
+    if filters.get("shipment_name"):
+        items_data = aggregate_items_by_item_code(items_data, expense_accounts)
+
     # Generate dynamic columns
     columns = generate_horizontal_expense_columns(expense_accounts)
 
@@ -28,6 +32,31 @@ def execute(filters=None):
         items_data, expense_accounts)
 
     return columns, final_data
+
+
+def aggregate_items_by_item_code(items_data, expense_accounts):
+    """Aggregate expense accounts for duplicate items when shipment filter is applied"""
+    aggregated = {}
+
+    for item_data in items_data:
+        item_code = item_data['item_code']
+
+        if item_code not in aggregated:
+            # First occurrence - keep all data
+            aggregated[item_code] = item_data.copy()
+            # Initialize expense allocations for summing
+            aggregated[item_code]['expense_allocations'] = item_data['expense_allocations'].copy()
+        else:
+            # Subsequent occurrences - only sum the expense_allocations
+            for account_code in expense_accounts.keys():
+                aggregated[item_code]['expense_allocations'][account_code] += item_data['expense_allocations'].get(
+                    account_code, 0)
+
+            # Also sum the total_item_tax_share and total_landed_cost
+            aggregated[item_code]['total_item_tax_share'] += item_data['total_item_tax_share']
+            aggregated[item_code]['total_landed_cost'] += item_data['total_landed_cost']
+
+    return list(aggregated.values())
 
 
 def get_all_expense_accounts(filters):
@@ -75,76 +104,6 @@ def get_all_expense_accounts(filters):
     return expense_accounts
 
 
-# def get_items_with_raw_calculations(filters, expense_accounts):
-#     """Get items data with RAW VALUES - no conversion or rounding"""
-#     conditions = []
-#     if filters.get("landed_cost_name"):
-#         conditions.append("name = %(landed_cost_name)s")
-#     if filters.get("from_date"):
-#         conditions.append("posting_date >= %(from_date)s")
-#     if filters.get("to_date"):
-#         conditions.append("posting_date <= %(to_date)s")
-
-#     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
-
-#     # Get all vouchers
-#     try:
-#         vouchers = frappe.db.sql(f"""
-#             SELECT
-#                 name,
-#                 total_taxes_and_charges,
-#                 posting_date
-#             FROM
-#                 `tabLanded Cost Voucher`
-#             WHERE
-#                 docstatus = 1
-#                 {where_clause}
-#             ORDER BY posting_date DESC
-#         """, filters, as_dict=1)
-#     except Exception as e:
-#         frappe.log_error(f"Error getting vouchers: {str(e)}")
-#         return []
-
-#     items_data = []
-#     for voucher in vouchers:
-#         voucher_name = voucher['name']
-
-#         # Get purchase receipts
-#         purchase_receipts = get_purchase_receipts(voucher_name)
-#         purchase_receipts_str = ", ".join(purchase_receipts)
-
-#         # Get shipment name
-#         shipment_name = get_shipment_name_safe(voucher_name)
-
-#         # Apply shipment filter
-#         if filters.get("shipment_name") and shipment_name != filters.get("shipment_name"):
-#             continue
-
-#         # Get items for this voucher
-#         try:
-#             items = frappe.get_all("Landed Cost Item",
-#                                    filters={"parent": voucher_name},
-#                                    fields=["item_code", "qty", "rate", "amount", "applicable_charges"])
-#         except Exception as e:
-#             frappe.log_error(
-#                 f"Error getting items for {voucher_name}: {str(e)}")
-#             continue
-
-#         # Apply item filter
-#         if filters.get("item"):
-#             items = [item for item in items if item.item_code ==
-#                      filters.get("item")]
-
-#         if not items:
-#             continue
-
-#         # Process items with RAW VALUES
-#         voucher_items_data = process_items_with_raw_values(
-#             items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts)
-
-#         items_data.extend(voucher_items_data)
-
-#     return items_data
 def get_items_with_raw_calculations(filters, expense_accounts):
     """Get items data with RAW VALUES - no conversion or rounding"""
     conditions = []
@@ -193,9 +152,13 @@ def get_items_with_raw_calculations(filters, expense_accounts):
     for voucher in vouchers:
         voucher_name = voucher['name']
 
-        # Get purchase receipts
-        purchase_receipts = get_purchase_receipts(voucher_name)
-        purchase_receipts_str = ", ".join(purchase_receipts)
+        # Get purchase receipts with suppliers
+        purchase_receipts_data = get_purchase_receipts_with_supplier(
+            voucher_name)
+        purchase_receipts_str = ", ".join(
+            [pr['receipt'] for pr in purchase_receipts_data])
+        suppliers_str = ", ".join(
+            list(set([pr['supplier'] for pr in purchase_receipts_data if pr['supplier']])))
 
         # Get shipment name
         shipment_name = get_shipment_name_safe(voucher_name)
@@ -212,7 +175,7 @@ def get_items_with_raw_calculations(filters, expense_accounts):
 
             items = frappe.get_all("Landed Cost Item",
                                    filters=item_conditions,
-                                   fields=["item_code", "qty", "rate", "amount", "applicable_charges"])
+                                   fields=["item_code", "qty", "rate", "amount", "applicable_charges", "custom_usd_amount"])
         except Exception as e:
             frappe.log_error(
                 f"Error getting items for {voucher_name}: {str(e)}")
@@ -223,14 +186,36 @@ def get_items_with_raw_calculations(filters, expense_accounts):
 
         # Process items with RAW VALUES
         voucher_items_data = process_items_with_raw_values(
-            items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts)
+            items, voucher_name, purchase_receipts_str, suppliers_str, shipment_name, expense_accounts)
 
         items_data.extend(voucher_items_data)
 
     return items_data
 
 
-def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, shipment_name, expense_accounts):
+def get_purchase_receipts_with_supplier(voucher_name):
+    """Get purchase receipt numbers with their suppliers from Purchase Receipts table"""
+    try:
+        receipts = frappe.db.sql("""
+            SELECT 
+                lcpr.receipt_document,
+                lcpr.supplier
+            FROM `tabLanded Cost Purchase Receipt` lcpr
+            WHERE lcpr.parent = %s AND lcpr.parentfield = 'purchase_receipts'
+            ORDER BY lcpr.idx
+        """, (voucher_name,), as_dict=1)
+
+        if receipts:
+            return [{'receipt': r['receipt_document'], 'supplier': r.get('supplier') or ''} for r in receipts]
+        else:
+            return [{'receipt': voucher_name, 'supplier': ''}]
+    except Exception as e:
+        frappe.log_error(
+            f"Error getting purchase receipts for {voucher_name}: {str(e)}")
+        return [{'receipt': voucher_name, 'supplier': ''}]
+
+
+def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, suppliers_str, shipment_name, expense_accounts):
     """Process items keeping RAW VALUES - no conversion"""
     voucher_items_data = []
 
@@ -260,7 +245,6 @@ def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, sh
     company_currency = frappe.db.get_value(
         "Company", company, "default_currency")
 
-    # Convert tax amounts to base currency - KEEP RAW VALUES
     # Convert tax amounts to base currency - KEEP RAW VALUES
     converted_taxes = {}
     total_tax_amount = 0
@@ -301,6 +285,7 @@ def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, sh
             item_name = item.item_code
 
         item_amount = item.amount  # RAW VALUE
+        usd_amount = item.get('custom_usd_amount') or 0  # RAW VALUE
         applicable_charges = item.get('applicable_charges') or 0  # RAW VALUE
 
         # Calculate item percentage - RAW CALCULATION
@@ -337,12 +322,14 @@ def process_items_with_raw_values(items, voucher_name, purchase_receipts_str, sh
         item_data = {
             'landed_cost_voucher': voucher_name,
             'purchase_receipt': purchase_receipts_str,
+            'supplier': suppliers_str,
             'shipment_name': shipment_name,
             'item_code': item.item_code,
             'item_name': item_name,
             'qty': item.qty,  # RAW VALUE
             'rate': item.rate,  # RAW VALUE
             'amount': item_amount,  # RAW VALUE
+            'usd_amount': usd_amount,  # RAW VALUE
             'item_percentage': item_percentage,  # RAW VALUE
             'total_item_tax_share': total_item_tax_share,  # RAW VALUE
             'total_landed_cost': total_landed_cost,  # RAW VALUE
@@ -414,6 +401,13 @@ def generate_horizontal_expense_columns(expense_accounts):
             "width": 120
         },
         {
+            "label": _("Supplier"),
+            "fieldname": "supplier",
+            "fieldtype": "Link",
+            "options": "Supplier",
+            "width": 150
+        },
+        {
             "label": _("Shipment Name"),
             "fieldname": "shipment_name",
             "fieldtype": "Data",
@@ -447,6 +441,12 @@ def generate_horizontal_expense_columns(expense_accounts):
         {
             "label": _("Item Amount"),
             "fieldname": "amount",
+            "fieldtype": "Currency",
+            "width": 120
+        },
+        {
+            "label": _("Item Amount USD"),
+            "fieldname": "usd_amount",
             "fieldtype": "Currency",
             "width": 120
         },
@@ -499,73 +499,6 @@ def generate_horizontal_expense_columns(expense_accounts):
     return columns
 
 
-# def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
-#     """Convert items data to horizontal display format - KEEPING RAW VALUES"""
-#     display_data = []
-
-#     # Initialize totals - RAW VALUES
-#     total_amount = 0
-#     total_tax_share = 0
-#     total_landed_cost = 0
-#     account_totals = {account: 0 for account in expense_accounts.keys()}
-
-#     for item_data in items_data:
-#         row = {
-#             'landed_cost_voucher': item_data['landed_cost_voucher'],
-#             'purchase_receipt': item_data['purchase_receipt'],
-#             'shipment_name': item_data['shipment_name'],
-#             'item_code': item_data['item_code'],
-#             'item_name': item_data['item_name'],
-#             'qty': item_data['qty'],  # RAW VALUE
-#             'rate': item_data['rate'],  # RAW VALUE
-#             'amount': item_data['amount'],  # RAW VALUE
-#             'item_percentage': item_data['item_percentage'],  # RAW VALUE
-#             # RAW VALUE
-#             'total_item_tax_share': item_data['total_item_tax_share'],
-#             'total_landed_cost': item_data['total_landed_cost']  # RAW VALUE
-#         }
-
-#         # Add to totals - RAW ADDITION
-#         total_amount += item_data['amount']
-#         total_tax_share += item_data['total_item_tax_share']
-#         total_landed_cost += item_data['total_landed_cost']
-
-#         # Add expense account allocations - RAW VALUES
-#         for account_code in expense_accounts.keys():
-#             safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
-#             allocation_amount = item_data['expense_allocations'].get(
-#                 account_code, 0)
-
-#             row[safe_fieldname] = allocation_amount  # RAW VALUE
-#             account_totals[account_code] += allocation_amount  # RAW ADDITION
-
-#         display_data.append(row)
-
-#     # Add totals row - RAW VALUES
-#     if display_data:
-#         totals_row = {
-#             'landed_cost_voucher': '',
-#             'purchase_receipt': '',
-#             'shipment_name': '',
-#             'item_code': '',
-#             'item_name': 'TOTAL',
-#             'qty': '',
-#             'rate': '',
-#             'amount': total_amount,  # RAW VALUE
-#             'item_percentage': '',
-#             'total_item_tax_share': total_tax_share,  # RAW VALUE
-#             'total_landed_cost': total_landed_cost  # RAW VALUE
-#         }
-
-#         # Add account totals - RAW VALUES
-#         for account_code in expense_accounts.keys():
-#             safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
-#             # RAW VALUE
-#             totals_row[safe_fieldname] = account_totals[account_code]
-
-#         display_data.append(totals_row)
-
-#     return display_data
 def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
     """Convert items data to horizontal display format - KEEPING RAW VALUES with better separation"""
     display_data = []
@@ -580,41 +513,34 @@ def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
 
     # Initialize totals - RAW VALUES
     total_amount = 0
+    total_usd_amount = 0
     total_tax_share = 0
     total_landed_cost = 0
     account_totals = {account: 0 for account in expense_accounts.keys()}
 
     # Process each voucher group
     for voucher_name, voucher_items in voucher_groups.items():
-        # Add voucher header row (optional - uncomment if needed)
-        # header_row = {
-        #     'landed_cost_voucher': f"=== {voucher_name} ===",
-        #     'item_name': 'VOUCHER HEADER',
-        #     # ... other fields as empty
-        # }
-        # display_data.append(header_row)
-
         # Process items in this voucher
         for item_data in voucher_items:
             row = {
                 'landed_cost_voucher': item_data['landed_cost_voucher'],
                 'purchase_receipt': item_data['purchase_receipt'],
+                'supplier': item_data['supplier'],
                 'shipment_name': item_data['shipment_name'],
                 'item_code': item_data['item_code'],
-                # Include voucher in item name for clarity
                 'item_name': f"{item_data['item_name']} [{voucher_name}]",
                 'qty': item_data['qty'],  # RAW VALUE
                 'rate': item_data['rate'],  # RAW VALUE
                 'amount': item_data['amount'],  # RAW VALUE
+                'usd_amount': item_data['usd_amount'],  # RAW VALUE
                 'item_percentage': item_data['item_percentage'],  # RAW VALUE
-                # RAW VALUE
                 'total_item_tax_share': item_data['total_item_tax_share'],
-                # RAW VALUE
                 'total_landed_cost': item_data['total_landed_cost']
             }
 
             # Add to totals - RAW ADDITION
             total_amount += item_data['amount']
+            total_usd_amount += item_data['usd_amount']
             total_tax_share += item_data['total_item_tax_share']
             total_landed_cost += item_data['total_landed_cost']
 
@@ -626,7 +552,6 @@ def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
                     account_code, 0)
 
                 row[safe_fieldname] = allocation_amount  # RAW VALUE
-                # RAW ADDITION
                 account_totals[account_code] += allocation_amount
 
             display_data.append(row)
@@ -636,12 +561,14 @@ def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
         totals_row = {
             'landed_cost_voucher': '',
             'purchase_receipt': '',
+            'supplier': '',
             'shipment_name': '',
             'item_code': '',
             'item_name': '=== TOTAL ===',
             'qty': '',
             'rate': '',
             'amount': total_amount,  # RAW VALUE
+            'usd_amount': total_usd_amount,  # RAW VALUE
             'item_percentage': '',
             'total_item_tax_share': total_tax_share,  # RAW VALUE
             'total_landed_cost': total_landed_cost  # RAW VALUE
@@ -650,7 +577,6 @@ def convert_to_horizontal_display_raw_values(items_data, expense_accounts):
         # Add account totals - RAW VALUES
         for account_code in expense_accounts.keys():
             safe_fieldname = "expense_" + str(abs(hash(account_code)) % 100000)
-            # RAW VALUE
             totals_row[safe_fieldname] = account_totals[account_code]
 
         display_data.append(totals_row)
