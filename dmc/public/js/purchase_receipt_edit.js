@@ -573,16 +573,42 @@ function sync_scanned_to_main_items(frm) {
     const processedKeys = new Set();
 
     // Update existing items in main table with scanned quantities
+    // frm.doc.items.forEach(item => {
+    //     const key = `${item.item_code}_${(item.batch_no || '').toUpperCase()}`;
+
+    //     if (scannedMap[key]) {
+    //         const scannedData = scannedMap[key];
+
+    //         // Update quantities only
+    //         item.received_qty = scannedData.total_received_qty;
+    //         item.received_stock_qty = scannedData.total_received_stock_qty;
+    //         item.stock_qty = scannedData.total_received_stock_qty;
+
+    //         // Update warehouses
+    //         if (scannedData.warehouse) {
+    //             item.warehouse = scannedData.warehouse;
+    //         }
+    //         if (scannedData.accepted_warehouse) {
+    //             item.accepted_warehouse = scannedData.accepted_warehouse;
+    //         }
+
+    //         // Mark this scanned item as processed
+    //         processedKeys.add(key);
+    //     }
+    // });
+
+    // Update existing items in main table with scanned quantities
     frm.doc.items.forEach(item => {
         const key = `${item.item_code}_${(item.batch_no || '').toUpperCase()}`;
 
         if (scannedMap[key]) {
             const scannedData = scannedMap[key];
 
-            // Update quantities only
-            item.received_qty = scannedData.total_received_qty;
+            // ✅ FIX: Use stock quantities for received_qty instead of box quantities
+            item.received_qty = scannedData.total_received_stock_qty;
             item.received_stock_qty = scannedData.total_received_stock_qty;
             item.stock_qty = scannedData.total_received_stock_qty;
+            // item.qty = scannedData.total_received_stock_qty;
 
             // Update warehouses
             if (scannedData.warehouse) {
