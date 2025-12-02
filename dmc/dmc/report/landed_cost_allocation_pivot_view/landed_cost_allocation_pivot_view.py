@@ -21,8 +21,8 @@ def execute(filters=None):
         return [], []
 
     # If shipment filter is applied, remove duplicate items by item_code
-    if filters.get("shipment_name"):
-        items_data = aggregate_items_by_item_code(items_data)
+    # if filters.get("shipment_name"):
+    #     items_data = aggregate_items_by_item_code(items_data)
 
     # Generate dynamic columns
     columns = generate_horizontal_expense_columns(expense_accounts)
@@ -83,39 +83,39 @@ def execute(filters=None):
 
 #     return list(aggregated.values())
 
-def aggregate_items_by_item_code(items_data):
-    """
-    Aggregate items by item_code and purchase_receipt.
-    Items from different purchase receipts remain separate.
-    Landed cost amounts are summed only for exact duplicates within the same receipt.
-    """
-    aggregated = {}
+# def aggregate_items_by_item_code(items_data):
+#     """
+#     Aggregate items by item_code and purchase_receipt.
+#     Items from different purchase receipts remain separate.
+#     Landed cost amounts are summed only for exact duplicates within the same receipt.
+#     """
+#     aggregated = {}
 
-    for item in items_data:
-        key = (
-            item.get("item_code"),
-            # distinguish items from different receipts
-            item.get("purchase_receipt"),
-            item.get("item_name"),
-            item.get("qty"),
-            item.get("uom"),
-            item.get("amount"),
-            item.get("warehouse"),
-        )
+#     for item in items_data:
+#         key = (
+#             item.get("item_code"),
+#             # distinguish items from different receipts
+#             item.get("purchase_receipt"),
+#             item.get("item_name"),
+#             item.get("qty"),
+#             item.get("uom"),
+#             item.get("amount"),
+#             item.get("warehouse"),
+#         )
 
-        if key not in aggregated:
-            # Make a copy to avoid mutating original
-            aggregated[key] = item.copy()
-            # Ensure 'landed_cost_amount' exists
-            if "landed_cost_amount" not in aggregated[key]:
-                aggregated[key]["landed_cost_amount"] = 0
-        else:
-            # Safely add landed cost for exact duplicates
-            aggregated[key]["landed_cost_amount"] += item.get(
-                "landed_cost_amount", 0
-            )
+#         if key not in aggregated:
+#             # Make a copy to avoid mutating original
+#             aggregated[key] = item.copy()
+#             # Ensure 'landed_cost_amount' exists
+#             if "landed_cost_amount" not in aggregated[key]:
+#                 aggregated[key]["landed_cost_amount"] = 0
+#         else:
+#             # Safely add landed cost for exact duplicates
+#             aggregated[key]["landed_cost_amount"] += item.get(
+#                 "landed_cost_amount", 0
+#             )
 
-    return list(aggregated.values())
+#     return list(aggregated.values())
 
 
 def get_all_expense_accounts(filters):
