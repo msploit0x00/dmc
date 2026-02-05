@@ -143,6 +143,7 @@ override_doctype_class = {
     "Loan Repayment": "dmc.overrides.loan_repayment_edit.CustomLoanRepayment",
     "Payment Entry": "dmc.overrides.payment_entry_edit.CustomPaymentEntry",
     # "Purchase Receipt": "dmc.overrides.buying_controller_edit.CustomBuyingController",
+    "Purchase Invoice": "dmc.overrides.purchase_invoice.CustomPurchaseInvoice",
     "Salary Slip": "dmc.overrides.salary_slip_edit.CustomSalarySlip"
 }
 
